@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@jbx-protocol/juice-contracts-v3": "^5.0.0"
+  }
+}
