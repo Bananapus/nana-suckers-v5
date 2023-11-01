@@ -4,6 +4,7 @@ pragma solidity ^0.8.21;
 import {OPMessenger} from "./interfaces/OPMessenger.sol";
 
 import {IJBDirectory} from "@jbx-protocol/juice-contracts-v3/contracts/interfaces/IJBDirectory.sol";
+import {IJBController3_1} from "@jbx-protocol/juice-contracts-v3/contracts/interfaces/IJBController3_1.sol";
 import {IJBTokenStore, IJBToken} from "@jbx-protocol/juice-contracts-v3/contracts/interfaces/IJBTokenStore.sol";
 import {IJBPaymentTerminal} from "@jbx-protocol/juice-contracts-v3/contracts/interfaces/IJBPaymentTerminal.sol";
 import {IJBRedemptionTerminal} from "@jbx-protocol/juice-contracts-v3/contracts/interfaces/IJBRedemptionTerminal.sol";
@@ -14,21 +15,44 @@ import {JBOperations} from "@jbx-protocol/juice-contracts-v3/contracts/libraries
 
 contract BPSucker is JBOperatable {
 
+    //*********************************************************************//
+    // --------------------------- custom errors ------------------------- //
+    //*********************************************************************//
     error NOT_PEER();
     error INVALID_REMOTE();
     error INVALID_AMOUNT();
     error REQUIRE_ISSUED_TOKEN();
 
-    OPMessenger immutable OPMESSENGER;
 
-    IJBDirectory immutable DIRECTORY;
+    //*********************************************************************//
+    // ---------------------- public stored properties ------------------- //
+    //*********************************************************************//
 
-    IJBTokenStore immutable TOKENSTORE;
+    /// @notice what ID does the local project recognize as its remote ID.
+    mapping(uint256 _localProjectId => uint256 _remoteProjectId) public acceptFromRemote;
 
-    address immutable PEER;
+    //*********************************************************************//
+    // --------------- public immutable stored properties ---------------- //
+    //*********************************************************************//
 
+    /// @notice The messenger in use to send messages between the local and remote sucker.
+    OPMessenger public immutable OPMESSENGER;
+
+    /// @notice The Juicebox Directory
+    IJBDirectory public immutable DIRECTORY;
+
+    /// @notice The Juicebox Tokenstore
+    IJBTokenStore public immutable TOKENSTORE;
+
+    /// @notice The peer sucker on the remote chain.
+    address public immutable PEER;
+
+    /// @notice The amount of gas a sucker is allowed to use.
     uint32 constant MESSENGER_GAS_LIMIT = 1_000_000;
 
+  //*********************************************************************//
+  // ---------------------------- constructor -------------------------- //
+  //*********************************************************************//
     constructor(
         OPMessenger _messenger,
         IJBDirectory _directory,
@@ -42,11 +66,17 @@ contract BPSucker is JBOperatable {
         PEER = _peer;
     }
 
-    /// @notice what ID does the local project recognize as its remote ID.
-    mapping(uint256 _localProjectId => uint256 _remoteProjectId)
-        public acceptFromRemote;
+
+    
+  //*********************************************************************//
+  // --------------------- external transactions ----------------------- //
+  //*********************************************************************//
 
     /// @notice Send to the remote project.
+    /// @notice _localProjectId the Id of the project to move the tokens for.
+    /// @notice _projectTokenAmount the amount of tokens to move.
+    /// @notice _beneficiary the recipient of the tokens on the remote chain.
+    /// @notice _minRedeemedTokens the minimum amount of assets that gets moved.
     function toRemote(
         uint256 _localProjectId,
         uint256 _projectTokenAmount,
@@ -98,7 +128,8 @@ contract BPSucker is JBOperatable {
         // Send the messenger to the peer with the redeemed ETH.
         OPMESSENGER.sendMessage{value: _redemptionTokenAmount}(
             PEER,
-            abi.encode(
+            abi.encodeWithSelector(
+                BPSucker.fromRemote.selector,
                 _remoteProjectId,
                 _localProjectId,
                 _redemptionTokenAmount,
@@ -110,6 +141,11 @@ contract BPSucker is JBOperatable {
     }
 
     /// @notice Receive from the remote project.
+    /// @param _localProjectId the ID on this chain.
+    /// @param _remoteProjectId the ID on the remote chain.
+    /// @param _redemptionTokenAmount the amount of assets being moved.
+    /// @param _projectTokenAmount the amount of project tokens that were redeemed.
+    /// @param _beneficiary the recipient of the tokens.
     function fromRemote(
         uint256 _localProjectId,
         uint256 _remoteProjectId,
@@ -145,15 +181,19 @@ contract BPSucker is JBOperatable {
         );
         
         // Mint to the beneficiary.
-        TOKENSTORE.mintFor(
-            _beneficiary,
+        IJBController3_1(DIRECTORY.controllerOf(_localProjectId)).mintTokensOf(
             _localProjectId,
             _projectTokenAmount,
-            true
+            _beneficiary,
+            "",
+            true,
+            false
         );
     }
 
     /// @notice Register a remote projectId as the peer of a local projectId.
+    /// @param _localProjectId the project Id on this chain.
+    /// @param _remoteProjectId the project Id on the remote chain.
     function register(
         uint256 _localProjectId,
         uint256 _remoteProjectId
@@ -168,4 +208,7 @@ contract BPSucker is JBOperatable {
     {
         acceptFromRemote[_localProjectId] = _remoteProjectId;
     }
+
+    /// @notice used to receive the redemption ETH.
+    receive() external payable {}
 }
