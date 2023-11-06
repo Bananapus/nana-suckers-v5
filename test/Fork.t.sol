@@ -172,7 +172,8 @@ contract BPSuckerTest is Test {
             _L2Project,
             _receivedTokens,
             _user,
-            0
+            0,
+            true
         );
         
         // Balance should now be present on L1

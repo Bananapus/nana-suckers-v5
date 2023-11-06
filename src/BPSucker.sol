@@ -9,6 +9,7 @@ import {IJBTokenStore, IJBToken} from "@jbx-protocol/juice-contracts-v3/contract
 import {IJBPaymentTerminal} from "@jbx-protocol/juice-contracts-v3/contracts/interfaces/IJBPaymentTerminal.sol";
 import {IJBRedemptionTerminal} from "@jbx-protocol/juice-contracts-v3/contracts/interfaces/IJBRedemptionTerminal.sol";
 
+import {BPSuckerData, BPSuckQueueItem} from "./structs/BPSuckerData.sol";
 import {JBTokens} from "@jbx-protocol/juice-contracts-v3/contracts/libraries/JBTokens.sol";
 import {JBOperatable, IJBOperatorStore} from "@jbx-protocol/juice-contracts-v3/contracts/abstract/JBOperatable.sol";
 import {JBOperations} from "@jbx-protocol/juice-contracts-v3/contracts/libraries/JBOperations.sol";
@@ -31,6 +32,8 @@ contract BPSucker is JBOperatable {
     /// @notice what ID does the local project recognize as its remote ID.
     mapping(uint256 _localProjectId => uint256 _remoteProjectId) public acceptFromRemote;
 
+    mapping(uint256 _localProjectId => mapping(address _token => BPSuckerData _queue)) queue;
+
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
@@ -47,8 +50,14 @@ contract BPSucker is JBOperatable {
     /// @notice The peer sucker on the remote chain.
     address public immutable PEER;
 
-    /// @notice The amount of gas a sucker is allowed to use.
-    uint32 constant MESSENGER_GAS_LIMIT = 1_000_000;
+    /// @notice The maximum number of sucks that can get batched.
+    uint256 constant MAX_BATCH_SIZE = 6;
+
+    /// @notice The amount of gas the basic xchain call will use. 
+    uint32 constant MESSENGER_BASE_GAS_LIMIT = 500_000;
+
+    /// @notice the amount of gas that each queue item is allowed to use.
+    uint32 constant MESSENGER_QUEUE_ITEM_GAS_LIMIT = 100_000;
 
   //*********************************************************************//
   // ---------------------------- constructor -------------------------- //
@@ -81,7 +90,8 @@ contract BPSucker is JBOperatable {
         uint256 _localProjectId,
         uint256 _projectTokenAmount,
         address _beneficiary,
-        uint256 _minRedeemedTokens
+        uint256 _minRedeemedTokens,
+        bool _forceSend
     ) external {
         uint256 _remoteProjectId = acceptFromRemote[_localProjectId];
         if (_remoteProjectId == 0)
@@ -112,8 +122,9 @@ contract BPSucker is JBOperatable {
             address(_terminal),
             _projectTokenAmount
         );
-
+       
         // Perform the redemption.
+        uint256 _balanceBefore = address(this).balance;
         uint256 _redemptionTokenAmount = _terminal.redeemTokensOf(
             address(this),
             _localProjectId,
@@ -125,33 +136,32 @@ contract BPSucker is JBOperatable {
             bytes('')
         );
 
-        // Send the messenger to the peer with the redeemed ETH.
-        OPMESSENGER.sendMessage{value: _redemptionTokenAmount}(
-            PEER,
-            abi.encodeWithSelector(
-                BPSucker.fromRemote.selector,
-                _remoteProjectId,
-                _localProjectId,
-                _redemptionTokenAmount,
-                _projectTokenAmount,
-                _beneficiary
-            ),
-            MESSENGER_GAS_LIMIT
-        );
+        // Sanity check to make sure we actually received the reported amount.
+        assert(_redemptionTokenAmount ==  address(this).balance - _balanceBefore);
+
+        // Store the queued item
+        BPSuckerData storage _queue  = queue[_localProjectId][JBTokens.ETH];
+        _queue.redemptionAmount += _redemptionTokenAmount;
+        _queue.items.push(BPSuckQueueItem({
+            beneficiary: _beneficiary,
+            tokensRedeemed: _projectTokenAmount
+        }));
+
+        // Check if we should work the queue or if we only needed to append this suck to the queue.
+        if(_forceSend || _queue.items.length == MAX_BATCH_SIZE) {
+            _workQueue(_localProjectId, _remoteProjectId, JBTokens.ETH);
+        }
     }
 
     /// @notice Receive from the remote project.
     /// @param _localProjectId the ID on this chain.
     /// @param _remoteProjectId the ID on the remote chain.
     /// @param _redemptionTokenAmount the amount of assets being moved.
-    /// @param _projectTokenAmount the amount of project tokens that were redeemed.
-    /// @param _beneficiary the recipient of the tokens.
     function fromRemote(
         uint256 _localProjectId,
         uint256 _remoteProjectId,
         uint256 _redemptionTokenAmount,
-        uint256 _projectTokenAmount,
-        address _beneficiary
+        BPSuckQueueItem[] calldata _items
     ) external payable {
         // Make sure that the message came from our peer.
         if (msg.sender != address(OPMESSENGER) || OPMESSENGER.xDomainMessageSender() != PEER)
@@ -172,23 +182,30 @@ contract BPSucker is JBOperatable {
         );
         
         // Add the redeemed funds to the local terminal.
-        _terminal.addToBalanceOf(
+        _terminal.addToBalanceOf{value: _redemptionTokenAmount}(
             _localProjectId,
             _redemptionTokenAmount,
             JBTokens.ETH,
             string(""),
             bytes("")
         );
-        
-        // Mint to the beneficiary.
-        IJBController3_1(DIRECTORY.controllerOf(_localProjectId)).mintTokensOf(
-            _localProjectId,
-            _projectTokenAmount,
-            _beneficiary,
-            "",
-            true,
-            false
-        );
+
+        for (uint256 _i = 0; _i < _items.length; ) {
+             // Mint to the beneficiary.
+             // TODO: try catch this call, so that one reverting mint won't revert the entire queue
+            IJBController3_1(DIRECTORY.controllerOf(_localProjectId)).mintTokensOf(
+                _localProjectId,
+                _items[_i].tokensRedeemed,
+                _items[_i].beneficiary,
+                "",
+                true,
+                false
+            );
+
+            unchecked {
+                ++_i;
+            }
+        }       
     }
 
     /// @notice Register a remote projectId as the peer of a local projectId.
@@ -211,4 +228,36 @@ contract BPSucker is JBOperatable {
 
     /// @notice used to receive the redemption ETH.
     receive() external payable {}
+
+    //*********************************************************************//
+    // --------------------- internal transactions ----------------------- //
+    //*********************************************************************//
+
+    /// @notice Works a specific queue, sending the sucks to the peer on the remote chain.
+    /// @param _localProjectId the projectID on this chain.
+    /// @param _remoteProjectId the projectID on the remote chain.
+    /// @param _token the queue of the token being worked.
+    function _workQueue(uint256 _localProjectId, uint256 _remoteProjectId, address _token) internal {
+        // Load the queue.
+        BPSuckerData memory _queue = queue[_localProjectId][_token];
+
+        // Clear them from storage
+        delete queue[_localProjectId][_token];
+
+        // Calculate the needed gas limit for this specific queue.
+        uint32 _gasLimit = MESSENGER_BASE_GAS_LIMIT + uint32(_queue.items.length * MESSENGER_QUEUE_ITEM_GAS_LIMIT);
+
+        // Send the messenger to the peer with the redeemed ETH.
+        OPMESSENGER.sendMessage{value: _queue.redemptionAmount}(
+            PEER,
+            abi.encodeWithSelector(
+                BPSucker.fromRemote.selector,
+                _remoteProjectId,
+                _localProjectId,
+                _queue.redemptionAmount,
+                _queue.items
+            ),
+            _gasLimit
+        );
+    }
 }
