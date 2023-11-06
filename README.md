@@ -1,63 +1,29 @@
-## Foundry
+# BPSucker
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+`BPSucker.sol` facilitates cross-chain token transfers between projects, using a messenger for communication and a redemption mechanism for token exchange. `BPSucker` only works with Optimism for now.
 
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
+- `BPSucker` maintains a mapping `acceptFromRemote` that links local project IDs to their corresponding remote project IDs.
+- `BPSucker`'s main external functions are:
+  - `register`: This function registers a remote project ID as the peer of a local project ID. It requires the caller to have the appropriate permissions.
+  - `toRemote`: Send tokens from a local project to a remote project. It first checks if the remote project is valid, then redeems the tokens at the local terminal, and finally sends a message to the peer contract on the remote chain with the redeemed ETH.
+  - `fromRemote`: This function receives tokens from a remote project. It checks if the message came from the peer contract and if the remote project is valid, then adds the redeemed funds to the local terminal and mints tokens for the beneficiary.
 
 ## Usage
 
-### Build
+You must have [Foundry](https://book.getfoundry.sh/) and [NodeJS](https://nodejs.dev/en/learn/how-to-install-nodejs/) to use this repo.
+
+Install with `forge install && npm install`
+
+If you run into trouble with nested dependencies, try running `git submodule update --init --force --recursive`.
 
 ```shell
-$ forge build
+$ forge build # Build
+$ forge test # Run tests
+$ forge fmt # Format
+$ forge snapshot # Gas Snapshots
 ```
 
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
+For help, see https://book.getfoundry.sh/ or run:
 
 ```shell
 $ forge --help
