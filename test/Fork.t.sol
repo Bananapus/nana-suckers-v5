@@ -3,16 +3,19 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 
-import {BPSucker, IJBDirectory, IJBTokenStore, IJBToken} from "../src/BPSucker.sol";
-import "@jbx-protocol/juice-contracts-v3/contracts/interfaces/IJBController3_1.sol";
-import "@jbx-protocol/juice-contracts-v3/contracts/interfaces/IJBPayoutRedemptionPaymentTerminal3_1.sol";
-import "@jbx-protocol/juice-contracts-v3/contracts/interfaces/IJBFundingCycleBallot.sol";
-import "@jbx-protocol/juice-contracts-v3/contracts/libraries/JBConstants.sol";
-import "@jbx-protocol/juice-contracts-v3/contracts/libraries/JBTokens.sol";
-import "@jbx-protocol/juice-contracts-v3/contracts/libraries/JBOperations.sol";
-import {IJBOperatorStore, JBOperatorData} from "@jbx-protocol/juice-contracts-v3/contracts/interfaces/IJBOperatorStore.sol";
+import {BPSucker, IJBDirectory, IJBTokens, IJBToken, IERC20} from "../src/BPSucker.sol";
+import "juice-contracts-v4/src/interfaces/IJBController.sol";
+import "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
+// import "juice-contracts-v4/src/interfaces/IJBFundingCycleBallot.sol";
+import "juice-contracts-v4/src/libraries/JBConstants.sol";
+// import "juice-contracts-v4/src/libraries/JBTokens.sol";
+import "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
+import {JBRulesetConfig} from "juice-contracts-v4/src/structs/JBRulesetConfig.sol";
+import {JBFundAccessLimitGroup} from "juice-contracts-v4/src/structs/JBFundAccessLimitGroup.sol";
+import {IJBRulesetApprovalHook} from "juice-contracts-v4/src/interfaces/IJBRulesetApprovalHook.sol";
+import {IJBPermissions, JBPermissionsData} from "juice-contracts-v4/src/interfaces/IJBPermissions.sol";
 
-import "@jbx-protocol/juice-contracts-v3/contracts/structs/JBGlobalFundingCycleMetadata.sol";
+// import "juice-contracts-v4/src/structs/JBGlobalFundingCycleMetadata.sol";
 
 import {MockMessenger} from "./mocks/MockMessenger.sol";
 
@@ -21,50 +24,35 @@ contract BPSuckerTest is Test {
     BPSucker public suckerL2;
 
 
-    IJBController3_1 CONTROLLER;
+    IJBController CONTROLLER;
     IJBDirectory DIRECTORY;
-    IJBTokenStore TOKENSTORE;
-    IJBOperatorStore OPERATORSTORE;
-    IJBPayoutRedemptionPaymentTerminal3_1 ETH_TERMINAL;
+    IJBTokens TOKENS;
+    IJBPermissions PERMISSIONS;
+    IJBRedeemTerminal ETH_TERMINAL;
 
     MockMessenger _mockMessenger;
 
     function setUp() public {
-        vm.createSelectFork("https://rpc.ankr.com/eth"); // Will start on latest block by default
+        vm.createSelectFork("https://ethereum-sepolia.publicnode.com"); // Will start on latest block by default
 
-        CONTROLLER = IJBController3_1(
-            stdJson.readAddress(
-                vm.readFile("./node_modules/@jbx-protocol/juice-contracts-v3/deployments/mainnet/JBController3_1.json"),
-                ".address"
-            )
+        CONTROLLER = IJBController(
+            address(0x3af11CF0f55346c2D8Ff5B3F87184b1aE32Fb8e4)
         );
 
         DIRECTORY = IJBDirectory(
-            stdJson.readAddress(
-                vm.readFile("./node_modules/@jbx-protocol/juice-contracts-v3/deployments/mainnet/JBDirectory.json"),
-                ".address"
-            )
+            address(0x3Ed68eB98B1dBc2df18E0e55f653315498183cA6)
         );
 
-        TOKENSTORE = IJBTokenStore(
-            stdJson.readAddress(
-                vm.readFile("./node_modules/@jbx-protocol/juice-contracts-v3/deployments/mainnet/JBTokenStore.json"),
-                ".address"
-            )
+        TOKENS = IJBTokens(
+           address(0x29E9a3fad6CC9A46300c5f848FA779b9627230B5)
         );
 
-        OPERATORSTORE = IJBOperatorStore(
-            stdJson.readAddress(
-                vm.readFile("./node_modules/@jbx-protocol/juice-contracts-v3/deployments/mainnet/JBOperatorStore.json"),
-                ".address"
-            )
+        PERMISSIONS = IJBPermissions(
+            address(0x9B69961B9289532F3269E88d623D30d4E3034623)
         );
 
-        ETH_TERMINAL = IJBPayoutRedemptionPaymentTerminal3_1(
-            stdJson.readAddress(
-                vm.readFile("./node_modules/@jbx-protocol/juice-contracts-v3/deployments/mainnet/JBETHPaymentTerminal3_1_2.json"),
-                ".address"
-            )
+        ETH_TERMINAL = IJBRedeemTerminal(
+            address(0x5cE634Df088B264ADb206a30DE8963d729571b7A)
         );
 
         // Configure a mock manager that mocks the OP bridge
@@ -72,22 +60,22 @@ contract BPSuckerTest is Test {
 
         // Get the determenistic addresses for the suckers
         uint256 _nonce = vm.getNonce(address(this));
-        address _suckerL1 = computeCreateAddress(address(this), _nonce);
-        address _suckerL2 = computeCreateAddress(address(this), _nonce + 1);
+        address _suckerL1 = vm.computeCreateAddress(address(this), _nonce);
+        address _suckerL2 = vm.computeCreateAddress(address(this), _nonce + 1);
 
         // Configure the pair of suckers
         suckerL1 = new BPSucker(
             _mockMessenger,
             DIRECTORY,
-            TOKENSTORE,
-            OPERATORSTORE,
+            TOKENS,
+            PERMISSIONS,
             _suckerL2
         );
         suckerL2 = new BPSucker(
             _mockMessenger,
             DIRECTORY,
-            TOKENSTORE,
-            OPERATORSTORE,
+            TOKENS,
+            PERMISSIONS,
             _suckerL1
         );
     }
@@ -140,30 +128,32 @@ contract BPSuckerTest is Test {
         vm.startPrank(_user);
         uint256 _receivedTokens = ETH_TERMINAL.pay{value: _payAmount}(
             _L2Project,
+            JBConstants.NATIVE_TOKEN,
             _payAmount,
-            JBTokens.ETH,
             address(_user),
             0,
-            true,
             "",
             bytes("")
         );
 
         // Give sucker allowance to spend our token
-        IJBToken _l1Token = TOKENSTORE.tokenOf(_L1Project);
-        IJBToken _l2Token = TOKENSTORE.tokenOf(_L2Project);
-        _l2Token.approve(_L2Project, address(suckerL2), _receivedTokens);
+        IERC20 _l1Token = IERC20(address(TOKENS.tokenOf(_L1Project)));
+        IERC20 _l2Token = IERC20(address(TOKENS.tokenOf(_L2Project)));
+        _l2Token.approve(address(suckerL2), _receivedTokens);
 
         // Expect the L1 terminal to receive the funds
         vm.expectCall(
             address(ETH_TERMINAL),
-            abi.encodeWithSelector(
-                IJBPaymentTerminal.addToBalanceOf.selector,
-                _L1Project,
-                _payAmount,
-                JBTokens.ETH,
-                string(""),
-                bytes("")
+            abi.encodeCall(
+                IJBTerminal.addToBalanceOf,
+                (
+                    _L1Project,
+                    JBConstants.NATIVE_TOKEN,
+                    _payAmount,
+                    false,
+                    string(""),
+                    bytes("")
+                )
             )
         );
         
@@ -177,9 +167,9 @@ contract BPSuckerTest is Test {
         );
         
         // Balance should now be present on L1
-        assertEq( _l1Token.balanceOf(_user, _L1Project), _receivedTokens);
+        assertEq( _l1Token.balanceOf(_user), _receivedTokens);
         // User should no longer have any tokens on L2
-        assertEq( _l2Token.balanceOf(_user, _L2Project), 0);
+        assertEq( _l2Token.balanceOf(_user), 0);
     }
 
     function _configureAndLinkProjects(
@@ -191,21 +181,25 @@ contract BPSuckerTest is Test {
         _L2Project = _deployJBProject(_L2ProjectOwner, "BananapusOptimism", "OPNANA");
 
         uint256[] memory _permissions = new uint256[](1);
-        _permissions[0] = JBOperations.MINT;
+        _permissions[0] = JBPermissionIds.MINT_TOKENS;
 
-        // Grant 'MINT' permission to the JBSuckers of their localChains
+        // Grant 'MINT_TOKENS' permission to the JBSuckers of their localChains
         vm.prank(_L1ProjectOwner);
-        OPERATORSTORE.setOperator(JBOperatorData({
-            operator: address(suckerL1),
-            domain: _L1Project,
-            permissionIndexes: _permissions
+        PERMISSIONS.setPermissionsFor(
+            address(_L1ProjectOwner),
+            JBPermissionsData({
+                operator: address(suckerL1),
+                projectId: _L1Project,
+                permissionIds: _permissions
         }));
 
         vm.prank(_L2ProjectOwner);
-        OPERATORSTORE.setOperator(JBOperatorData({
-            operator: address(suckerL2),
-            domain: _L2Project,
-            permissionIndexes: _permissions
+        PERMISSIONS.setPermissionsFor(
+            address(_L2ProjectOwner),
+            JBPermissionsData({
+                operator: address(suckerL2),
+                projectId: _L2Project,
+                permissionIds: _permissions
         }));
 
         // Register the remote projects to each-other
@@ -219,62 +213,60 @@ contract BPSuckerTest is Test {
         string memory _tokenSymbol
     ) internal returns(uint256 _projectId) {
 
-        IJBPaymentTerminal[] memory _terminals = new IJBPaymentTerminal[](1);
-        _terminals[0] = IJBPaymentTerminal(address(ETH_TERMINAL));
+        // IJBTerminal[] memory _terminals = new IJBTerminal[](1);
+        // _terminals[0] = IJBTerminal(address(ETH_TERMINAL));
 
-        // Create project
-        _projectId = CONTROLLER.launchProjectFor(
-            _owner,
-            JBProjectMetadata({
-                content: "",
-                domain: 0
-            }),
-            JBFundingCycleData({
-                duration: 0,
-                weight: 10 ** 18,
-                discountRate: 0,
-                ballot: IJBFundingCycleBallot(address(0))
-            }),
-            JBFundingCycleMetadata({
-                global: JBGlobalFundingCycleMetadata({
-                    allowSetTerminals: true,
-                    allowSetController: true,
-                    pauseTransfers: false
-                }),
-                reservedRate: 0,
-                redemptionRate: JBConstants.MAX_REDEMPTION_RATE,
-                ballotRedemptionRate: JBConstants.MAX_REDEMPTION_RATE,
-                pausePay: false,
-                pauseDistributions: false,
-                pauseRedeem: false,
-                pauseBurn: false,
-                allowMinting: true,
-                allowTerminalMigration: true,
-                allowControllerMigration: true,
-                holdFees: false,
-                preferClaimedTokenOverride: false,
-                useTotalOverflowForRedemptions: true,
-                useDataSourceForPay: false,
-                useDataSourceForRedeem: false,
-                dataSource: address(0),
-                metadata: 0
-            }),
-            0,
-            new JBGroupedSplits[](0),
-            new JBFundAccessConstraints[](0),
-            _terminals,
-            ""
-        );
+        JBRulesetMetadata memory _metadata = JBRulesetMetadata({
+            reservedRate: 0,
+            redemptionRate: JBConstants.MAX_REDEMPTION_RATE,
+            baseCurrency: uint32(uint160(JBConstants.NATIVE_TOKEN)),
+            pausePay: false,
+            pauseCreditTransfers: false,
+            allowOwnerMinting: true,
+            allowTerminalMigration: false,
+            allowSetTerminals: false,
+            allowControllerMigration: false,
+            allowSetController: false,
+            holdFees: false,
+            useTotalSurplusForRedemptions: false,
+            useDataHookForPay: false,
+            useDataHookForRedeem: false,
+            dataHook: address(0),
+            metadata: 0
+        });
+
+        // Package up ruleset configuration.
+        JBRulesetConfig[] memory _rulesetConfig = new JBRulesetConfig[](1);
+        _rulesetConfig[0].mustStartAtOrAfter = 0;
+        _rulesetConfig[0].duration = 0;
+        _rulesetConfig[0].weight = 10 ** 18;
+        _rulesetConfig[0].metadata = _metadata;
+        _rulesetConfig[0].splitGroups = new JBSplitGroup[](0);
+        _rulesetConfig[0].fundAccessLimitGroups = new JBFundAccessLimitGroup[](0);
+
+        // Package up terminal configuration.
+        JBTerminalConfig[] memory _terminalConfigurations = new JBTerminalConfig[](1);
+        address[] memory _tokens = new address[](1);
+        _tokens[0] = JBConstants.NATIVE_TOKEN;
+        _terminalConfigurations[0] = JBTerminalConfig({terminal: ETH_TERMINAL, tokensToAccept: _tokens});
+        
+        _projectId = CONTROLLER.launchProjectFor({
+            owner: _owner,
+            projectMetadata: "myIPFSHash",
+            rulesetConfigurations: _rulesetConfig,
+            terminalConfigurations: _terminalConfigurations,
+            memo: ""
+        });
 
         vm.prank(_owner);
-        TOKENSTORE.issueFor(_projectId, _tokenName, _tokenSymbol);
+        CONTROLLER.deployERC20For(_projectId, _tokenName, _tokenSymbol);
     }
 
     function _linkProjects(
         uint256 _projectIdL1,
         uint256 _projectIdL2
     ) internal {
-        IJBProjects _projects = DIRECTORY.projects();
+        IJBProjects _projects = DIRECTORY.PROJECTS();
 
         // Link the project on L1 to the project on L2
         vm.prank(_projects.ownerOf(_projectIdL1));
