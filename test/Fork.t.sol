@@ -2,6 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
+import {stdJson} from "forge-std/StdJson.sol";
+
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 import {BPSucker, IJBDirectory, IJBTokens, IJBToken, IERC20} from "../src/BPSucker.sol";
 import "juice-contracts-v4/src/interfaces/IJBController.sol";
@@ -36,23 +39,23 @@ contract BPSuckerTest is Test {
         vm.createSelectFork("https://ethereum-sepolia.publicnode.com"); // Will start on latest block by default
 
         CONTROLLER = IJBController(
-            address(0x3af11CF0f55346c2D8Ff5B3F87184b1aE32Fb8e4)
+            _getDeploymentAddress("lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json", "JBController")
         );
 
         DIRECTORY = IJBDirectory(
-            address(0x3Ed68eB98B1dBc2df18E0e55f653315498183cA6)
+            _getDeploymentAddress("lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json", "JBDirectory")
         );
 
         TOKENS = IJBTokens(
-           address(0x29E9a3fad6CC9A46300c5f848FA779b9627230B5)
+            _getDeploymentAddress("lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json", "JBTokens")
         );
 
         PERMISSIONS = IJBPermissions(
-            address(0x9B69961B9289532F3269E88d623D30d4E3034623)
+            _getDeploymentAddress("lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json", "JBPermissions")
         );
 
         ETH_TERMINAL = IJBRedeemTerminal(
-            address(0x5cE634Df088B264ADb206a30DE8963d729571b7A)
+            _getDeploymentAddress("lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json", "JBMultiTerminal")
         );
 
         // Configure a mock manager that mocks the OP bridge
@@ -275,5 +278,28 @@ contract BPSuckerTest is Test {
         // Link the project on L2 to the project on L1
         vm.prank(_projects.ownerOf(_projectIdL2));
         suckerL2.register(_projectIdL2, _projectIdL1);
+    }
+
+    /**
+        @notice Get the address of a contract that was deployed by the Deploy script.
+        @dev Reverts if the contract was not found.
+        @param _path The path to the deployment file.
+        @param _contractName The name of the contract to get the address of.
+        @return The address of the contract.
+    */
+    function _getDeploymentAddress(string memory _path, string memory _contractName) internal view returns (address) {
+        string memory _deploymentJson = vm.readFile(_path);
+        uint256 _nOfTransactions = stdJson.readStringArray(_deploymentJson, ".transactions").length;
+
+        for (uint256 i = 0; i < _nOfTransactions; i++) {
+            string memory _currentKey = string.concat(".transactions", "[", Strings.toString(i), "]");
+            string memory _currentContractName = stdJson.readString(_deploymentJson, string.concat(_currentKey, ".contractName"));
+
+            if(keccak256(abi.encodePacked(_currentContractName)) == keccak256(abi.encodePacked(_contractName))) {
+                return stdJson.readAddress(_deploymentJson, string.concat(_currentKey, ".contractAddress"));
+            }
+        }
+
+        revert(string.concat("Could not find contract with name '", _contractName, "' in deployment file '", _path, "'"));
     }
 }
