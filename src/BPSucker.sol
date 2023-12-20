@@ -200,11 +200,10 @@ contract BPSucker is JBPermissioned {
     /// @param _remoteProjectId the project Id on the remote chain.
     function register(uint256 _localProjectId, uint256 _remoteProjectId) external {
         // Access control.
-        _requirePermissionAllowingOverrideFrom(
-            address(msg.sender),
+        _requirePermissionFrom(
+            DIRECTORY.PROJECTS().ownerOf(_localProjectId),
             _localProjectId,
-            JBPermissionIds.QUEUE_RULESETS,
-            msg.sender == DIRECTORY.PROJECTS().ownerOf(_localProjectId)
+            JBPermissionIds.QUEUE_RULESETS
         );
 
         acceptFromRemote[_localProjectId] = _remoteProjectId;
