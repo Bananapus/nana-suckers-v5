@@ -6,28 +6,26 @@ import {BPSucker, IJBDirectory, IJBTokens, IJBPermissions} from "../src/BPSucker
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-
 contract DeployScript is Script {
-
     // Sepolia config
     string CHAIN_A_RPC;
-    OPMessenger constant CHAIN_A_OP_MESSENGER = OPMessenger(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef); 
+    OPMessenger constant CHAIN_A_OP_MESSENGER = OPMessenger(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef);
     string CHAIN_A_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json";
 
     // OP Sepolia config
     string CHAIN_B_RPC;
-    OPMessenger constant CHAIN_B_OP_MESSENGER = OPMessenger(0x4200000000000000000000000000000000000007); 
+    OPMessenger constant CHAIN_B_OP_MESSENGER = OPMessenger(0x4200000000000000000000000000000000000007);
     string CHAIN_B_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155420/run-latest.json";
 
     function setUp() public {
         CHAIN_A_RPC = vm.envString("CHAIN_A_RPC");
         CHAIN_B_RPC = vm.envString("CHAIN_B_RPC");
 
-        if(bytes(CHAIN_A_RPC).length == 0) {
+        if (bytes(CHAIN_A_RPC).length == 0) {
             revert("CHAIN_A_RPC not set.");
         }
 
-        if(bytes(CHAIN_B_RPC).length == 0) {
+        if (bytes(CHAIN_B_RPC).length == 0) {
             revert("CHAIN_B_RPC not set.");
         }
     }
@@ -40,7 +38,7 @@ contract DeployScript is Script {
         uint256 _chainB = vm.createSelectFork(CHAIN_B_RPC);
         uint256 _chainBNonce = vm.getNonce(msg.sender);
 
-        if(_chainANonce != _chainANonce) {
+        if (_chainANonce != _chainANonce) {
             console2.log("WARNING: Nonces do not match between chains.");
         }
 
@@ -70,10 +68,12 @@ contract DeployScript is Script {
         );
 
         // Verify the suckers were deployed to the predetermined addresses.
-        if(address(_suckerA) != _precomputeChainASucker) 
+        if (address(_suckerA) != _precomputeChainASucker) {
             revert("Sucker A was not deployed to the correct address.");
-        if(address(_suckerB) != _precomputeChainBSucker) 
+        }
+        if (address(_suckerB) != _precomputeChainBSucker) {
             revert("Sucker B was not deployed to the correct address.");
+        }
 
         console2.log("Suckers deployed.");
         console2.log("Sucker A: ", Strings.toHexString(uint160(address(_suckerA)), 20));
@@ -106,4 +106,3 @@ contract DeployScript is Script {
         );
     }
 }
-
