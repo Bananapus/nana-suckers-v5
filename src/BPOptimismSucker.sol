@@ -17,7 +17,7 @@ import {IERC20} from "juice-contracts-v4/src/JBMultiTerminal.sol";
 
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.
-contract BPSucker is JBPermissioned {
+contract BPOptimismSucker is JBPermissioned {
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
@@ -234,7 +234,7 @@ contract BPSucker is JBPermissioned {
         OPMESSENGER.sendMessage{value: _queue.redemptionAmount}(
             PEER,
             abi.encodeWithSelector(
-                BPSucker.fromRemote.selector, _remoteProjectId, _localProjectId, _queue.redemptionAmount, _queue.items
+                BPOptimismSucker.fromRemote.selector, _remoteProjectId, _localProjectId, _queue.redemptionAmount, _queue.items
             ),
             _gasLimit
         );

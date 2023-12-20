@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {BPSucker, IJBDirectory, IJBTokens, IJBPermissions} from "../src/BPSucker.sol";
+import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions} from "../src/BPOptimismSucker.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -49,7 +49,7 @@ contract DeployScript is Script {
         // Deploy the suckers.
         vm.selectFork(_chainA);
         vm.broadcast();
-        BPSucker _suckerA = new BPSucker(
+        BPOptimismSucker _suckerA = new BPOptimismSucker(
             CHAIN_A_OP_MESSENGER,
             IJBDirectory(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBDirectory")),
             IJBTokens(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBTokens")),
@@ -59,7 +59,7 @@ contract DeployScript is Script {
 
         vm.selectFork(_chainB);
         vm.broadcast();
-        BPSucker _suckerB = new BPSucker(
+        BPOptimismSucker _suckerB = new BPOptimismSucker(
             CHAIN_B_OP_MESSENGER,
             IJBDirectory(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBDirectory")),
             IJBTokens(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBTokens")),

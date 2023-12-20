@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import {BPSucker, IJBDirectory, IJBTokens, IJBToken, IERC20} from "../src/BPSucker.sol";
+import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBToken, IERC20} from "../src/BPOptimismSucker.sol";
 import "juice-contracts-v4/src/interfaces/IJBController.sol";
 import "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
 import "juice-contracts-v4/src/libraries/JBConstants.sol";
@@ -16,9 +16,9 @@ import {IJBPermissions, JBPermissionsData} from "juice-contracts-v4/src/interfac
 
 import {MockMessenger} from "./mocks/MockMessenger.sol";
 
-contract BPSuckerTest is Test {
-    BPSucker public suckerL1;
-    BPSucker public suckerL2;
+contract BPOptimismSuckerTest is Test {
+    BPOptimismSucker public suckerL1;
+    BPOptimismSucker public suckerL2;
 
     IJBController CONTROLLER;
     IJBDirectory DIRECTORY;
@@ -48,8 +48,8 @@ contract BPSuckerTest is Test {
         address _suckerL2 = vm.computeCreateAddress(address(this), _nonce + 1);
 
         // Configure the pair of suckers
-        suckerL1 = new BPSucker(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL2);
-        suckerL2 = new BPSucker(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL1);
+        suckerL1 = new BPOptimismSucker(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL2);
+        suckerL2 = new BPOptimismSucker(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL1);
     }
 
     function test_MetaSuckersLinked() public {
