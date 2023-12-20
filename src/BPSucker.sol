@@ -16,7 +16,6 @@ import {JBPermissionIds} from "juice-contracts-v4/src/libraries/JBPermissionIds.
 import {IERC20} from "juice-contracts-v4/src/JBMultiTerminal.sol";
 
 contract BPSucker is JBPermissioned {
-
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
@@ -24,7 +23,6 @@ contract BPSucker is JBPermissioned {
     error INVALID_REMOTE();
     error INVALID_AMOUNT();
     error REQUIRE_ISSUED_TOKEN();
-
 
     //*********************************************************************//
     // ---------------------- public stored properties ------------------- //
@@ -54,15 +52,15 @@ contract BPSucker is JBPermissioned {
     /// @notice The maximum number of sucks that can get batched.
     uint256 constant MAX_BATCH_SIZE = 6;
 
-    /// @notice The amount of gas the basic xchain call will use. 
+    /// @notice The amount of gas the basic xchain call will use.
     uint32 constant MESSENGER_BASE_GAS_LIMIT = 500_000;
 
     /// @notice the amount of gas that each queue item is allowed to use.
     uint32 constant MESSENGER_QUEUE_ITEM_GAS_LIMIT = 100_000;
 
-  //*********************************************************************//
-  // ---------------------------- constructor -------------------------- //
-  //*********************************************************************//
+    //*********************************************************************//
+    // ---------------------------- constructor -------------------------- //
+    //*********************************************************************//
     constructor(
         OPMessenger _messenger,
         IJBDirectory _directory,
@@ -76,11 +74,9 @@ contract BPSucker is JBPermissioned {
         PEER = _peer;
     }
 
-
-    
-  //*********************************************************************//
-  // --------------------- external transactions ----------------------- //
-  //*********************************************************************//
+    //*********************************************************************//
+    // --------------------- external transactions ----------------------- //
+    //*********************************************************************//
 
     /// @notice Send to the remote project.
     /// @notice _localProjectId the Id of the project to move the tokens for.
@@ -95,33 +91,26 @@ contract BPSucker is JBPermissioned {
         bool _forceSend
     ) external {
         uint256 _remoteProjectId = acceptFromRemote[_localProjectId];
-        if (_remoteProjectId == 0)
+        if (_remoteProjectId == 0) {
             revert INVALID_REMOTE();
+        }
 
         // Get the terminal we will use to redeem the tokens.
-        IJBRedeemTerminal _terminal = IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(
-            _localProjectId,
-            JBConstants.NATIVE_TOKEN
-        )));
+        IJBRedeemTerminal _terminal =
+            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(_localProjectId, JBConstants.NATIVE_TOKEN)));
 
         // Get the token for the project.
         IERC20 _projectToken = IERC20(address(TOKENS.tokenOf(_localProjectId)));
-        if(address(_projectToken) == address(0)) 
+        if (address(_projectToken) == address(0)) {
             revert REQUIRE_ISSUED_TOKEN();
+        }
 
         // Transfer the tokens to this contract.
-        _projectToken.transferFrom(
-            msg.sender,
-            address(this),
-            _projectTokenAmount
-        );
+        _projectToken.transferFrom(msg.sender, address(this), _projectTokenAmount);
 
         // Approve the terminal.
-        _projectToken.approve(
-            address(_terminal),
-            _projectTokenAmount
-        );
-       
+        _projectToken.approve(address(_terminal), _projectTokenAmount);
+
         // Perform the redemption.
         uint256 _balanceBefore = address(this).balance;
         uint256 _redemptionTokenAmount = _terminal.redeemTokensOf(
@@ -131,22 +120,19 @@ contract BPSucker is JBPermissioned {
             _projectTokenAmount,
             _minRedeemedTokens,
             payable(address(this)),
-            bytes('')
+            bytes("")
         );
 
         // Sanity check to make sure we actually received the reported amount.
-        assert(_redemptionTokenAmount ==  address(this).balance - _balanceBefore);
+        assert(_redemptionTokenAmount == address(this).balance - _balanceBefore);
 
         // Store the queued item
-        BPSuckerData storage _queue  = queue[_localProjectId][JBConstants.NATIVE_TOKEN];
+        BPSuckerData storage _queue = queue[_localProjectId][JBConstants.NATIVE_TOKEN];
         _queue.redemptionAmount += _redemptionTokenAmount;
-        _queue.items.push(BPSuckQueueItem({
-            beneficiary: _beneficiary,
-            tokensRedeemed: _projectTokenAmount
-        }));
+        _queue.items.push(BPSuckQueueItem({beneficiary: _beneficiary, tokensRedeemed: _projectTokenAmount}));
 
         // Check if we should work the queue or if we only needed to append this suck to the queue.
-        if(_forceSend || _queue.items.length == MAX_BATCH_SIZE) {
+        if (_forceSend || _queue.items.length == MAX_BATCH_SIZE) {
             _workQueue(_localProjectId, _remoteProjectId, JBConstants.NATIVE_TOKEN);
         }
     }
@@ -162,59 +148,45 @@ contract BPSucker is JBPermissioned {
         BPSuckQueueItem[] calldata _items
     ) external payable {
         // Make sure that the message came from our peer.
-        if (msg.sender != address(OPMESSENGER) || OPMESSENGER.xDomainMessageSender() != PEER)
+        if (msg.sender != address(OPMESSENGER) || OPMESSENGER.xDomainMessageSender() != PEER) {
             revert NOT_PEER();
+        }
 
         // Make sure that the project that was redeemed remotely has permission to do so.
-        if(acceptFromRemote[_localProjectId] != _remoteProjectId)
+        if (acceptFromRemote[_localProjectId] != _remoteProjectId) {
             revert INVALID_REMOTE();
+        }
 
         // Sanity check.
-        if(_redemptionTokenAmount != msg.value)
+        if (_redemptionTokenAmount != msg.value) {
             revert INVALID_AMOUNT();
+        }
 
         // Get the terminal of the project.
-        IJBTerminal _terminal = DIRECTORY.primaryTerminalOf(
-            _localProjectId,
-            JBConstants.NATIVE_TOKEN
-        );
-        
+        IJBTerminal _terminal = DIRECTORY.primaryTerminalOf(_localProjectId, JBConstants.NATIVE_TOKEN);
+
         // Add the redeemed funds to the local terminal.
         _terminal.addToBalanceOf{value: _redemptionTokenAmount}(
-            _localProjectId,
-            JBConstants.NATIVE_TOKEN,
-            _redemptionTokenAmount,
-            false,
-            string(""),
-            bytes("")
+            _localProjectId, JBConstants.NATIVE_TOKEN, _redemptionTokenAmount, false, string(""), bytes("")
         );
 
-        for (uint256 _i = 0; _i < _items.length; ) {
-             // Mint to the beneficiary.
-             // TODO: try catch this call, so that one reverting mint won't revert the entire queue
+        for (uint256 _i = 0; _i < _items.length;) {
+            // Mint to the beneficiary.
+            // TODO: try catch this call, so that one reverting mint won't revert the entire queue
             IJBController(address(DIRECTORY.controllerOf(_localProjectId))).mintTokensOf(
-                _localProjectId,
-                _items[_i].tokensRedeemed,
-                _items[_i].beneficiary,
-                "",
-                false
+                _localProjectId, _items[_i].tokensRedeemed, _items[_i].beneficiary, "", false
             );
 
             unchecked {
                 ++_i;
             }
-        }       
+        }
     }
 
     /// @notice Register a remote projectId as the peer of a local projectId.
     /// @param _localProjectId the project Id on this chain.
     /// @param _remoteProjectId the project Id on the remote chain.
-    function register(
-        uint256 _localProjectId,
-        uint256 _remoteProjectId
-    )
-        external
-    {
+    function register(uint256 _localProjectId, uint256 _remoteProjectId) external {
         // Access control.
         _requirePermissionAllowingOverrideFrom(
             address(msg.sender),
@@ -251,11 +223,7 @@ contract BPSucker is JBPermissioned {
         OPMESSENGER.sendMessage{value: _queue.redemptionAmount}(
             PEER,
             abi.encodeWithSelector(
-                BPSucker.fromRemote.selector,
-                _remoteProjectId,
-                _localProjectId,
-                _queue.redemptionAmount,
-                _queue.items
+                BPSucker.fromRemote.selector, _remoteProjectId, _localProjectId, _queue.redemptionAmount, _queue.items
             ),
             _gasLimit
         );
