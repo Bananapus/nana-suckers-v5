@@ -15,6 +15,8 @@ import {JBPermissioned, IJBPermissions} from "juice-contracts-v4/src/abstract/JB
 import {JBPermissionIds} from "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
 import {IERC20} from "juice-contracts-v4/src/JBMultiTerminal.sol";
 
+/// @notice A contract that sucks tokens from one chain to another.
+/// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.
 contract BPSucker is JBPermissioned {
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
@@ -23,6 +25,7 @@ contract BPSucker is JBPermissioned {
     error INVALID_REMOTE();
     error INVALID_AMOUNT();
     error REQUIRE_ISSUED_TOKEN();
+    error BENEFICIARY_NOT_ALLOWED();
 
     //*********************************************************************//
     // ---------------------- public stored properties ------------------- //
@@ -83,6 +86,7 @@ contract BPSucker is JBPermissioned {
     /// @notice _projectTokenAmount the amount of tokens to move.
     /// @notice _beneficiary the recipient of the tokens on the remote chain.
     /// @notice _minRedeemedTokens the minimum amount of assets that gets moved.
+    /// @notice _forceSend whether or not to force the send, even if the queue is not full.
     function toRemote(
         uint256 _localProjectId,
         uint256 _projectTokenAmount,
@@ -90,9 +94,15 @@ contract BPSucker is JBPermissioned {
         uint256 _minRedeemedTokens,
         bool _forceSend
     ) external {
+        // Make sure that the remote project was configured.
         uint256 _remoteProjectId = acceptFromRemote[_localProjectId];
         if (_remoteProjectId == 0) {
             revert INVALID_REMOTE();
+        }
+
+        // Make sure the beneficiary is not the zero address, as this would revert when minting on the remote chain.
+        if (_beneficiary == address(0)) {
+            revert BENEFICIARY_NOT_ALLOWED();
         }
 
         // Get the terminal we will use to redeem the tokens.
@@ -141,6 +151,7 @@ contract BPSucker is JBPermissioned {
     /// @param _localProjectId the ID on this chain.
     /// @param _remoteProjectId the ID on the remote chain.
     /// @param _redemptionTokenAmount the amount of assets being moved.
+    /// @param _items the items being moved.
     function fromRemote(
         uint256 _localProjectId,
         uint256 _remoteProjectId,
@@ -173,6 +184,7 @@ contract BPSucker is JBPermissioned {
         for (uint256 _i = 0; _i < _items.length;) {
             // Mint to the beneficiary.
             // TODO: try catch this call, so that one reverting mint won't revert the entire queue
+            // TODO: Bulk mint here and then send the tokens to the beneficiaries might be more effecient.
             IJBController(address(DIRECTORY.controllerOf(_localProjectId))).mintTokensOf(
                 _localProjectId, _items[_i].tokensRedeemed, _items[_i].beneficiary, "", false
             );
