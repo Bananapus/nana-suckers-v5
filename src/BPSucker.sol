@@ -197,7 +197,7 @@ contract BPSucker is JBPermissioned {
 
     /// @notice Register a remote projectId as the peer of a local projectId.
     /// @param _localProjectId the project Id on this chain.
-    /// @param _remoteProjectId the project Id on the remote chain.
+    /// @param _remoteProjectId the project Id on the remote chain (or '0' to disable). 
     function register(uint256 _localProjectId, uint256 _remoteProjectId) external {
         // Access control.
         _requirePermissionFrom(
