@@ -45,8 +45,8 @@ contract DeployScript is Script {
         }
 
         // Compute the addresses for the suckers.
-        address _chainASucker = vm.computeCreateAddress(msg.sender, _chainANonce);
-        address _chainBSucker = vm.computeCreateAddress(msg.sender, _chainBNonce);
+        address _precomputeChainASucker = vm.computeCreateAddress(msg.sender, _chainANonce);
+        address _precomputeChainBSucker = vm.computeCreateAddress(msg.sender, _chainBNonce);
 
         // Deploy the suckers.
         vm.selectFork(_chainA);
@@ -56,7 +56,7 @@ contract DeployScript is Script {
             IJBDirectory(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBDirectory")),
             IJBTokens(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBTokens")),
             IJBPermissions(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPermissions")),
-            _chainBSucker
+            _precomputeChainBSucker
         );
 
         vm.selectFork(_chainB);
@@ -66,8 +66,14 @@ contract DeployScript is Script {
             IJBDirectory(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBDirectory")),
             IJBTokens(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBTokens")),
             IJBPermissions(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPermissions")),
-            _chainASucker
+            _precomputeChainASucker
         );
+
+        // Verify the suckers were deployed to the predetermined addresses.
+        if(address(_suckerA) != _precomputeChainASucker) 
+            revert("Sucker A was not deployed to the correct address.");
+        if(address(_suckerB) != _precomputeChainBSucker) 
+            revert("Sucker B was not deployed to the correct address.");
 
         console2.log("Suckers deployed.");
         console2.log("Sucker A: ", Strings.toHexString(uint160(address(_suckerA)), 20));
