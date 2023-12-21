@@ -166,8 +166,10 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
     function beforeRedeemRecordedWith(JBBeforeRedeemRecordedContext calldata)
         external
         view
-        returns (uint256 reclaimAmount, JBRedeemHookSpecification[] memory)
-    {}
+        returns (uint256 , JBRedeemHookSpecification[] memory)
+    {
+        return (context.reclaimAmount.value, new JBRedeemHookSpecification[](0));
+    }
 
     function supportsInterface(bytes4 interfaceId) external view returns (bool) {
         // TODO: Implement
