@@ -31,6 +31,7 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
     }
 
     error NOT_ALLOWED();
+    error INVALID_REMOTE_PROJECT_ID();
 
     /// @notice The contract storing and managing project rulesets.
     IJBRulesets public immutable RULESETS;
@@ -75,6 +76,25 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
             return (context.weight, new JBPayHookSpecification[](0));
         }
 
+        // We return zero weight, so that we can do the mint on the remote chain.
+        hookSpecifications = new JBPayHookSpecification[](1);
+        hookSpecifications[0] = JBPayHookSpecification({
+            hook: IJBPayHook(address(this)),
+            amount: 0,
+            metadata: ''
+        });
+
+        return (0, hookSpecifications);
+    }
+
+    function afterPayRecordedWith(JBAfterPayRecordedContext calldata context) external payable {
+        // Check that the caller is a terminal.
+        if (!DIRECTORY.isTerminalOf(context.projectId, IJBTerminal(msg.sender))) revert NOT_ALLOWED();
+
+        // Should be valid.
+        uint256 _remoteProjectId = acceptFromRemote[context.projectId];
+        if(_remoteProjectId == 0) revert INVALID_REMOTE_PROJECT_ID();
+
         // Get the projects ruleset.
         JBRuleset memory _ruleset = RULESETS.getRulesetOf(context.projectId, context.rulesetId);
 
@@ -90,31 +110,6 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
 
         uint256 _tokenCount = mulDiv(context.amount.value, context.weight, _weightRatio);
 
-        // We return zero weight, so that we can do the mint on the remote chain.
-        hookSpecifications = new JBPayHookSpecification[](1);
-        hookSpecifications[0] = JBPayHookSpecification({
-            hook: IJBPayHook(address(this)),
-            amount: 0,
-            metadata: abi.encode(
-                EncodedMetadata({
-                    terminal: IJBRedeemTerminal(context.terminal),
-                    remoteProjectId: _remoteProjectId,
-                    tokenAmount: _tokenCount,
-                    beneficiary: context.beneficiary
-                })
-                )
-        });
-
-        return (0, hookSpecifications);
-    }
-
-    function afterPayRecordedWith(JBAfterPayRecordedContext calldata context) external payable {
-        // Check that the caller is a terminal.
-        if (!DIRECTORY.isTerminalOf(context.projectId, IJBTerminal(msg.sender))) revert NOT_ALLOWED();
-
-        // Decode metadata.
-        EncodedMetadata memory _metadata = abi.decode(context.hookMetadata, (EncodedMetadata));
-
         // Get the projects token.
         IERC20 _projectToken = IERC20(address(TOKENS.tokenOf(context.projectId)));
 
@@ -124,7 +119,7 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         // Mint tokens to this address.
         uint256 _beneficiaryTokenCount = IJBController(address(DIRECTORY.controllerOf(context.projectId))).mintTokensOf({
             projectId: context.projectId,
-            tokenCount: _metadata.tokenAmount,
+            tokenCount: _tokenCount,
             beneficiary: address(this),
             memo: "",
             useReservedRate: true
@@ -135,7 +130,7 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
 
         // Perform the redemption.
         uint256 _nativeBalanceBefore = address(this).balance;
-        uint256 _reclaimAmount = _metadata.terminal.redeemTokensOf(
+        uint256 _reclaimAmount = IJBRedeemTerminal(msg.sender).redeemTokensOf(
             address(this),
             context.projectId,
             JBConstants.NATIVE_TOKEN,
@@ -154,18 +149,18 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         // Add the reclaim amount to the messenger queue.
         _queueItem({
             _localProjectId: context.projectId,
-            _remoteProjectId: _metadata.remoteProjectId,
+            _remoteProjectId: _remoteProjectId,
             _projectTokenAmount: _beneficiaryTokenCount,
             _redemptionTokenAmount: _reclaimAmount,
-            _beneficiary: _metadata.beneficiary,
+            _beneficiary: context.beneficiary,
             _forceSend: false
         });
     }
 
     /// @notice We don't do anything on redemption.
-    function beforeRedeemRecordedWith(JBBeforeRedeemRecordedContext calldata)
+    function beforeRedeemRecordedWith(JBBeforeRedeemRecordedContext calldata context)
         external
-        view
+        pure
         returns (uint256 , JBRedeemHookSpecification[] memory)
     {
         return (context.reclaimAmount.value, new JBRedeemHookSpecification[](0));
