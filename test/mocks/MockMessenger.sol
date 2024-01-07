@@ -13,4 +13,15 @@ contract MockMessenger is OPMessenger {
         (bool _success,) = _target.call{value: msg.value, gas: _gasLimit}(_message);
         require(_success);
     }
+
+    function bridgeERC20To(
+        address localToken,
+        address remoteToken,
+        address to,
+        uint256 amount,
+        uint32 minGasLimit,
+        bytes calldata extraData
+    ) external {
+        // TODO: implement mock.
+    }
 }

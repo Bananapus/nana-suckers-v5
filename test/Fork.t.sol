@@ -103,7 +103,7 @@ contract BPOptimismSuckerTest is Test {
         );
 
         // Redeem tokens on the L2 and mint them on L1, moving the backing assets with it.
-        suckerL2.toRemote(_L2Project, _receivedTokens, _user, 0, true);
+        suckerL2.toRemote(_L2Project, _receivedTokens, _user, 0, JBConstants.NATIVE_TOKEN, true);
 
         // Balance should now be present on L1
         assertEq(_l1Token.balanceOf(_user), _receivedTokens);

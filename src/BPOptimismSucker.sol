@@ -13,7 +13,8 @@ import {BPSuckerData, BPSuckQueueItem} from "./structs/BPSuckerData.sol";
 import {JBConstants} from "juice-contracts-v4/src/libraries/JBConstants.sol";
 import {JBPermissioned, IJBPermissions} from "juice-contracts-v4/src/abstract/JBPermissioned.sol";
 import {JBPermissionIds} from "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
-import {IERC20} from "juice-contracts-v4/src/JBMultiTerminal.sol";
+import {SafeERC20, IERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BPProjectPayer} from "./BPProjectPayer.sol";
 
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.
@@ -35,6 +36,8 @@ contract BPOptimismSucker is JBPermissioned {
     mapping(uint256 _localProjectId => uint256 _remoteProjectId) public acceptFromRemote;
 
     mapping(uint256 _localProjectId => mapping(address _token => BPSuckerData _queue)) queue;
+
+    mapping(uint256 _localProjectId => mapping(address _localToken => address _remoteToken)) token;
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -60,6 +63,8 @@ contract BPOptimismSucker is JBPermissioned {
 
     /// @notice the amount of gas that each queue item is allowed to use.
     uint32 constant MESSENGER_QUEUE_ITEM_GAS_LIMIT = 100_000;
+
+    uint32 constant MESSENGER_ERC20_BRIDGE_GAS_LIMIT = 200_000;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -92,6 +97,7 @@ contract BPOptimismSucker is JBPermissioned {
         uint256 _projectTokenAmount,
         address _beneficiary,
         uint256 _minRedeemedTokens,
+        address _token,
         bool _forceSend
     ) external {
         // Make sure that the remote project was configured.
@@ -107,7 +113,12 @@ contract BPOptimismSucker is JBPermissioned {
 
         // Get the terminal we will use to redeem the tokens.
         IJBRedeemTerminal _terminal =
-            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(_localProjectId, JBConstants.NATIVE_TOKEN)));
+            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(_localProjectId, _token)));
+
+        // Make sure that the token is configured to be sucked (both is redeemable and is mapped to a remote token)
+        if(address(_terminal) == address(0) || (_token != JBConstants.NATIVE_TOKEN && token[_localProjectId][_token] == address(0))){
+            revert(); // TODO: fancy revert
+        }
 
         // Get the token for the project.
         IERC20 _projectToken = IERC20(address(TOKENS.tokenOf(_localProjectId)));
@@ -126,7 +137,7 @@ contract BPOptimismSucker is JBPermissioned {
         uint256 _redemptionTokenAmount = _terminal.redeemTokensOf(
             address(this),
             _localProjectId,
-            JBConstants.NATIVE_TOKEN,
+            _token,
             _projectTokenAmount,
             _minRedeemedTokens,
             payable(address(this)),
@@ -139,7 +150,7 @@ contract BPOptimismSucker is JBPermissioned {
 
         // Queue the item.
         _queueItem(
-            _localProjectId, _remoteProjectId, _projectTokenAmount, _redemptionTokenAmount, _beneficiary, _forceSend
+            _localProjectId, _remoteProjectId, _projectTokenAmount, _token, _redemptionTokenAmount, _beneficiary, _forceSend
         );
     }
 
@@ -151,6 +162,7 @@ contract BPOptimismSucker is JBPermissioned {
     function fromRemote(
         uint256 _localProjectId,
         uint256 _remoteProjectId,
+        address _token,
         uint256 _redemptionTokenAmount,
         BPSuckQueueItem[] calldata _items
     ) external payable {
@@ -164,18 +176,23 @@ contract BPOptimismSucker is JBPermissioned {
             revert INVALID_REMOTE();
         }
 
-        // Sanity check.
-        if (_redemptionTokenAmount != msg.value) {
-            revert INVALID_AMOUNT();
+
+        if(_token == JBConstants.NATIVE_TOKEN) {
+            // Sanity check.
+            if (_redemptionTokenAmount != msg.value) {
+                revert INVALID_AMOUNT();
+            }
+
+            // Get the terminal of the project.
+            IJBTerminal _terminal = DIRECTORY.primaryTerminalOf(_localProjectId, JBConstants.NATIVE_TOKEN);
+
+            // Add the redeemed funds to the local terminal.
+            _terminal.addToBalanceOf{value: _redemptionTokenAmount}(
+                _localProjectId, JBConstants.NATIVE_TOKEN, _redemptionTokenAmount, false, string(""), bytes("")
+            );
+        } else {
+            // TODO: Pay using BPProjectPayer
         }
-
-        // Get the terminal of the project.
-        IJBTerminal _terminal = DIRECTORY.primaryTerminalOf(_localProjectId, JBConstants.NATIVE_TOKEN);
-
-        // Add the redeemed funds to the local terminal.
-        _terminal.addToBalanceOf{value: _redemptionTokenAmount}(
-            _localProjectId, JBConstants.NATIVE_TOKEN, _redemptionTokenAmount, false, string(""), bytes("")
-        );
 
         for (uint256 _i = 0; _i < _items.length;) {
             // Mint to the beneficiary.
@@ -203,6 +220,17 @@ contract BPOptimismSucker is JBPermissioned {
         acceptFromRemote[_localProjectId] = _remoteProjectId;
     }
 
+
+    /// @notice Links an ERC20 token on the local chain to an ERC20 on the remote chain.
+    function linkTokens(uint256 _localProjectId, address _localToken, address _remoteToken) external {
+        // Access control.
+        _requirePermissionFrom(
+            DIRECTORY.PROJECTS().ownerOf(_localProjectId), _localProjectId, JBPermissionIds.QUEUE_RULESETS
+        );
+
+        token[_localProjectId][_localToken] = _remoteToken;
+    }
+
     /// @notice used to receive the redemption ETH.
     receive() external payable {}
 
@@ -214,18 +242,19 @@ contract BPOptimismSucker is JBPermissioned {
         uint256 _localProjectId,
         uint256 _remoteProjectId,
         uint256 _projectTokenAmount,
+        address _token,
         uint256 _redemptionTokenAmount,
         address _beneficiary,
         bool _forceSend
     ) internal {
         // Store the queued item
-        BPSuckerData storage _queue = queue[_localProjectId][JBConstants.NATIVE_TOKEN];
+        BPSuckerData storage _queue = queue[_localProjectId][_token];
         _queue.redemptionAmount += _redemptionTokenAmount;
         _queue.items.push(BPSuckQueueItem({beneficiary: _beneficiary, tokensRedeemed: _projectTokenAmount}));
 
         // Check if we should work the queue or if we only needed to append this suck to the queue.
         if (_forceSend || _queue.items.length == MAX_BATCH_SIZE) {
-            _workQueue(_localProjectId, _remoteProjectId, JBConstants.NATIVE_TOKEN);
+            _workQueue(_localProjectId, _remoteProjectId, _token);
         }
     }
 
@@ -240,11 +269,41 @@ contract BPOptimismSucker is JBPermissioned {
         // Clear them from storage
         delete queue[_localProjectId][_token];
 
+        address _remoteAddress = address(uint160(uint(keccak256(
+            abi.encodePacked(
+                bytes1(0xff),
+                address(PEER),
+                _calculateProjectPayerSalt(
+                    PEER,
+                    _remoteProjectId,
+                    _token
+                ),
+                keccak256(type(BPProjectPayer).creationCode))
+        ))));
+
+
+        uint256 _nativeValue;
+        if(_token != JBConstants.NATIVE_TOKEN){
+
+
+            // Bridge the tokens to the payer address.
+            OPMESSENGER.bridgeERC20To({
+                localToken: _token,
+                remoteToken: token[_localProjectId][_token],
+                to: _remoteAddress,
+                amount: _queue.redemptionAmount,
+                minGasLimit: MESSENGER_ERC20_BRIDGE_GAS_LIMIT,
+                extraData: bytes('')
+            });
+        } else {
+            _nativeValue = _queue.redemptionAmount;
+        }
+
         // Calculate the needed gas limit for this specific queue.
         uint32 _gasLimit = MESSENGER_BASE_GAS_LIMIT + uint32(_queue.items.length * MESSENGER_QUEUE_ITEM_GAS_LIMIT);
 
         // Send the messenger to the peer with the redeemed ETH.
-        OPMESSENGER.sendMessage{value: _queue.redemptionAmount}(
+        OPMESSENGER.sendMessage{value: _nativeValue}(
             PEER,
             abi.encodeWithSelector(
                 BPOptimismSucker.fromRemote.selector,
@@ -255,5 +314,14 @@ contract BPOptimismSucker is JBPermissioned {
             ),
             _gasLimit
         );
+    }
+
+
+    function _calculateProjectPayerSalt(
+        address _deployer,
+        uint256 _projectId,
+        address _token
+    ) internal pure returns (bytes32 _salt) {
+        return keccak256(abi.encode(_deployer, _projectId, _token));
     }
 }
