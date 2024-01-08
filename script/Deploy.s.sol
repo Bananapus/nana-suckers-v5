@@ -11,11 +11,13 @@ contract DeployScript is Script {
     string CHAIN_A_RPC;
     OPMessenger constant CHAIN_A_OP_MESSENGER = OPMessenger(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef);
     string CHAIN_A_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json";
+    uint256 PROJECT_ID_CHAIN_A = 1;
 
     // OP Sepolia config
     string CHAIN_B_RPC;
     OPMessenger constant CHAIN_B_OP_MESSENGER = OPMessenger(0x4200000000000000000000000000000000000007);
     string CHAIN_B_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155420/run-latest.json";
+    uint256 PROJECT_ID_CHAIN_B = 1;
 
     function setUp() public {
         CHAIN_A_RPC = vm.envString("CHAIN_A_RPC");
@@ -54,7 +56,8 @@ contract DeployScript is Script {
             IJBDirectory(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBDirectory")),
             IJBTokens(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBTokens")),
             IJBPermissions(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPermissions")),
-            _precomputeChainBSucker
+            _precomputeChainBSucker,
+            PROJECT_ID_CHAIN_A
         );
 
         vm.selectFork(_chainB);
@@ -64,7 +67,8 @@ contract DeployScript is Script {
             IJBDirectory(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBDirectory")),
             IJBTokens(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBTokens")),
             IJBPermissions(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPermissions")),
-            _precomputeChainASucker
+            _precomputeChainASucker,
+            PROJECT_ID_CHAIN_B
         );
 
         // Verify the suckers were deployed to the predetermined addresses.

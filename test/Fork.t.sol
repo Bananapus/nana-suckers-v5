@@ -41,32 +41,16 @@ contract BPOptimismSuckerTest is Test {
 
         // Configure a mock manager that mocks the OP bridge
         _mockMessenger = new MockMessenger();
-
-        // Get the determenistic addresses for the suckers
-        uint256 _nonce = vm.getNonce(address(this));
-        address _suckerL1 = vm.computeCreateAddress(address(this), _nonce);
-        address _suckerL2 = vm.computeCreateAddress(address(this), _nonce + 1);
-
-        // Configure the pair of suckers
-        suckerL1 = new BPOptimismSucker(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL2);
-        suckerL2 = new BPOptimismSucker(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL1);
-    }
-
-    function test_MetaSuckersLinked() public {
-        assertEq(suckerL1.PEER(), address(suckerL2));
-
-        assertEq(suckerL2.PEER(), address(suckerL1));
     }
 
     function test_linkProjects() public {
         address _L1ProjectOwner = makeAddr("L1ProjectOwner");
         address _L2ProjectOwner = makeAddr("L2ProjectOwner");
 
-        (uint256 _L1Project, uint256 _L2Project) = _configureAndLinkProjects(_L1ProjectOwner, _L2ProjectOwner);
+        _configureAndLinkProjects(_L1ProjectOwner, _L2ProjectOwner);
 
-        assertEq(suckerL1.acceptFromRemote(_L1Project), _L2Project);
-
-        assertEq(suckerL2.acceptFromRemote(_L2Project), _L1Project);
+        assertEq(address(suckerL1.PEER()), address(suckerL2));
+        assertEq(address(suckerL2.PEER()), address(suckerL1));
     }
 
     function test_suck_L2toL1(uint256 _payAmount) public {
@@ -119,6 +103,15 @@ contract BPOptimismSuckerTest is Test {
         _L1Project = _deployJBProject(_L1ProjectOwner, "Bananapus", "NANA");
         _L2Project = _deployJBProject(_L2ProjectOwner, "BananapusOptimism", "OPNANA");
 
+        // Get the determenistic addresses for the suckers
+        uint256 _nonce = vm.getNonce(address(this));
+        address _suckerL1 = vm.computeCreateAddress(address(this), _nonce);
+        address _suckerL2 = vm.computeCreateAddress(address(this), _nonce + 1);
+
+        // Deploy the pair of suckers
+        suckerL1 = new BPOptimismSucker(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL2, _L1Project);
+        suckerL2 = new BPOptimismSucker(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL1, _L2Project);
+
         uint256[] memory _permissions = new uint256[](1);
         _permissions[0] = JBPermissionIds.MINT_TOKENS;
 
@@ -134,9 +127,6 @@ contract BPOptimismSuckerTest is Test {
             address(_L2ProjectOwner),
             JBPermissionsData({operator: address(suckerL2), projectId: _L2Project, permissionIds: _permissions})
         );
-
-        // Register the remote projects to each-other
-        _linkProjects(_L1Project, _L2Project);
     }
 
     function _deployJBProject(address _owner, string memory _tokenName, string memory _tokenSymbol)
@@ -190,18 +180,6 @@ contract BPOptimismSuckerTest is Test {
 
         vm.prank(_owner);
         CONTROLLER.deployERC20For(_projectId, _tokenName, _tokenSymbol);
-    }
-
-    function _linkProjects(uint256 _projectIdL1, uint256 _projectIdL2) internal {
-        IJBProjects _projects = DIRECTORY.PROJECTS();
-
-        // Link the project on L1 to the project on L2
-        vm.prank(_projects.ownerOf(_projectIdL1));
-        suckerL1.register(_projectIdL1, _projectIdL2);
-
-        // Link the project on L2 to the project on L1
-        vm.prank(_projects.ownerOf(_projectIdL2));
-        suckerL2.register(_projectIdL2, _projectIdL1);
     }
 
     /**

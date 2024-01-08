@@ -31,7 +31,8 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
     }
 
     error NOT_ALLOWED();
-    error INVALID_REMOTE_PROJECT_ID();
+    error INVALID_REMOTE_PROJECT_ID(uint256 expected, uint256 received);
+    error INCORRECT_PROJECT_ID();
 
     /// @notice The contract storing and managing project rulesets.
     IJBRulesets public immutable RULESETS;
@@ -46,8 +47,9 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         IJBDirectory _directory,
         IJBTokens _tokens,
         IJBPermissions _permissions,
-        address _peer
-    ) BPOptimismSucker(_messenger, _directory, _tokens, _permissions, _peer) {
+        address _peer,
+        uint256 _projectId
+    ) BPOptimismSucker(_messenger, _directory, _tokens, _permissions, _peer, _projectId) {
         PRICES = _prices;
         RULESETS = _rulesets;
     }
@@ -63,13 +65,12 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         view
         returns (uint256 weight, JBPayHookSpecification[] memory hookSpecifications)
     {
-        uint256 _remoteProjectId = acceptFromRemote[context.projectId];
+        if(context.projectId != PROJECT_ID) revert INVALID_REMOTE_PROJECT_ID(PROJECT_ID, context.projectId);
+
         address _token = context.amount.token;
         if (
-            // The remote project was not configured.
-            _remoteProjectId == 0
             // Check if the token is the native asset or if it is linked.
-            || (_token != JBConstants.NATIVE_TOKEN && token[context.projectId][_token] == address(0))
+            (_token != JBConstants.NATIVE_TOKEN && token[_token] == address(0))
             // Check if the terminal supports the redeem terminal interface.
             || !ERC165Checker.supportsInterface(address(context.terminal), type(IJBRedeemTerminal).interfaceId)
         ) {
@@ -91,10 +92,6 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
     function afterPayRecordedWith(JBAfterPayRecordedContext calldata context) external payable {
         // Check that the caller is a terminal.
         if (!DIRECTORY.isTerminalOf(context.projectId, IJBTerminal(msg.sender))) revert NOT_ALLOWED();
-
-        // Should be valid.
-        uint256 _remoteProjectId = acceptFromRemote[context.projectId];
-        if(_remoteProjectId == 0) revert INVALID_REMOTE_PROJECT_ID();
 
         // Get the projects ruleset.
         JBRuleset memory _ruleset = RULESETS.getRulesetOf(context.projectId, context.rulesetId);
@@ -149,8 +146,6 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
 
         // Add the reclaim amount to the messenger queue.
         _queueItem({
-            _localProjectId: context.projectId,
-            _remoteProjectId: _remoteProjectId,
             _projectTokenAmount: _beneficiaryTokenCount,
             _token: context.amount.token,
             _redemptionTokenAmount: _reclaimAmount,
