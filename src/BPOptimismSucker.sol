@@ -60,11 +60,11 @@ contract BPOptimismSucker is JBPermissioned {
     //*********************************************************************//
 
     // TODO: rename items for queue;
-    mapping(address _token => mapping(address _beneficiary => BPSuckQueueItem)) queue;
+    mapping(address _token => mapping(address _beneficiary => BPSuckQueueItem)) public queue;
 
-    mapping(address _token => BPTokenConfig _remoteToken) token;
+    mapping(address _token => BPTokenConfig _remoteToken) public token;
 
-    mapping(bytes32 _suckHash => SuckingStatus _status) message;
+    mapping(bytes32 _suckHash => SuckingStatus _status) public message;
 
     uint256 nonce;
 
@@ -155,7 +155,7 @@ contract BPOptimismSucker is JBPermissioned {
         _projectToken.approve(address(_terminal), _projectTokenAmount);
 
         // Perform the redemption.
-        uint256 _balanceBefore = address(this).balance;
+        uint256 _balanceBefore = _balanceOf(_token, address(this));
         uint256 _redemptionTokenAmount = _terminal.redeemTokensOf(
             address(this),
             PROJECT_ID,
@@ -168,7 +168,7 @@ contract BPOptimismSucker is JBPermissioned {
 
         // Sanity check to make sure we actually received the reported amount.
         // Prevents a malicious terminal from reporting a higher amount than it actually sent.
-        assert(_redemptionTokenAmount == address(this).balance - _balanceBefore);
+        assert(_redemptionTokenAmount == _balanceOf(_token, address(this)) - _balanceBefore);
 
         // Queue the item.
         _insertIntoQueue(
@@ -192,7 +192,7 @@ contract BPOptimismSucker is JBPermissioned {
         BPSuckBridgeItem[] memory _itemsToBridge = new BPSuckBridgeItem[](_beneficiaries.length);
 
         uint256 _amountToBridge;
-        for(uint256 _i; _beneficiaries.length < _i; _i++) {
+        for(uint256 _i; _i < _beneficiaries.length ; _i++) {
             // Load the item.
             BPSuckQueueItem memory _queueItem = queue[_token][_beneficiaries[_i]];
             // Delete the item from the queue
@@ -202,7 +202,8 @@ contract BPOptimismSucker is JBPermissioned {
                 beneficiary: _beneficiaries[_i],
                 projectTokens: _queueItem.projectTokens
             });
-            _amountToBridge = _queueItem.redemptionTokens;
+
+            _amountToBridge += _queueItem.redemptionTokens;
         }
 
         return _sendItemsOverBridge(_token, _amountToBridge, _itemsToBridge);
@@ -322,7 +323,7 @@ contract BPOptimismSucker is JBPermissioned {
         address _token,
         uint256 _tokenAmount,
         BPSuckBridgeItem[] memory _itemsToBridge
-    ) internal returns (bytes32 _messageHash) {
+    ) internal virtual returns (bytes32 _messageHash) {
         uint256 _nativeValue;
         address _remoteToken;
         if(_token != JBConstants.NATIVE_TOKEN){
@@ -345,7 +346,7 @@ contract BPOptimismSucker is JBPermissioned {
         uint256 _nonce = nonce++;
         _messageHash = _buildMessageHash(
             _nonce,
-            _token,
+            _remoteToken,
             _tokenAmount,
             _itemsToBridge
         );
@@ -381,5 +382,15 @@ contract BPOptimismSucker is JBPermissioned {
             _tokenAmount,
             _items
        )) ;
+    }
+
+    function _balanceOf(
+        address _token,
+        address _address
+    ) internal view returns (uint256 _balance){
+        if(_token == JBConstants.NATIVE_TOKEN)
+            return _address.balance;
+
+        return IERC20(_token).balanceOf(_address);
     }
 }
