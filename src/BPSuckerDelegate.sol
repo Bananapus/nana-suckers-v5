@@ -70,7 +70,7 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         address _token = context.amount.token;
         if (
             // Check if the token is the native asset or if it is linked.
-            (_token != JBConstants.NATIVE_TOKEN && token[_token] == address(0))
+            (_token != JBConstants.NATIVE_TOKEN && token[_token].remoteToken == address(0))
             // Check if the terminal supports the redeem terminal interface.
             || !ERC165Checker.supportsInterface(address(context.terminal), type(IJBRedeemTerminal).interfaceId)
         ) {
@@ -145,12 +145,11 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         assert(_projectToken.balanceOf(address(this)) == _projectTokenBalanceBefore);
 
         // Add the reclaim amount to the messenger queue.
-        _queueItem({
+        _insertIntoQueue({
             _projectTokenAmount: _beneficiaryTokenCount,
-            _token: context.amount.token,
+            _redemptionToken: context.amount.token,
             _redemptionTokenAmount: _reclaimAmount,
-            _beneficiary: context.beneficiary,
-            _forceSend: false
+            _beneficiary: context.beneficiary
         });
     }
 

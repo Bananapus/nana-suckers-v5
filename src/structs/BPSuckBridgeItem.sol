@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
-struct BPSuckQueueItem {
+struct BPSuckBridgeItem {
+    address beneficiary;
     uint256 projectTokens;
-    uint256 redemptionTokens;
 }
