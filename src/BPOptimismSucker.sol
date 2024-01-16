@@ -9,6 +9,8 @@ import {IJBTokens, IJBToken} from "juice-contracts-v4/src/interfaces/IJBTokens.s
 import {IJBTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBTerminal.sol";
 import {IJBRedeemTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
 
+import {MerkleLib} from "./utils/MerkleLib.sol";
+
 import {BPSuckQueueItem} from "./structs/BPSuckQueueItem.sol";
 import {BPSuckBridgeItem} from "./structs/BPSuckBridgeItem.sol";
 import {BPTokenConfig} from "./structs/BPTokenConfig.sol";
@@ -16,6 +18,7 @@ import {JBConstants} from "juice-contracts-v4/src/libraries/JBConstants.sol";
 import {JBPermissioned, IJBPermissions} from "juice-contracts-v4/src/abstract/JBPermissioned.sol";
 import {JBPermissionIds} from "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
 import {SafeERC20, IERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
 
 enum SuckingStatus {
     NONE,
@@ -23,9 +26,20 @@ enum SuckingStatus {
     DONE
 }
 
+
+struct leaf {
+    address beneficiary;
+    uint256 projectTokenAmount;
+    uint256 redemptionTokenAmount;
+}
+
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.
 contract BPOptimismSucker is JBPermissioned {
+
+    using MerkleLib for MerkleLib.Tree;
+    using BitMaps for BitMaps.BitMap;
+
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
@@ -38,6 +52,9 @@ contract BPOptimismSucker is JBPermissioned {
     error INVALID_SUCK(bytes32 _hash);
     error NO_TERMINAL_FOR(uint256 _projectId, address _token);
 
+    error INVALID_PROOF(bytes32 _expectedRoot, bytes32 _proofRoot);
+    error ALREADY_EXECUTED(uint256 _index);
+
     event AddedToQueue(
         address indexed beneficiary,
         address indexed token,
@@ -45,6 +62,16 @@ contract BPOptimismSucker is JBPermissioned {
         uint256 totalBeneficiaryTokenQueue,
         uint256 redemptionTokenAmountAdded,
         uint256 totalBeneficiaryRedemptionTokenQueue
+    );
+
+    event insertedIntoTree(
+        address indexed beneficiary,
+        address indexed redemptionToken,
+        bytes32 hashed,
+        uint256 index,
+        bytes32 root,
+        uint256 projectTokenAmount,
+        uint256 redemptionTokenAmount
     );
 
     event BridgeData(
@@ -55,9 +82,29 @@ contract BPOptimismSucker is JBPermissioned {
         BPSuckBridgeItem[] items
     );
 
+    struct MessageRoot{
+        /// @notice the token that the root is for.
+        address token;
+        /// @notice the tree root for the token.
+        RemoteRoot remtoteRoot;
+    }
+
+    struct RemoteRoot {
+        /// @notice tracks the nonce of the tree, we only allow increased nonces.
+        uint64 nonce;
+        /// @notice the root of the tree.
+        bytes32 root;
+    }
+
     //*********************************************************************//
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
+
+    /// @notice the outbox tree.
+    mapping(address _token => MerkleLib.Tree) public tokenTree;
+
+    /// @notice the inbox trees.
+    mapping(address _token => RemoteRoot _root) public tokenRoots;
 
     mapping(address _token => mapping(address _beneficiary => BPSuckQueueItem)) public queue;
 
@@ -70,6 +117,8 @@ contract BPOptimismSucker is JBPermissioned {
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
+
+    uint256 internal constant TREE_DEPTH = 32;
 
     /// @notice The messenger in use to send messages between the local and remote sucker.
     OPMessenger public immutable OPMESSENGER;
@@ -96,6 +145,16 @@ contract BPOptimismSucker is JBPermissioned {
     uint32 constant MESSENGER_ERC20_MIN_GAS_LIMIT = 200_000;
 
     //*********************************************************************//
+    // -------------------- internal stored properties ------------------- //
+    //*********************************************************************//
+    mapping(address _token => BitMaps.BitMap) executed;
+
+
+    struct Proof {
+        bytes32[TREE_DEPTH] leaves;
+    }
+
+    //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
     constructor(
@@ -111,6 +170,9 @@ contract BPOptimismSucker is JBPermissioned {
         TOKENS = _tokens;
         PEER = _peer;
         PROJECT_ID = _projectId;
+
+        // sanity check: make sure equal depth tree is configured.
+        assert(MerkleLib.TREE_DEPTH == TREE_DEPTH);
     }
 
     //*********************************************************************//
@@ -295,23 +357,65 @@ contract BPOptimismSucker is JBPermissioned {
         uint256 _redemptionTokenAmount,
         address _beneficiary
     ) internal {
-        // Increase the amount that is in the queue for the beneficiary and the specific redemption token.
-        BPSuckQueueItem memory _beforeQueue = queue[_redemptionToken][_beneficiary];
-        BPSuckQueueItem memory _updatedQueue = BPSuckQueueItem({
-            projectTokens: _beforeQueue.projectTokens + _projectTokenAmount,
-            redemptionTokens: _beforeQueue.redemptionTokens + _redemptionTokenAmount
+        bytes32 _hash = _buildTreeHash(
+                _projectTokenAmount,
+                _redemptionTokenAmount,
+                _beneficiary
+            );
+
+
+        // Insert the item into the tree.
+        MerkleLib.Tree memory _tree = tokenTree[_redemptionToken].insert(
+            _buildTreeHash(
+                _projectTokenAmount,
+                _redemptionTokenAmount,
+                _beneficiary
+            )
+        );
+
+        // Update the tree.
+        tokenTree[_redemptionToken] = _tree;
+
+        emit insertedIntoTree(
+            _beneficiary,
+            _redemptionToken,
+            _hash,
+            _tree.count - 1, // -1 since we want the index.
+            tokenTree[_redemptionToken].root(),
+            _projectTokenAmount,
+            _redemptionTokenAmount
+        );
+    }
+
+    function _validate(
+        uint256 _projectTokenAmount,
+        address _redemptionToken,
+        uint256 _redemptionTokenAmount,
+        address _beneficiary,
+        uint256 _index,
+        bytes32[TREE_DEPTH] memory _leaves
+    ) internal {
+        // Make sure the item has not been executed before.
+        if(executed[_redemptionToken].get(_index))
+            revert ALREADY_EXECUTED(_index);
+
+        // Toggle it as being executed now.
+        executed[_redemptionToken].set(_index);
+
+        // Calculate the root from the proof.
+        bytes32 _root = MerkleLib.branchRoot({
+            _item: _buildTreeHash(
+                    _projectTokenAmount,
+                    _redemptionTokenAmount,
+                    _beneficiary
+                ),
+            _branch: _leaves,
+            _index: _index
         });
 
-        queue[_redemptionToken][_beneficiary] = _updatedQueue;
-
-        emit AddedToQueue({
-            beneficiary: _beneficiary,
-            token: _redemptionToken,
-            tokenAmountAdded: _projectTokenAmount,
-            totalBeneficiaryTokenQueue: _updatedQueue.projectTokens,
-            redemptionTokenAmountAdded: _redemptionTokenAmount,
-            totalBeneficiaryRedemptionTokenQueue: _updatedQueue.redemptionTokens
-        });
+        // Compare the root.
+        if(_root != tokenRoots[_redemptionToken].root)
+            revert INVALID_PROOF(tokenRoots[_redemptionToken].root, _root);
     }
 
     /// @notice Works a specific queue, sending the sucks to the peer on the remote chain.
@@ -367,6 +471,18 @@ contract BPOptimismSucker is JBPermissioned {
             tokenAmount: _tokenAmount,
             items: _itemsToBridge
         });
+    }
+
+    function _buildTreeHash(
+        uint256 _projectTokenAmount,
+        uint256 _redemptionTokenAmount,
+        address _beneficiary
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(
+            _projectTokenAmount,
+            _redemptionTokenAmount,
+            _beneficiary
+        ));
     }
 
     function _buildMessageHash(
