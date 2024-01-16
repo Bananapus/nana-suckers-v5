@@ -59,7 +59,6 @@ contract BPOptimismSucker is JBPermissioned {
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
 
-    // TODO: rename items for queue;
     mapping(address _token => mapping(address _beneficiary => BPSuckQueueItem)) public queue;
 
     mapping(address _token => BPTokenConfig _remoteToken) public token;
