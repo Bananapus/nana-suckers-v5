@@ -145,7 +145,7 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         assert(_projectToken.balanceOf(address(this)) == _projectTokenBalanceBefore);
 
         // Add the reclaim amount to the messenger queue.
-        _insertIntoQueue({
+        _insertIntoTree({
             _projectTokenAmount: _beneficiaryTokenCount,
             _redemptionToken: context.amount.token,
             _redemptionTokenAmount: _reclaimAmount,

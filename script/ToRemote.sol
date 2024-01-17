@@ -65,10 +65,10 @@ contract PermissionsScript is Script {
         address[] memory _beneficiaries = new address[](1);
         _beneficiaries[0] = msg.sender;
 
-        BPSuckerDelegate(payable(0xb2DBff7BAC73E4bA21f134593F9a8eC46063D419)).toRemote(
-            JBConstants.NATIVE_TOKEN,
-            _beneficiaries
-        );
+        // BPSuckerDelegate(payable(0xb2DBff7BAC73E4bA21f134593F9a8eC46063D419)).toRemote(
+        //     JBConstants.NATIVE_TOKEN,
+        //     _beneficiaries
+        // );
 
 
 

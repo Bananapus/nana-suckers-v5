@@ -2,7 +2,8 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPSuckBridgeItem} from "../src/BPOptimismSucker.sol";
+import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions} from "../src/BPOptimismSucker.sol";
+import {BPSuckQueueItem} from "../src/structs/BPSuckQueueItem.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
@@ -54,19 +55,19 @@ contract ExecuteOnL1Script is Script {
         address[] memory _beneficiaries = new address[](1);
         _beneficiaries[0] = msg.sender;
 
-        BPSuckBridgeItem[] memory _items = new BPSuckBridgeItem[](1);
-        _items[0] = BPSuckBridgeItem({
-            beneficiary: 0xbA5eD1A8074e23dbeAA2764fc46cd0d172AD9A08,
-            projectTokens: 50_000
-        });
+        // BPSuckBridgeItem[] memory _items = new BPSuckBridgeItem[](1);
+        // _items[0] = BPSuckBridgeItem({
+        //     beneficiary: 0xbA5eD1A8074e23dbeAA2764fc46cd0d172AD9A08,
+        //     projectTokens: 50_000
+        // });
 
         vm.broadcast();
-        BPSuckerDelegate(payable(0xa3cedC2A2bdA2487132273d4eE1107Dad81B6eF9)).executeMessage({
-            _nonce: 0,
-            _token: JBConstants.NATIVE_TOKEN,
-            _redemptionTokenAmount: 50_000,
-            _items: _items
-        });
+        // BPSuckerDelegate(payable(0xa3cedC2A2bdA2487132273d4eE1107Dad81B6eF9)).executeMessage({
+        //     _nonce: 0,
+        //     _token: JBConstants.NATIVE_TOKEN,
+        //     _redemptionTokenAmount: 50_000,
+        //     _items: _items
+        // });
     }
 
      /**

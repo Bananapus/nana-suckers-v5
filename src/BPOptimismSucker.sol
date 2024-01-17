@@ -20,23 +20,22 @@ import {JBPermissionIds} from "juice-contracts-v4/src/libraries/JBPermissionIds.
 import {SafeERC20, IERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
 
-enum SuckingStatus {
-    NONE,
-    RECEIVED,
-    DONE
-}
-
-
-struct leaf {
+struct Leaf {
+    uint256 index;
     address beneficiary;
     uint256 projectTokenAmount;
     uint256 redemptionTokenAmount;
 }
 
+
+enum AddToBalanceMode {
+    ON_DEMAND,
+    ON_CLAIM
+}
+
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.
 contract BPOptimismSucker is JBPermissioned {
-
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
@@ -45,23 +44,18 @@ contract BPOptimismSucker is JBPermissioned {
     //*********************************************************************//
     error NOT_PEER();
     error BELOW_MIN_GAS(uint256 _minGas, uint256 _suppliedGas);
-    error INVALID_REMOTE();
-    error INVALID_AMOUNT();
     error REQUIRE_ISSUED_TOKEN();
     error BENEFICIARY_NOT_ALLOWED();
-    error INVALID_SUCK(bytes32 _hash);
     error NO_TERMINAL_FOR(uint256 _projectId, address _token);
-
     error INVALID_PROOF(bytes32 _expectedRoot, bytes32 _proofRoot);
     error ALREADY_EXECUTED(uint256 _index);
+    error CURRENT_BALANCE_INSUFFECIENT();
+    error ON_DEMAND_NOT_ALLOWED();
 
-    event AddedToQueue(
-        address indexed beneficiary,
+    event NewRoot(
         address indexed token,
-        uint256 tokenAmountAdded,
-        uint256 totalBeneficiaryTokenQueue,
-        uint256 redemptionTokenAmountAdded,
-        uint256 totalBeneficiaryRedemptionTokenQueue
+        uint64 nonce,
+        bytes32 root
     );
 
     event insertedIntoTree(
@@ -74,19 +68,19 @@ contract BPOptimismSucker is JBPermissioned {
         uint256 redemptionTokenAmount
     );
 
-    event BridgeData(
-        bytes32 indexed messageHash,
-        uint256 nonce,
-        address token,
-        uint256 tokenAmount,
-        BPSuckBridgeItem[] items
-    );
+    struct OutboxTree {
+        uint64 nonce;
+        uint256 balance;
+        MerkleLib.Tree tree;
+    }
 
     struct MessageRoot{
         /// @notice the token that the root is for.
         address token;
+        /// @notice the amount of tokens being send.
+        uint256 amount;
         /// @notice the tree root for the token.
-        RemoteRoot remtoteRoot;
+        RemoteRoot remoteRoot;
     }
 
     struct RemoteRoot {
@@ -101,24 +95,25 @@ contract BPOptimismSucker is JBPermissioned {
     //*********************************************************************//
 
     /// @notice the outbox tree.
-    mapping(address _token => MerkleLib.Tree) public tokenTree;
+    mapping(address _token => OutboxTree) public outbox;
 
     /// @notice the inbox trees.
-    mapping(address _token => RemoteRoot _root) public tokenRoots;
+    mapping(address _token => RemoteRoot _root) public inbox;
 
-    mapping(address _token => mapping(address _beneficiary => BPSuckQueueItem)) public queue;
+    /// @notice tracks outstanding token amount to be added to the projects balance.
+    mapping(address _token => uint256 _amount) public outstandingATB;
 
+    /// @notice configuration of each token.
     mapping(address _token => BPTokenConfig _remoteToken) public token;
-
-    mapping(bytes32 _suckHash => SuckingStatus _status) public message;
-
-    uint256 nonce;
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
 
     uint256 internal constant TREE_DEPTH = 32;
+
+    /// @notice Configuration option regarding when `addToBalance` gets called.
+    AddToBalanceMode public immutable ATB_MODE; 
 
     /// @notice The messenger in use to send messages between the local and remote sucker.
     OPMessenger public immutable OPMESSENGER;
@@ -135,11 +130,8 @@ contract BPOptimismSucker is JBPermissioned {
     /// @notice the project ID this sucker is for (on this chain).
     uint256 public immutable PROJECT_ID;
 
-    /// @notice The maximum number of sucks that can get batched.
-    uint256 constant MAX_BATCH_SIZE = 6;
-
     /// @notice The amount of gas the basic xchain call will use.
-    uint32 constant MESSENGER_BASE_GAS_LIMIT = 200_000;
+    uint32 constant MESSENGER_BASE_GAS_LIMIT = 300_000;
 
     /// @notice The minimum amount of gas an ERC20 bridge can be configured to.
     uint32 constant MESSENGER_ERC20_MIN_GAS_LIMIT = 200_000;
@@ -147,12 +139,8 @@ contract BPOptimismSucker is JBPermissioned {
     //*********************************************************************//
     // -------------------- internal stored properties ------------------- //
     //*********************************************************************//
+    /// @notice Tracks if a item has been executed or not, prevents double executing the same item.
     mapping(address _token => BitMaps.BitMap) executed;
-
-
-    struct Proof {
-        bytes32[TREE_DEPTH] leaves;
-    }
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -231,8 +219,8 @@ contract BPOptimismSucker is JBPermissioned {
         // Prevents a malicious terminal from reporting a higher amount than it actually sent.
         assert(_redemptionTokenAmount == _balanceOf(_token, address(this)) - _balanceBefore);
 
-        // Queue the item.
-        _insertIntoQueue(
+        // Insert the item.
+        _insertIntoTree(
             _projectTokenAmount,
             _token,
             _redemptionTokenAmount,
@@ -241,93 +229,112 @@ contract BPOptimismSucker is JBPermissioned {
     }
 
     /// @notice Bridge funds for one or multiple beneficiaries.
-    /// @param _token the token to bridge.
-    /// @param _beneficiaries the beneficiaries to bridge the funds for.
-    /// @return _messageHash the hash of the message that is being bridged.
     function toRemote(
-        address _token,
-        address[] calldata _beneficiaries
-    ) external returns (bytes32 _messageHash) {
-        // TODO: Add logic here to prevent DOS.
+        address _token
+    ) external {
+        // TODO: Add some way to prevent spam.
+        address _remoteToken; uint256 _nativeValue;
 
-        BPSuckBridgeItem[] memory _itemsToBridge = new BPSuckBridgeItem[](_beneficiaries.length);
+        // Get the amount to send and then clear it.
+        uint256 _amount = outbox[_token].balance;
+        delete outbox[_token].balance;
 
-        uint256 _amountToBridge;
-        for(uint256 _i; _i < _beneficiaries.length ; _i++) {
-            // Load the item.
-            BPSuckQueueItem memory _queueItem = queue[_token][_beneficiaries[_i]];
-            // Delete the item from the queue
-            delete queue[_token][_beneficiaries[_i]];
-            
-            _itemsToBridge[_i] = BPSuckBridgeItem({
-                beneficiary: _beneficiaries[_i],
-                projectTokens: _queueItem.projectTokens
+        // Increment the nonce.
+        uint64 _nonce = ++outbox[_token].nonce;
+
+        if(_token != JBConstants.NATIVE_TOKEN){
+            BPTokenConfig memory _tokenConfig = token[_token];
+            _remoteToken = _tokenConfig.remoteToken;
+
+            // TODO: Approval?
+
+            // Bridge the tokens to the payer address.
+            OPMESSENGER.bridgeERC20To({
+                localToken: _token,
+                remoteToken: _tokenConfig.remoteToken,
+                to: PEER,
+                amount: _amount,
+                minGasLimit: _tokenConfig.minGas,
+                extraData: bytes('')
             });
-
-            _amountToBridge += _queueItem.redemptionTokens;
+        } else {
+            _remoteToken = JBConstants.NATIVE_TOKEN;
+            _nativeValue = _amount;
         }
 
-        return _sendItemsOverBridge(_token, _amountToBridge, _itemsToBridge);
+        // Send the messenger to the peer with the redeemed ETH.
+        OPMESSENGER.sendMessage{value: _nativeValue}(
+            PEER,
+            abi.encodeCall(
+                BPOptimismSucker.fromRemote,
+                (
+                    MessageRoot({
+                        token: _remoteToken,
+                        amount: _amount,
+                        remoteRoot: RemoteRoot({
+                            nonce: _nonce,
+                            root: outbox[_token].tree.root()
+                        })
+                    })
+                )
+            ),
+            MESSENGER_BASE_GAS_LIMIT
+        );
     }
 
     /// @notice Receive from the remote project.
-    /// @param _messageHash the hash of the suck message.
     function fromRemote(
-        bytes32 _messageHash
+        MessageRoot calldata _root
     ) external payable {
         // Make sure that the message came from our peer.
         if (msg.sender != address(OPMESSENGER) || OPMESSENGER.xDomainMessageSender() != PEER) {
             revert NOT_PEER();
         }
 
-        // Store the message.
-        message[_messageHash] = SuckingStatus.RECEIVED;
+        // Increment the outstanding ATB amount with the amount being bridged.
+        outstandingATB[_root.token] += _root.amount;
+
+        // If the nonce is a newer one than we already have we update it.
+        // We can't revert in the case that this is a native token transfer
+        // otherwise we would lose the native tokens.
+        if(_root.remoteRoot.nonce > inbox[_root.token].nonce) {
+            inbox[_root.token] = _root.remoteRoot;
+            emit NewRoot(_root.token, _root.remoteRoot.nonce, _root.remoteRoot.root);
+        }
     }
 
-    ///.@notice Used to perform the `addToBalance` for the tokens to the project.
-    /// @param _token the token to add to the projects balance.
-    function executeMessage(
-        uint256 _nonce,
+    function claim(
         address _token,
-        uint256 _redemptionTokenAmount,
-        BPSuckBridgeItem[] calldata _items
+        Leaf calldata _leaf,
+        bytes32[TREE_DEPTH] calldata _proof
     ) external {
-        bytes32 _hash = _buildMessageHash(_nonce, _token, _redemptionTokenAmount, _items);
-        if (message[_hash] != SuckingStatus.RECEIVED) revert INVALID_SUCK(_hash);
+        // Attempt to validate proof.
+        _validate({
+            _projectTokenAmount: _leaf.projectTokenAmount,
+            _redemptionToken: _token,
+            _redemptionTokenAmount: _leaf.redemptionTokenAmount,
+            _beneficiary: _leaf.beneficiary,
+            _index: _leaf.index,
+            _leaves: _proof
+        });
 
-        // Update the state of the message
-        message[_hash] = SuckingStatus.DONE;
+        // Perform the add to balance if this sucker is configured to perform it on claim.
+        if(ATB_MODE == AddToBalanceMode.ON_CLAIM)
+            _addToBalance(_token, _leaf.redemptionTokenAmount);
 
-        // Get the terminal.
-        IJBTerminal _terminal = DIRECTORY.primaryTerminalOf(PROJECT_ID, _token);
-        if(address(_terminal) == address(0)) revert NO_TERMINAL_FOR(PROJECT_ID, _token);
+        IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).mintTokensOf(
+            PROJECT_ID, _leaf.projectTokenAmount, _leaf.beneficiary, "", false
+        );
+    }
 
-        // Perform the `addToBalance`.
-        if(_token != JBConstants.NATIVE_TOKEN) {
-            uint256 _balanceBefore = IERC20(_token).balanceOf(address(this));
-            SafeERC20.forceApprove(IERC20(_token), address(_terminal), _redemptionTokenAmount);
-
-            _terminal.addToBalanceOf(
-                PROJECT_ID, _token, _redemptionTokenAmount, false, string(""), bytes("")
-            );
-
-            // Sanity check: make sure we transfer the full amount.
-            assert(IERC20(_token).balanceOf(address(this)) == _balanceBefore - _redemptionTokenAmount);
-        } else {
-            _terminal.addToBalanceOf{value: _redemptionTokenAmount}(
-                PROJECT_ID, _token, _redemptionTokenAmount, false, string(""), bytes("")
-            );
-        }
-
-        // Mint the tokens to all the beneficiaries.
-        for (uint256 _i = 0; _i < _items.length; ++_i) {
-            // Mint to the beneficiary.
-            // TODO: try catch this call, so that one reverting mint won't revert the entire queue
-            // TODO: Bulk mint here and then send the tokens to the beneficiaries might be more effecient.
-            IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).mintTokensOf(
-                PROJECT_ID, _items[_i].projectTokens, _items[_i].beneficiary, "", false
-            );
-        }
+    function claimToBalance(
+        address _token
+    ) external {
+        if(ATB_MODE != AddToBalanceMode.ON_DEMAND)
+            revert ON_DEMAND_NOT_ALLOWED();
+        
+        // Add entire outstanding amount to the projects balance.
+        _addToBalance(_token, outstandingATB[_token]);
     }
 
     /// @notice Links an ERC20 token on the local chain to an ERC20 on the remote chain.
@@ -351,49 +358,45 @@ contract BPOptimismSucker is JBPermissioned {
     // --------------------- internal transactions ----------------------- //
     //*********************************************************************//
 
-    function _insertIntoQueue(
+    function _insertIntoTree(
         uint256 _projectTokenAmount,
         address _redemptionToken,
         uint256 _redemptionTokenAmount,
         address _beneficiary
     ) internal {
         bytes32 _hash = _buildTreeHash(
-                _projectTokenAmount,
-                _redemptionTokenAmount,
-                _beneficiary
-            );
-
-
-        // Insert the item into the tree.
-        MerkleLib.Tree memory _tree = tokenTree[_redemptionToken].insert(
-            _buildTreeHash(
-                _projectTokenAmount,
-                _redemptionTokenAmount,
-                _beneficiary
-            )
+            _projectTokenAmount,
+            _redemptionTokenAmount,
+            _beneficiary
         );
 
-        // Update the tree.
-        tokenTree[_redemptionToken] = _tree;
+        // Insert the item into the tree.
+        MerkleLib.Tree memory _tree = outbox[_redemptionToken].tree.insert(
+            _hash
+        );
+
+        // Update the outbox.
+        outbox[_redemptionToken].tree = _tree;
+        outbox[_redemptionToken].balance += _redemptionTokenAmount;
 
         emit insertedIntoTree(
             _beneficiary,
             _redemptionToken,
             _hash,
             _tree.count - 1, // -1 since we want the index.
-            tokenTree[_redemptionToken].root(),
+            outbox[_redemptionToken].tree.root(),
             _projectTokenAmount,
             _redemptionTokenAmount
         );
     }
-
+    
     function _validate(
         uint256 _projectTokenAmount,
         address _redemptionToken,
         uint256 _redemptionTokenAmount,
         address _beneficiary,
         uint256 _index,
-        bytes32[TREE_DEPTH] memory _leaves
+        bytes32[TREE_DEPTH] calldata _leaves
     ) internal {
         // Make sure the item has not been executed before.
         if(executed[_redemptionToken].get(_index))
@@ -414,63 +417,42 @@ contract BPOptimismSucker is JBPermissioned {
         });
 
         // Compare the root.
-        if(_root != tokenRoots[_redemptionToken].root)
-            revert INVALID_PROOF(tokenRoots[_redemptionToken].root, _root);
+        if(_root != inbox[_redemptionToken].root)
+            revert INVALID_PROOF(inbox[_redemptionToken].root, _root);
     }
 
-    /// @notice Works a specific queue, sending the sucks to the peer on the remote chain.
-    /// @param _token the queue of the token being worked.
-    /// @param _tokenAmount the amount of tokens to bridge.
-    /// @param _itemsToBridge the items to bridge.
-    function _sendItemsOverBridge(
+    function _addToBalance(
         address _token,
-        uint256 _tokenAmount,
-        BPSuckBridgeItem[] memory _itemsToBridge
-    ) internal virtual returns (bytes32 _messageHash) {
-        uint256 _nativeValue;
-        address _remoteToken;
-        if(_token != JBConstants.NATIVE_TOKEN){
-            BPTokenConfig memory _tokenConfig = token[_token];
-            _remoteToken = _tokenConfig.remoteToken;
+        uint256 _amount
+    ) internal {
+        // Make sure that the current balance in the contract is suffecient to perform the ATB.
+        uint256 _atbAmount = outstandingATB[_token];
+        if(_amount > _atbAmount)
+            revert CURRENT_BALANCE_INSUFFECIENT();
 
-            // Bridge the tokens to the payer address.
-            OPMESSENGER.bridgeERC20To({
-                localToken: _token,
-                remoteToken: _tokenConfig.remoteToken,
-                to: PEER,
-                amount: _tokenAmount,
-                minGasLimit: _tokenConfig.minGas,
-                extraData: bytes('')
-            });
+        // Update the new outstanding ATB amount.
+        outstandingATB[_token] = _atbAmount - _amount;
+
+        // Get the terminal.
+        IJBTerminal _terminal = DIRECTORY.primaryTerminalOf(PROJECT_ID, _token);
+        if(address(_terminal) == address(0)) revert NO_TERMINAL_FOR(PROJECT_ID, _token);
+
+        // Perform the `addToBalance`.
+        if(_token != JBConstants.NATIVE_TOKEN) {
+            uint256 _balanceBefore = IERC20(_token).balanceOf(address(this));
+            SafeERC20.forceApprove(IERC20(_token), address(_terminal), _amount);
+
+            _terminal.addToBalanceOf(
+                PROJECT_ID, _token, _amount, false, string(""), bytes("")
+            );
+
+            // Sanity check: make sure we transfer the full amount.
+            assert(IERC20(_token).balanceOf(address(this)) == _balanceBefore - _amount);
         } else {
-            _remoteToken = JBConstants.NATIVE_TOKEN;
-            _nativeValue = _tokenAmount;
+            _terminal.addToBalanceOf{value: _amount}(
+                PROJECT_ID, _token, _amount, false, string(""), bytes("")
+            );
         }
-        uint256 _nonce = nonce++;
-        _messageHash = _buildMessageHash(
-            _nonce,
-            _remoteToken,
-            _tokenAmount,
-            _itemsToBridge
-        );
-
-        // Send the messenger to the peer with the redeemed ETH.
-        OPMESSENGER.sendMessage{value: _nativeValue}(
-            PEER,
-            abi.encodeWithSelector(
-                BPOptimismSucker.fromRemote.selector,
-                _messageHash
-            ),
-            MESSENGER_BASE_GAS_LIMIT
-        );
-
-        emit BridgeData({
-            messageHash: _messageHash,
-            nonce: _nonce,
-            token: _token,
-            tokenAmount: _tokenAmount,
-            items: _itemsToBridge
-        });
     }
 
     function _buildTreeHash(
@@ -483,20 +465,6 @@ contract BPOptimismSucker is JBPermissioned {
             _redemptionTokenAmount,
             _beneficiary
         ));
-    }
-
-    function _buildMessageHash(
-        uint256 _nonce,
-        address _token,
-        uint256 _tokenAmount,
-        BPSuckBridgeItem[] memory _items
-    ) internal pure returns (bytes32) {
-       return keccak256(abi.encode(
-            _nonce,
-            _token,
-            _tokenAmount,
-            _items
-       )) ;
     }
 
     function _balanceOf(

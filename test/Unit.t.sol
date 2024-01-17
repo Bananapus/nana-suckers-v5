@@ -11,10 +11,10 @@ contract UnitTest is BPOptimismSucker, Test{
     bytes32[32] _proof;
 
     constructor() BPOptimismSucker(
-        OPMessenger(address(0)),
-        IJBDirectory(address(0)),
-        IJBTokens(address(0)),
-        IJBPermissions(address(0)),
+        OPMessenger(address(500)),
+        IJBDirectory(address(600)),
+        IJBTokens(address(700)),
+        IJBPermissions(address(800)),
         address(0),
         0
     ) {}
@@ -22,21 +22,21 @@ contract UnitTest is BPOptimismSucker, Test{
     function setUp() public {
         // Insert some items into the queue
         // Index 0
-        _insertIntoQueue(
+        _insertIntoTree(
             8 ether,
             JBConstants.NATIVE_TOKEN,
             15 ether,
             address(1000)
         );
         // Index 1
-        _insertIntoQueue(
+        _insertIntoTree(
             0.1 ether,
             JBConstants.NATIVE_TOKEN,
             200 ether,
             address(999)
         );
         // Index 2
-        _insertIntoQueue(
+        _insertIntoTree(
             5 ether,
             JBConstants.NATIVE_TOKEN,
             5 ether,
@@ -80,7 +80,7 @@ contract UnitTest is BPOptimismSucker, Test{
 
     function test_insertIntoTree() public {
         // Queue the item.
-        _insertIntoQueue(
+        _insertIntoTree(
             10 ether,
             JBConstants.NATIVE_TOKEN,
             10 ether,
@@ -88,52 +88,70 @@ contract UnitTest is BPOptimismSucker, Test{
         );
     }
 
-
     function test_validate() public {
         // Move outbound root to inbound root.
-        tokenRoots[JBConstants.NATIVE_TOKEN] = RemoteRoot({
+        inbox[JBConstants.NATIVE_TOKEN] = RemoteRoot({
             nonce: 0,
-            root: tokenTree[JBConstants.NATIVE_TOKEN].root()
+            root: outbox[JBConstants.NATIVE_TOKEN].tree.root()
         });
 
+        bytes32[32] memory __proof = _proof;
+
+        // Mock the token minting.
+        address _mockController = address(900);
+        vm.mockCall(address(DIRECTORY), abi.encodeCall(IJBDirectory.controllerOf, (PROJECT_ID)), abi.encode(_mockController));
+        vm.mockCall(_mockController, abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID, 5 ether, address(120), "", false)), abi.encode(0));
+
         // Attempt to validate proof.
-        _validate({
-            _projectTokenAmount: 5 ether,
-            _redemptionToken: JBConstants.NATIVE_TOKEN,
-            _redemptionTokenAmount: 5 ether,
-            _beneficiary: address(120),
-            _index: 2,
-            _leaves: _proof
-        });
+        BPOptimismSucker(this).claim(
+            JBConstants.NATIVE_TOKEN,
+            Leaf({
+                index: 2,
+                beneficiary: address(120),
+                projectTokenAmount: 5 ether,
+                redemptionTokenAmount: 5 ether
+            }),
+            __proof
+        );
     }
 
     function test_validate_only_once() public {
         // Move outbound root to inbound root.
-        tokenRoots[JBConstants.NATIVE_TOKEN] = RemoteRoot({
+        inbox[JBConstants.NATIVE_TOKEN] = RemoteRoot({
             nonce: 0,
-            root: tokenTree[JBConstants.NATIVE_TOKEN].root()
+            root: outbox[JBConstants.NATIVE_TOKEN].tree.root()
         });
 
+        bytes32[32] memory __proof = _proof;
+
+        // Mock the token minting.
+        address _mockController = address(900);
+        vm.mockCall(address(DIRECTORY), abi.encodeCall(IJBDirectory.controllerOf, (PROJECT_ID)), abi.encode(_mockController));
+        vm.mockCall(_mockController, abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID, 5 ether, address(120), "", false)), abi.encode(0));
+
         // Attempt to validate proof.
-        _validate({
-            _projectTokenAmount: 5 ether,
-            _redemptionToken: JBConstants.NATIVE_TOKEN,
-            _redemptionTokenAmount: 5 ether,
-            _beneficiary: address(120),
-            _index: 2,
-            _leaves: _proof
-        });
+        BPOptimismSucker(this).claim(
+            JBConstants.NATIVE_TOKEN,
+            Leaf({
+                index: 2,
+                beneficiary: address(120),
+                projectTokenAmount: 5 ether,
+                redemptionTokenAmount: 5 ether
+            }),
+            __proof
+        );
 
         // Attempt to do it again.
         vm.expectRevert();
-        _validate({
-            _projectTokenAmount: 5 ether,
-            _redemptionToken: JBConstants.NATIVE_TOKEN,
-            _redemptionTokenAmount: 5 ether,
-            _beneficiary: address(120),
-            _index: 2,
-            _leaves: _proof
-        });
-
+        BPOptimismSucker(this).claim(
+            JBConstants.NATIVE_TOKEN,
+            Leaf({
+                index: 2,
+                beneficiary: address(120),
+                projectTokenAmount: 5 ether,
+                redemptionTokenAmount: 5 ether
+            }),
+            __proof
+        );
     }
 }

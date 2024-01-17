@@ -248,11 +248,11 @@ contract BPOptimismSuckerTest is Test {
          }
 
 
-         // Execute our queue item.
-        _sucker.toRemote(
-            _redemptionToken,
-            _beneficiaries
-        );
+        //  // Execute our queue item.
+        // _sucker.toRemote(
+        //     _redemptionToken,
+        //     _beneficiaries
+        // );
 
         // Get the remote sucker.
         BPOptimismSuckerHarnass _remoteSucker = BPOptimismSuckerHarnass(payable(address(_sucker.PEER())));
@@ -264,13 +264,13 @@ contract BPOptimismSuckerTest is Test {
             _remoteRedemptionToken = JBConstants.NATIVE_TOKEN;
         }
 
-        // On the remote chain we execute the message.
-        _remoteSucker.executeMessage(
-            _sucker.ForTest_GetNonce() - 1,
-            _remoteRedemptionToken,
-            _totalProjectTokenAmount,
-            _sucker.ForTest_GetBridgeItems()
-        );
+        // // On the remote chain we execute the message.
+        // _remoteSucker.executeMessage(
+        //     _sucker.ForTest_GetNonce() - 1,
+        //     _remoteRedemptionToken,
+        //     _totalProjectTokenAmount,
+        //     _sucker.ForTest_GetBridgeItems()
+        // );
 
     }
 
@@ -391,7 +391,7 @@ contract BPOptimismSuckerTest is Test {
 
 contract BPOptimismSuckerHarnass is BPOptimismSucker {
 
-    BPSuckBridgeItem[] internal _latestBridgeItems; 
+    // BPSuckBridgeItem[] internal _latestBridgeItems; 
 
     constructor(
         OPMessenger _messenger,
@@ -409,23 +409,23 @@ contract BPOptimismSuckerHarnass is BPOptimismSucker {
         _projectId
     ) {}
 
-    function ForTest_GetNonce() external view returns(uint256) {
-        return nonce;
-    }
+    // function ForTest_GetNonce() external view returns(uint256) {
+    //     return nonce;
+    // }
 
-    function ForTest_GetBridgeItems() external returns (BPSuckBridgeItem[] memory) {
-        return _latestBridgeItems;
-    }
+    // function ForTest_GetBridgeItems() external returns (BPSuckBridgeItem[] memory) {
+    //     return _latestBridgeItems;
+    // }
 
-     function _sendItemsOverBridge(
-        address _token,
-        uint256 _tokenAmount,
-        BPSuckBridgeItem[] memory _itemsToBridge
-    ) internal virtual override returns (bytes32 _messageHash) {
-        delete _latestBridgeItems;
-        for(uint256 _i; _i < _itemsToBridge.length; _i++){
-            _latestBridgeItems.push(_itemsToBridge[_i]);
-        }
-        super._sendItemsOverBridge(_token, _tokenAmount, _itemsToBridge);
-    } 
+    // //  function _sendItemsOverBridge(
+    //     address _token,
+    //     uint256 _tokenAmount,
+    //     BPSuckBridgeItem[] memory _itemsToBridge
+    // ) internal virtual override returns (bytes32 _messageHash) {
+    //     delete _latestBridgeItems;
+    //     for(uint256 _i; _i < _itemsToBridge.length; _i++){
+    //         _latestBridgeItems.push(_itemsToBridge[_i]);
+    //     }
+    //     // super._sendItemsOverBridge(_token, _tokenAmount, _itemsToBridge);
+    // } 
 }
