@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 import {MockPriceFeed} from "juice-contracts-v4/test/mock/MockPriceFeed.sol";
 
-import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBToken, IERC20, BPSuckBridgeItem, BPSuckQueueItem, BPTokenConfig, OPMessenger} from "../src/BPOptimismSucker.sol";
+import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBToken, IERC20, BPTokenConfig, OPMessenger} from "../src/BPOptimismSucker.sol";
 import "juice-contracts-v4/src/interfaces/IJBController.sol";
 import "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
 import "juice-contracts-v4/src/interfaces/terminal/IJBMultiTerminal.sol";
@@ -165,12 +165,12 @@ contract BPOptimismSuckerTest is Test {
         // Configure the mock bridge for the token.
         _mockMessenger.setRemoteToken(address(_L2ERC20Token), address(_L1ERC20Token));
 
-        // Configure the L2 sucker for the token.
-        vm.prank(_projectOwnerL2);
-        suckerL2.configureToken(address(_L2ERC20Token), BPTokenConfig({
-            minGas: 200_000,
-            remoteToken: address(_L1ERC20Token)
-        }));
+        // // Configure the L2 sucker for the token.
+        // vm.prank(_projectOwnerL2);
+        // suckerL2.configureToken(address(_L2ERC20Token), BPTokenConfig({
+        //     minGas: 200_000,
+        //     remoteToken: address(_L1ERC20Token)
+        // }));
 
         // Fund the user
         address _user = makeAddr("user");
@@ -255,14 +255,14 @@ contract BPOptimismSuckerTest is Test {
         // );
 
         // Get the remote sucker.
-        BPOptimismSuckerHarnass _remoteSucker = BPOptimismSuckerHarnass(payable(address(_sucker.PEER())));
+        // BPOptimismSuckerHarnass _remoteSucker = BPOptimismSuckerHarnass(payable(address(_sucker.PEER())));
 
-        address _remoteRedemptionToken;
-        if(_redemptionToken != JBConstants.NATIVE_TOKEN) {
-            (,_remoteRedemptionToken) = _sucker.token(_redemptionToken);
-        } else {
-            _remoteRedemptionToken = JBConstants.NATIVE_TOKEN;
-        }
+        // address _remoteRedemptionToken;
+        // if(_redemptionToken != JBConstants.NATIVE_TOKEN) {
+        //     (,_remoteRedemptionToken) = _sucker.token(_redemptionToken);
+        // } else {
+        //     _remoteRedemptionToken = JBConstants.NATIVE_TOKEN;
+        // }
 
         // // On the remote chain we execute the message.
         // _remoteSucker.executeMessage(

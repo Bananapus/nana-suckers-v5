@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
 import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions} from "../src/BPOptimismSucker.sol";
-import {BPSuckQueueItem} from "../src/structs/BPSuckQueueItem.sol";
+// import {BPSuckQueueItem} from "../src/structs/BPSuckQueueItem.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
