@@ -110,16 +110,16 @@ contract ExecuteOnL1Script is Script {
         ]), (bytes32[32]));
 
         vm.broadcast();
-        BPSuckerDelegate(payable(0xd00C4DD2dF16b989DC09666861312A3e78DCfc2F)).claim({
-            _token: JBConstants.NATIVE_TOKEN,
-            _leaf: BPOptimismSucker.Leaf({
+        BPSuckerDelegate(payable(0xd00C4DD2dF16b989DC09666861312A3e78DCfc2F)).claim(BPOptimismSucker.Claim({
+            token: JBConstants.NATIVE_TOKEN,
+            leaf: BPOptimismSucker.Leaf({
                 index: 0,
                 beneficiary: msg.sender,
                 projectTokenAmount: 0.01 ether,
                 redemptionTokenAmount: 0.01 ether
             }),
-            _proof: _proofArr
-        });
+            proof: _proofArr
+        }));
         // BPSuckerDelegate(payable(0xa3cedC2A2bdA2487132273d4eE1107Dad81B6eF9)).executeMessage({
         //     _nonce: 0,
         //     _token: JBConstants.NATIVE_TOKEN,

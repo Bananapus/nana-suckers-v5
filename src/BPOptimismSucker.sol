@@ -26,6 +26,8 @@ contract BPOptimismSucker is JBPermissioned {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
+    uint256 internal constant TREE_DEPTH = 32;
+
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
@@ -90,6 +92,12 @@ contract BPOptimismSucker is JBPermissioned {
         ON_CLAIM
     }
 
+    struct Claim {
+        address token;
+        Leaf leaf;
+        bytes32[TREE_DEPTH] proof;
+    }
+
     //*********************************************************************//
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
@@ -109,8 +117,6 @@ contract BPOptimismSucker is JBPermissioned {
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
-
-    uint256 internal constant TREE_DEPTH = 32;
 
     /// @notice Configuration option regarding when `addToBalance` gets called.
     AddToBalanceMode public immutable ATB_MODE; 
@@ -271,32 +277,38 @@ contract BPOptimismSucker is JBPermissioned {
         }
     }
 
-    /// @notice Claims project tokens for a user.
-    /// @param _token the redemption token that was used.
-    /// @param _leaf information regarding the redemption.
-    /// @param _proof the proof that shows the redemption as being in the smt.
+    /// @notice Performs a claim.
+    /// @param _claim The data for the claim.
     function claim(
-        address _token,
-        Leaf calldata _leaf,
-        bytes32[TREE_DEPTH] calldata _proof
-    ) external {
+        Claim calldata _claim
+    ) public {
         // Attempt to validate proof.
         _validate({
-            _projectTokenAmount: _leaf.projectTokenAmount,
-            _redemptionToken: _token,
-            _redemptionTokenAmount: _leaf.redemptionTokenAmount,
-            _beneficiary: _leaf.beneficiary,
-            _index: _leaf.index,
-            _leaves: _proof
+            _projectTokenAmount: _claim.leaf.projectTokenAmount,
+            _redemptionToken: _claim.token,
+            _redemptionTokenAmount: _claim.leaf.redemptionTokenAmount,
+            _beneficiary: _claim.leaf.beneficiary,
+            _index: _claim.leaf.index,
+            _leaves: _claim.proof
         });
 
         // Perform the add to balance if this sucker is configured to perform it on claim.
         if(ATB_MODE == AddToBalanceMode.ON_CLAIM)
-            _addToBalance(_token, _leaf.redemptionTokenAmount);
+            _addToBalance(_claim.token, _claim.leaf.redemptionTokenAmount);
 
         IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).mintTokensOf(
-            PROJECT_ID, _leaf.projectTokenAmount, _leaf.beneficiary, "", false
+            PROJECT_ID, _claim.leaf.projectTokenAmount, _claim.leaf.beneficiary, "", false
         );
+    }
+
+    /// @notice Performs multiple claims.
+    /// @param _claims The data for the claims.
+    function claim(
+        Claim[] calldata _claims
+    ) external {
+        for (uint256 _i = 0; _i < _claims.length; _i++) {
+            claim(_claims[_i]);
+        }
     }
 
     /// @notice Adds the redeemed funds to the projects terminal. Can only be used if AddToBalanceMode is ON_DEMAND.

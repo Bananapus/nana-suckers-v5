@@ -103,16 +103,16 @@ contract UnitTest is BPOptimismSucker, Test{
         vm.mockCall(_mockController, abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID, 5 ether, address(120), "", false)), abi.encode(0));
 
         // Attempt to validate proof.
-        BPOptimismSucker(this).claim(
-            JBConstants.NATIVE_TOKEN,
-            Leaf({
+        BPOptimismSucker(this).claim(BPOptimismSucker.Claim({
+            token: JBConstants.NATIVE_TOKEN,
+            leaf: Leaf({
                 index: 2,
                 beneficiary: address(120),
                 projectTokenAmount: 5 ether,
                 redemptionTokenAmount: 5 ether
             }),
-            __proof
-        );
+            proof: __proof
+        }));
     }
 
     function test_validate_only_once() public {
@@ -130,28 +130,28 @@ contract UnitTest is BPOptimismSucker, Test{
         vm.mockCall(_mockController, abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID, 5 ether, address(120), "", false)), abi.encode(0));
 
         // Attempt to validate proof.
-        BPOptimismSucker(this).claim(
-            JBConstants.NATIVE_TOKEN,
-            Leaf({
+        BPOptimismSucker(this).claim(BPOptimismSucker.Claim({
+            token: JBConstants.NATIVE_TOKEN,
+            leaf: Leaf({
                 index: 2,
                 beneficiary: address(120),
                 projectTokenAmount: 5 ether,
                 redemptionTokenAmount: 5 ether
             }),
-            __proof
-        );
+            proof: __proof
+        }));
 
         // Attempt to do it again.
         vm.expectRevert();
-        BPOptimismSucker(this).claim(
-            JBConstants.NATIVE_TOKEN,
-            Leaf({
+        BPOptimismSucker(this).claim(BPOptimismSucker.Claim({
+            token: JBConstants.NATIVE_TOKEN,
+            leaf: Leaf({
                 index: 2,
                 beneficiary: address(120),
                 projectTokenAmount: 5 ether,
                 redemptionTokenAmount: 5 ether
             }),
-            __proof
-        );
+            proof: __proof
+        }));
     }
 }
