@@ -37,7 +37,7 @@ contract BPOptimismSucker is JBPermissioned {
     error INVALID_PROOF(bytes32 _expectedRoot, bytes32 _proofRoot);
     error ALREADY_EXECUTED(uint256 _index);
     error CURRENT_BALANCE_INSUFFECIENT();
-    error TOKEN_NOT_CONFIGURED();
+    error TOKEN_NOT_CONFIGURED(address _token);
     error ON_DEMAND_NOT_ALLOWED();
 
     event NewRoot(
@@ -189,7 +189,7 @@ contract BPOptimismSucker is JBPermissioned {
 
         // Make sure that the token is configured to be sucked (both is redeemable and is mapped to a remote token)
         if(address(_terminal) == address(0) || token[_token].remoteToken == address(0)){
-            revert TOKEN_NOT_CONFIGURED();
+            revert TOKEN_NOT_CONFIGURED(_token);
         }
 
         // Get the token for the project.
@@ -402,7 +402,7 @@ contract BPOptimismSucker is JBPermissioned {
         uint64 _nonce = ++outbox[_token].nonce;
 
         if(_tokenConfig.remoteToken == address(0))
-            revert TOKEN_NOT_CONFIGURED();
+            revert TOKEN_NOT_CONFIGURED(_token);
 
         if(_token != JBConstants.NATIVE_TOKEN){
             // Approve the tokens to be bridged.

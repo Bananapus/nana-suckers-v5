@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions} from "../src/BPOptimismSucker.sol";
+import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPTokenConfig} from "../src/BPOptimismSucker.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
@@ -135,6 +135,29 @@ contract CreateProjectsScript is Script {
         if(_expectedChainBProjectID != _projectIdB) {
             revert("Project ID B is not what we expected it to be.");
         }
+
+        // Configure the suckers.
+        vm.selectFork(_chainA);
+        vm.broadcast();
+        _suckerA.configureToken(
+            JBConstants.NATIVE_TOKEN,
+            BPTokenConfig({
+                minGas: 200_000,
+                remoteToken: JBConstants.NATIVE_TOKEN,
+                minBridgeAmount: 0.001 ether
+            })
+        );
+
+        vm.selectFork(_chainB);
+        vm.broadcast();
+        _suckerB.configureToken(
+            JBConstants.NATIVE_TOKEN,
+            BPTokenConfig({
+                minGas: 200_000,
+                remoteToken: JBConstants.NATIVE_TOKEN,
+                minBridgeAmount: 0.001 ether
+            })
+        );
 
         console2.log("Chain B projectID", Strings.toString(_projectIdB));
     }
