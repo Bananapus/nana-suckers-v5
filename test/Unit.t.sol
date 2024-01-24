@@ -103,7 +103,7 @@ contract UnitTest is BPOptimismSucker, Test{
         vm.mockCall(_mockController, abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID, 5 ether, address(120), "", false)), abi.encode(0));
 
         // Attempt to validate proof.
-        BPOptimismSucker(this).claim(BPOptimismSucker.Claim({
+        BPOptimismSucker(this).claim(BPSucker.Claim({
             token: JBConstants.NATIVE_TOKEN,
             leaf: Leaf({
                 index: 2,
@@ -130,7 +130,7 @@ contract UnitTest is BPOptimismSucker, Test{
         vm.mockCall(_mockController, abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID, 5 ether, address(120), "", false)), abi.encode(0));
 
         // Attempt to validate proof.
-        BPOptimismSucker(this).claim(BPOptimismSucker.Claim({
+        BPOptimismSucker(this).claim(BPSucker.Claim({
             token: JBConstants.NATIVE_TOKEN,
             leaf: Leaf({
                 index: 2,
@@ -143,7 +143,7 @@ contract UnitTest is BPOptimismSucker, Test{
 
         // Attempt to do it again.
         vm.expectRevert();
-        BPOptimismSucker(this).claim(BPOptimismSucker.Claim({
+        BPOptimismSucker(this).claim(BPSucker.Claim({
             token: JBConstants.NATIVE_TOKEN,
             leaf: Leaf({
                 index: 2,

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions} from "../src/BPOptimismSucker.sol";
+import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPSucker} from "../src/BPOptimismSucker.sol";
 // import {BPSuckQueueItem} from "../src/structs/BPSuckQueueItem.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
@@ -110,9 +110,9 @@ contract ExecuteOnL1Script is Script {
         ]), (bytes32[32]));
 
         vm.broadcast();
-        BPSuckerDelegate(payable(0xd00C4DD2dF16b989DC09666861312A3e78DCfc2F)).claim(BPOptimismSucker.Claim({
+        BPSuckerDelegate(payable(0xd00C4DD2dF16b989DC09666861312A3e78DCfc2F)).claim(BPSucker.Claim({
             token: JBConstants.NATIVE_TOKEN,
-            leaf: BPOptimismSucker.Leaf({
+            leaf: BPSucker.Leaf({
                 index: 0,
                 beneficiary: msg.sender,
                 projectTokenAmount: 0.01 ether,
