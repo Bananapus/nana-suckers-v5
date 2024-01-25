@@ -39,6 +39,7 @@ abstract contract BPSucker is JBPermissioned {
     error CURRENT_BALANCE_INSUFFECIENT();
     error TOKEN_NOT_CONFIGURED(address _token);
     error ON_DEMAND_NOT_ALLOWED();
+    error UNEXPECTED_MSG_VALUE();
 
     event NewRoot(
         address indexed token,
@@ -232,7 +233,7 @@ abstract contract BPSucker is JBPermissioned {
     /// @param _token the token to bridge the tree for.
     function toRemote(
         address _token
-    ) external {
+    ) external payable {
         // TODO: Add some way to prevent spam.
         BPTokenConfig memory _tokenConfig = token[_token];
 
@@ -319,7 +320,7 @@ abstract contract BPSucker is JBPermissioned {
     /// @notice Links an ERC20 token on the local chain to an ERC20 on the remote chain.
     /// @param _token the token to configure.
     /// @param _config the configuration details.
-    function configureToken(address _token, BPTokenConfig calldata _config) external {
+    function configureToken(address _token, BPTokenConfig calldata _config) external payable {
         bool _isNative = _token == JBConstants.NATIVE_TOKEN;
 
         // If the native token is being configured then the remoteToken has to also be the native token.
@@ -391,6 +392,7 @@ abstract contract BPSucker is JBPermissioned {
     }
 
     /// @notice Send the root to the remote peer.
+    /// @dev Call may have a `msg.value`, require it to be `0` if its not needed.
     /// @param _token the token to bridge for.
     /// @param _tokenConfig the config for the token to send.
     function _sendRoot(

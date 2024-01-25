@@ -7,3 +7,6 @@
 [submodule "lib/nitro-contracts"]
 	path = lib/nitro-contracts
 	url = https://github.com/OffchainLabs/nitro-contracts
+[submodule "lib/token-bridge-contracts"]
+	path = lib/token-bridge-contracts
+	url = https://github.com/OffchainLabs/token-bridge-contracts

@@ -45,6 +45,10 @@ contract BPOptimismSucker is BPSucker {
     ) internal override {
         uint256 _nativeValue;
 
+        // The OP bridge does not expect to be paid.
+        if(msg.value != 0)
+            revert UNEXPECTED_MSG_VALUE();
+
         // Get the amount to send and then clear it.
         uint256 _amount = outbox[_token].balance;
         delete outbox[_token].balance;

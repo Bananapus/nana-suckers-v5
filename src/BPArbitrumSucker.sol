@@ -6,8 +6,30 @@ import "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
 
 import {ArbSys} from "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import {AddressAliasHelper} from "@arbitrum/nitro-contracts/src/libraries/AddressAliasHelper.sol";
+import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 
 import "./BPSucker.sol";
+
+interface L2GatewayRouter {
+    function outboundTransfer(
+        address _l1Token,
+        address _to,
+        uint256 _amount,
+        bytes calldata _data
+    ) external payable returns (bytes memory);
+}
+
+interface L1GatewayRouter {
+    function outboundTransferCustomRefund(
+        address _token,
+        address _refundTo,
+        address _to,
+        uint256 _amount,
+        uint256 _maxGas,
+        uint256 _gasPriceBid,
+        bytes calldata _data
+    ) external payable returns (bytes memory);
+}
 
 
 /// @notice A contract that sucks tokens from one chain to another.
@@ -27,6 +49,8 @@ contract BPArbitrumSucker is BPSucker {
 
     Layer public immutable LAYER;
 
+    address public immutable GATEWAY_ROUTER;
+
     IInbox public immutable INBOX;
 
     //*********************************************************************//
@@ -43,6 +67,8 @@ contract BPArbitrumSucker is BPSucker {
     ) BPSucker(_directory, _tokens, _permissions, _peer, _projectId) {
         LAYER = _layer;
         INBOX = IInbox(_inbox);
+
+        // TODO: Check if gateway supports `outboundTransferCustomRefund` if LAYER is L1.
     }
 
     //*********************************************************************//
@@ -56,8 +82,6 @@ contract BPArbitrumSucker is BPSucker {
         address _token,
         BPTokenConfig memory _tokenConfig
     ) internal override {
-        uint256 _nativeValue;
-
         // Get the amount to send and then clear it.
         uint256 _amount = outbox[_token].balance;
         delete outbox[_token].balance;
@@ -68,41 +92,100 @@ contract BPArbitrumSucker is BPSucker {
         if(_tokenConfig.remoteToken == address(0))
             revert TOKEN_NOT_CONFIGURED(_token);
 
-        // if(_token != JBConstants.NATIVE_TOKEN){
-        //     // Approve the tokens to be bridged.
-        //     SafeERC20.forceApprove(IERC20(_token), address(OPMESSENGER), _amount);
+        // Build the calldata that will be send to the peer.
+        bytes memory _data = abi.encodeCall(
+            BPSucker.fromRemote,
+            (
+                MessageRoot({
+                    token: _tokenConfig.remoteToken,
+                    amount: _amount,
+                    remoteRoot: RemoteRoot({
+                        nonce: _nonce,
+                        root: outbox[_token].tree.root()
+                    })
+                })
+            )
+        );
 
-        //     // Bridge the tokens to the payer address.
-        //     OPMESSENGER.bridgeERC20To({
-        //         localToken: _token,
-        //         remoteToken: _tokenConfig.remoteToken,
-        //         to: PEER,
-        //         amount: _amount,
-        //         minGasLimit: _tokenConfig.minGas,
-        //         extraData: bytes('')
-        //     });
-        // } else {
-        //     _nativeValue = _amount;
-        // }
+        // Depending on which layer we are on, we send the call to the other layer.
+        if(LAYER == Layer.L1) {
+            _toL2(_token, _amount, _data, _tokenConfig);
+        } else {
+            _toL1(_token, _amount, _data, _tokenConfig);
+        }
+    }
 
-        // // Send the messenger to the peer with the redeemed ETH.
-        // OPMESSENGER.sendMessage{value: _nativeValue}(
-        //     PEER,
-        //     abi.encodeCall(
-        //         BPSucker.fromRemote,
-        //         (
-        //             MessageRoot({
-        //                 token: _tokenConfig.remoteToken,
-        //                 amount: _amount,
-        //                 remoteRoot: RemoteRoot({
-        //                     nonce: _nonce,
-        //                     root: outbox[_token].tree.root()
-        //                 })
-        //             })
-        //         )
-        //     ),
-        //     MESSENGER_BASE_GAS_LIMIT
-        // );
+    function _toL1(
+        address _token,
+        uint256 _amount,
+        bytes memory _data,
+        BPTokenConfig memory _tokenConfig
+    ) internal {
+        uint256 _nativeValue;
+
+        // Sending a message to L1 does not require any payment.
+        if(msg.value != 0)
+            revert UNEXPECTED_MSG_VALUE();
+
+        if(_token != JBConstants.NATIVE_TOKEN){
+            // TODO: Approve the tokens to be bridged?
+            // SafeERC20.forceApprove(IERC20(_token), address(OPMESSENGER), _amount);
+
+            L2GatewayRouter(GATEWAY_ROUTER).outboundTransfer(
+                _tokenConfig.remoteToken,
+                address(PEER),
+                _amount,
+                bytes("")
+            );
+        } else {
+            _nativeValue = _amount;
+        }
+
+        // address `100` is the ArbSys precompile address.
+        ArbSys(address(100)).sendTxToL1{value: _nativeValue}(address(PEER), _data);
+    }
+
+    function _toL2(
+        address _token,
+        uint256 _amount,
+        bytes memory _data,
+        BPTokenConfig memory _tokenConfig
+    ) internal {
+        uint256 _nativeValue;
+
+        if(_token != JBConstants.NATIVE_TOKEN){
+            // Approve the tokens to be bridged.
+            SafeERC20.forceApprove(IERC20(_token), address(GATEWAY_ROUTER), _amount);
+            // Perform the ERC20 bridge transfer.
+            L1GatewayRouter(GATEWAY_ROUTER).outboundTransferCustomRefund({
+                _token: _token,
+                // TODO: Something about these 2 address with needing to be aliassed.
+                _refundTo: address(PEER),
+                _to: address(PEER),
+                _amount: _amount,
+                _maxGas: _tokenConfig.minGas,
+                // TODO: Is this a sane default?
+                _gasPriceBid: 1 gwei,
+                _data: bytes((""))
+            });
+        } else {
+            _nativeValue = _amount;
+        }
+
+        // Create the retryable ticket that contains the merkleRoot.
+        // We could even make this unsafe.
+        INBOX.createRetryableTicket{value: _nativeValue + msg.value}({
+            to: address(PEER),
+            l2CallValue: _nativeValue,
+            // TODO: Check, We get the cost... is this right? this seems odd.
+            maxSubmissionCost: INBOX.calculateRetryableSubmissionFee(_data.length, block.basefee),
+            excessFeeRefundAddress: msg.sender,
+            callValueRefundAddress: PEER,
+            gasLimit: MESSENGER_BASE_GAS_LIMIT,
+            // TODO: Is this a sane default?
+            maxFeePerGas: 1 gwei,
+            data: _data
+        });        
     }
 
     /// @notice checks if the _sender (msg.sender) is a valid representative of the remote peer. 
