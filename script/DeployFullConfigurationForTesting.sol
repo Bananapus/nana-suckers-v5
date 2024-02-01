@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPTokenConfig} from "../src/BPOptimismSucker.sol";
+import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPTokenConfig, OpStandardBridge} from "../src/BPOptimismSucker.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
@@ -16,21 +16,26 @@ import "../lib/juice-contracts-v4/src/libraries/JBConstants.sol";
 // import "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
 // import {JBRulesetConfig} from "juice-contracts-v4/src/structs/JBRulesetConfig.sol";
 import {JBFundAccessLimitGroup} from "../lib/juice-contracts-v4/src/structs/JBFundAccessLimitGroup.sol";
+import {SafeERC20, IERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 // import {IJBRulesetApprovalHook} from "juice-contracts-v4/src/interfaces/IJBRulesetApprovalHook.sol";
 // import {IJBPermissions, JBPermissionsData} from "juice-contracts-v4/src/interfaces/IJBPermissions.sol";
+
+interface OPTestBridgeToken is IERC20 { 
+    function faucet() external;
+}
 
 contract CreateProjectsScript is Script {
     // Sepolia config
     string CHAIN_A_RPC;
     OPMessenger constant CHAIN_A_OP_MESSENGER = OPMessenger(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef);
+    OpStandardBridge constant CHAIN_A_OP_BRIDGE = OpStandardBridge(0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1);
     string CHAIN_A_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json";
-    uint256 PROJECT_ID_CHAIN_A = 1;
 
     // OP Sepolia config
     string CHAIN_B_RPC;
     OPMessenger constant CHAIN_B_OP_MESSENGER = OPMessenger(0x4200000000000000000000000000000000000007);
+    OpStandardBridge constant CHAIN_B_OP_BRIDGE = OpStandardBridge(0x4200000000000000000000000000000000000010);
     string CHAIN_B_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155420/run-latest.json";
-    uint256 PROJECT_ID_CHAIN_B = 1;
 
     function setUp() public {
         CHAIN_A_RPC = vm.envString("CHAIN_A_RPC");
@@ -70,6 +75,7 @@ contract CreateProjectsScript is Script {
             IJBPrices(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPrices")),
             IJBRulesets(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBRulesets")),
             CHAIN_A_OP_MESSENGER,
+            CHAIN_A_OP_BRIDGE,
             IJBDirectory(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBDirectory")),
             IJBTokens(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBTokens")),
             IJBPermissions(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPermissions")),
@@ -83,6 +89,7 @@ contract CreateProjectsScript is Script {
             IJBPrices(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPrices")),
             IJBRulesets(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBRulesets")),
             CHAIN_B_OP_MESSENGER,
+            CHAIN_B_OP_BRIDGE,
             IJBDirectory(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBDirectory")),
             IJBTokens(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBTokens")),
             IJBPermissions(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPermissions")),
@@ -103,8 +110,11 @@ contract CreateProjectsScript is Script {
         console2.log("Sucker B: ", Strings.toHexString(uint160(address(_suckerB)), 20));
 
 
-        address[] memory _tokens = new address[](1);
-        _tokens[0] = JBConstants.NATIVE_TOKEN;
+        address[] memory _a_tokens = new address[](1);
+        _a_tokens[0] = address(0x12608ff9dac79d8443F17A4d39D93317BAD026Aa);
+
+        address[] memory _b_tokens = new address[](1);
+        _b_tokens[0] = address(0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2);
 
         vm.selectFork(_chainA);
         uint256 _projectIdA = _createProject(
@@ -112,7 +122,7 @@ contract CreateProjectsScript is Script {
             "TestToken",
             "TT",
             IJBRedeemTerminal(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBMultiTerminal")),
-            _tokens,
+            _a_tokens,
             _suckerA
         );
 
@@ -124,7 +134,7 @@ contract CreateProjectsScript is Script {
             "TestTokenOP",
             "TTonOP",
             IJBRedeemTerminal(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBMultiTerminal")),
-            _tokens,
+            _b_tokens,
             _suckerB
         );
 
@@ -140,10 +150,10 @@ contract CreateProjectsScript is Script {
         vm.selectFork(_chainA);
         vm.broadcast();
         _suckerA.configureToken(
-            JBConstants.NATIVE_TOKEN,
+            _a_tokens[0],
             BPTokenConfig({
                 minGas: 200_000,
-                remoteToken: JBConstants.NATIVE_TOKEN,
+                remoteToken: _b_tokens[0],
                 minBridgeAmount: 0.001 ether
             })
         );
@@ -151,15 +161,41 @@ contract CreateProjectsScript is Script {
         vm.selectFork(_chainB);
         vm.broadcast();
         _suckerB.configureToken(
-            JBConstants.NATIVE_TOKEN,
+            _b_tokens[0],
             BPTokenConfig({
                 minGas: 200_000,
-                remoteToken: JBConstants.NATIVE_TOKEN,
+                remoteToken: _a_tokens[0],
                 minBridgeAmount: 0.001 ether
             })
         );
 
         console2.log("Chain B projectID", Strings.toString(_projectIdB));
+
+        vm.selectFork(_chainA);
+        OPTestBridgeToken _testToken = OPTestBridgeToken(0x12608ff9dac79d8443F17A4d39D93317BAD026Aa);
+        IJBRedeemTerminal _terminal = IJBRedeemTerminal(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBMultiTerminal"));
+        uint256 _amount = 1000_000_000_000_000_000_000;
+
+        vm.startBroadcast();
+
+        // Mint some of the ERC20 token.
+        _testToken.faucet();
+        // Approve the terminal.
+        _testToken.approve(address(_terminal), _amount);
+        // Pay.
+        _terminal.pay({
+            projectId: _projectIdA,
+            token: _a_tokens[0],
+            amount: _amount,
+            beneficiary: msg.sender,
+            minReturnedTokens: 0,
+            memo: "",
+            metadata: bytes("")
+        });
+        // Push the root to the remote.
+        _suckerA.toRemote(_a_tokens[0]);
+
+        vm.stopBroadcast();
     }
 
     function _createProject(
@@ -173,7 +209,7 @@ contract CreateProjectsScript is Script {
         JBRulesetMetadata memory _metadata = JBRulesetMetadata({
             reservedRate: 0,
             redemptionRate: JBConstants.MAX_REDEMPTION_RATE,
-            baseCurrency: uint32(uint160(JBConstants.NATIVE_TOKEN)),
+            baseCurrency: uint32(uint160(_tokens[0])),
             pausePay: false,
             pauseCreditTransfers: false,
             allowOwnerMinting: true,

@@ -12,6 +12,7 @@ contract UnitTest is BPOptimismSucker, Test{
 
     constructor() BPOptimismSucker(
         OPMessenger(address(500)),
+        OpStandardBridge(address(550)),
         IJBDirectory(address(600)),
         IJBTokens(address(700)),
         IJBPermissions(address(800)),

@@ -5,6 +5,33 @@ import {OPMessenger} from "./interfaces/OPMessenger.sol";
 
 import "./BPSucker.sol";
 
+
+interface OpStandardBridge {
+    /**
+     * @notice Sends ERC20 tokens to a receiver's address on the other chain. Note that if the
+     *         ERC20 token on the other chain does not recognize the local token as the correct
+     *         pair token, the ERC20 bridge will fail and the tokens will be returned to sender on
+     *         this chain.
+     *
+     * @param localToken  Address of the ERC20 on this chain.
+     * @param remoteToken Address of the corresponding token on the remote chain.
+     * @param to          Address of the receiver.
+     * @param amount      Amount of local tokens to deposit.
+     * @param minGasLimit Minimum amount of gas that the bridge can be relayed with.
+     * @param extraData   Extra data to be sent with the transaction. Note that the recipient will
+     *                     not be triggered with this data, but it will be emitted and can be used
+     *                     to identify the transaction.
+     */
+    function bridgeERC20To(
+        address localToken,
+        address remoteToken,
+        address to,
+        uint256 amount,
+        uint32 minGasLimit,
+        bytes calldata extraData
+    ) external;
+}
+
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.
 contract BPOptimismSucker is BPSucker {
@@ -18,11 +45,14 @@ contract BPOptimismSucker is BPSucker {
     /// @notice The messenger in use to send messages between the local and remote sucker.
     OPMessenger public immutable OPMESSENGER;
 
+    OpStandardBridge public immutable OPBRIDGE;
+
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
     constructor(
         OPMessenger _messenger,
+        OpStandardBridge _bridge,
         IJBDirectory _directory,
         IJBTokens _tokens,
         IJBPermissions _permissions,
@@ -30,6 +60,7 @@ contract BPOptimismSucker is BPSucker {
         uint256 _projectId
     ) BPSucker(_directory, _tokens, _permissions, _peer, _projectId) {
         OPMESSENGER = _messenger;
+        OPBRIDGE = _bridge;
     }
 
     //*********************************************************************//
@@ -61,10 +92,10 @@ contract BPOptimismSucker is BPSucker {
 
         if(_token != JBConstants.NATIVE_TOKEN){
             // Approve the tokens to be bridged.
-            SafeERC20.forceApprove(IERC20(_token), address(OPMESSENGER), _amount);
+            SafeERC20.forceApprove(IERC20(_token), address(OPBRIDGE), _amount);
 
             // Bridge the tokens to the payer address.
-            OPMESSENGER.bridgeERC20To({
+            OPBRIDGE.bridgeERC20To({
                 localToken: _token,
                 remoteToken: _tokenConfig.remoteToken,
                 to: PEER,
