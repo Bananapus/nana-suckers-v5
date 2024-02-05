@@ -44,12 +44,13 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         IJBPrices _prices,
         IJBRulesets _rulesets,
         OPMessenger _messenger,
+        OpStandardBridge _bridge,
         IJBDirectory _directory,
         IJBTokens _tokens,
         IJBPermissions _permissions,
         address _peer,
         uint256 _projectId
-    ) BPOptimismSucker(_messenger, _directory, _tokens, _permissions, _peer, _projectId) {
+    ) BPOptimismSucker(_messenger, _bridge, _directory, _tokens, _permissions, _peer, _projectId) {
         PRICES = _prices;
         RULESETS = _rulesets;
     }
@@ -69,10 +70,10 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
 
         address _token = context.amount.token;
         if (
-            // Check if the token is the native asset or if it is linked.
-            (_token != JBConstants.NATIVE_TOKEN && token[_token].remoteToken == address(0))
+            // Check if the token is is configured.
+            token[_token].remoteToken == address(0)
             // Check if the terminal supports the redeem terminal interface.
-            || !ERC165Checker.supportsInterface(address(context.terminal), type(IJBRedeemTerminal).interfaceId)
+            && !ERC165Checker.supportsInterface(address(context.terminal), type(IJBRedeemTerminal).interfaceId)
         ) {
             // In these cases we don't do anything.
             return (context.weight, new JBPayHookSpecification[](0));
@@ -127,11 +128,11 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         assert(_beneficiaryTokenCount == _projectToken.balanceOf(address(this)) - _projectTokenBalanceBefore);
 
         // Perform the redemption.
-        uint256 _nativeBalanceBefore = address(this).balance;
+        uint256 _balanceBefore = _balanceOf(context.amount.token, address(this));
         uint256 _reclaimAmount = IJBRedeemTerminal(msg.sender).redeemTokensOf(
             address(this),
             context.projectId,
-            JBConstants.NATIVE_TOKEN,
+            context.amount.token,
             _beneficiaryTokenCount,
             0,
             payable(address(this)),
@@ -139,13 +140,13 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         );
 
         // Sanity check: we received the native asset.
-        assert(address(this).balance == _nativeBalanceBefore + _reclaimAmount);
+        assert(_balanceOf(context.amount.token, address(this)) == _balanceBefore + _reclaimAmount);
 
         // Sanity check: we redeemed the project tokens.
         assert(_projectToken.balanceOf(address(this)) == _projectTokenBalanceBefore);
 
         // Add the reclaim amount to the messenger queue.
-        _insertIntoQueue({
+        _insertIntoTree({
             _projectTokenAmount: _beneficiaryTokenCount,
             _redemptionToken: context.amount.token,
             _redemptionTokenAmount: _reclaimAmount,

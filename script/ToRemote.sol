@@ -32,7 +32,7 @@ contract PermissionsScript is Script {
     string CHAIN_B_RPC;
     OPMessenger constant CHAIN_B_OP_MESSENGER = OPMessenger(0x4200000000000000000000000000000000000007);
     string CHAIN_B_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155420/run-latest.json";
-    uint256 PROJECT_ID_CHAIN_B = 1;
+    uint256 PROJECT_ID_CHAIN_B = 2;
 
     function setUp() public {
         CHAIN_A_RPC = vm.envString("CHAIN_A_RPC");
@@ -50,42 +50,23 @@ contract PermissionsScript is Script {
     function run() public {
         // Get the nonces for the two chains.
         vm.createSelectFork(CHAIN_B_RPC);
-
         vm.startBroadcast();
-        IJBMultiTerminal(0x274DaF03AE4025Efb01A051ab0385D0AA77ceb26).pay{value: 50_000}({
+
+        // Perform the pay to get added to the tree.
+        IJBMultiTerminal(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBMultiTerminal")).pay{value: 0.01 ether}({
             projectId: PROJECT_ID_CHAIN_B,
             token: JBConstants.NATIVE_TOKEN,
-            amount: 50_000,
+            amount: 0.01 ether,
             beneficiary: msg.sender,
             minReturnedTokens: 0,
             memo: "",
             metadata: bytes("")
         });
 
-        address[] memory _beneficiaries = new address[](1);
-        _beneficiaries[0] = msg.sender;
-
-        BPSuckerDelegate(payable(0xb2DBff7BAC73E4bA21f134593F9a8eC46063D419)).toRemote(
-            JBConstants.NATIVE_TOKEN,
-            _beneficiaries
+        // Send the tree to the L1.
+        BPSuckerDelegate(payable(0xe0B97fFD19F7707cE8538ccbE4Dcb75117C0a9d2)).toRemote(
+            JBConstants.NATIVE_TOKEN
         );
-
-
-
-        // 0x274daf03ae4025efb01a051ab0385d0aa77ceb26
-        // Chain A: 0xa3cedc2a2bda2487132273d4ee1107dad81b6ef9
-        // Chain B: 0xb2dbff7bac73e4ba21f134593f9a8ec46063d419 
-        // console2.log("the address: ", Strings.toHexString(uint160(address(_address)), 20));
-        // uint256[] memory _permissions = new uint256[](1);
-        // _permissions[0] = JBPermissionIds.MINT_TOKENS;
-
-        // vm.broadcast();
-        // _permissionStore.setPermissionsFor(
-        //     address(msg.sender),
-        //     JBPermissionsData({operator: address(0xb2DBff7BAC73E4bA21f134593F9a8eC46063D419), projectId: PROJECT_ID_CHAIN_B, permissionIds: _permissions})
-        // );
-
-        // console2.log("Chain B projectID", Strings.toString(_projectIdB));
     }
 
      /**

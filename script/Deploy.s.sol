@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions} from "../src/BPOptimismSucker.sol";
+import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, OpStandardBridge} from "../src/BPOptimismSucker.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -11,11 +11,13 @@ contract DeployScript is Script {
     string CHAIN_A_RPC;
     OPMessenger constant CHAIN_A_OP_MESSENGER = OPMessenger(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef);
     string CHAIN_A_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json";
+    OpStandardBridge constant CHAIN_A_OP_BRIDGE = OpStandardBridge(0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1);
     uint256 PROJECT_ID_CHAIN_A = 1;
 
     // OP Sepolia config
     string CHAIN_B_RPC;
     OPMessenger constant CHAIN_B_OP_MESSENGER = OPMessenger(0x4200000000000000000000000000000000000007);
+    OpStandardBridge constant CHAIN_B_OP_BRIDGE = OpStandardBridge(0x4200000000000000000000000000000000000010);
     string CHAIN_B_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155420/run-latest.json";
     uint256 PROJECT_ID_CHAIN_B = 1;
 
@@ -53,6 +55,7 @@ contract DeployScript is Script {
         vm.broadcast();
         BPOptimismSucker _suckerA = new BPOptimismSucker(
             CHAIN_A_OP_MESSENGER,
+            CHAIN_A_OP_BRIDGE,
             IJBDirectory(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBDirectory")),
             IJBTokens(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBTokens")),
             IJBPermissions(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPermissions")),
@@ -64,6 +67,7 @@ contract DeployScript is Script {
         vm.broadcast();
         BPOptimismSucker _suckerB = new BPOptimismSucker(
             CHAIN_B_OP_MESSENGER,
+            CHAIN_B_OP_BRIDGE,
             IJBDirectory(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBDirectory")),
             IJBTokens(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBTokens")),
             IJBPermissions(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPermissions")),
