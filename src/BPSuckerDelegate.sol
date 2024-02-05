@@ -31,7 +31,8 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
     }
 
     error NOT_ALLOWED();
-    error INVALID_REMOTE_PROJECT_ID();
+    error INVALID_REMOTE_PROJECT_ID(uint256 expected, uint256 received);
+    error INCORRECT_PROJECT_ID();
 
     /// @notice The contract storing and managing project rulesets.
     IJBRulesets public immutable RULESETS;
@@ -43,11 +44,13 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         IJBPrices _prices,
         IJBRulesets _rulesets,
         OPMessenger _messenger,
+        OpStandardBridge _bridge,
         IJBDirectory _directory,
         IJBTokens _tokens,
         IJBPermissions _permissions,
-        address _peer
-    ) BPOptimismSucker(_messenger, _directory, _tokens, _permissions, _peer) {
+        address _peer,
+        uint256 _projectId
+    ) BPOptimismSucker(_messenger, _bridge, _directory, _tokens, _permissions, _peer, _projectId) {
         PRICES = _prices;
         RULESETS = _rulesets;
     }
@@ -63,14 +66,14 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         view
         returns (uint256 weight, JBPayHookSpecification[] memory hookSpecifications)
     {
-        uint256 _remoteProjectId = acceptFromRemote[context.projectId];
+        if(context.projectId != PROJECT_ID) revert INVALID_REMOTE_PROJECT_ID(PROJECT_ID, context.projectId);
+
+        address _token = context.amount.token;
         if (
-            context.amount.token != JBConstants.NATIVE_TOKEN
-            // We only support the native asset (for now).
-            // The remote project was not configured.
-            || _remoteProjectId == 0
+            // Check if the token is is configured.
+            token[_token].remoteToken == address(0)
             // Check if the terminal supports the redeem terminal interface.
-            || !ERC165Checker.supportsInterface(address(context.terminal), type(IJBRedeemTerminal).interfaceId)
+            && !ERC165Checker.supportsInterface(address(context.terminal), type(IJBRedeemTerminal).interfaceId)
         ) {
             // In these cases we don't do anything.
             return (context.weight, new JBPayHookSpecification[](0));
@@ -90,10 +93,6 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
     function afterPayRecordedWith(JBAfterPayRecordedContext calldata context) external payable {
         // Check that the caller is a terminal.
         if (!DIRECTORY.isTerminalOf(context.projectId, IJBTerminal(msg.sender))) revert NOT_ALLOWED();
-
-        // Should be valid.
-        uint256 _remoteProjectId = acceptFromRemote[context.projectId];
-        if(_remoteProjectId == 0) revert INVALID_REMOTE_PROJECT_ID();
 
         // Get the projects ruleset.
         JBRuleset memory _ruleset = RULESETS.getRulesetOf(context.projectId, context.rulesetId);
@@ -129,11 +128,11 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         assert(_beneficiaryTokenCount == _projectToken.balanceOf(address(this)) - _projectTokenBalanceBefore);
 
         // Perform the redemption.
-        uint256 _nativeBalanceBefore = address(this).balance;
+        uint256 _balanceBefore = _balanceOf(context.amount.token, address(this));
         uint256 _reclaimAmount = IJBRedeemTerminal(msg.sender).redeemTokensOf(
             address(this),
             context.projectId,
-            JBConstants.NATIVE_TOKEN,
+            context.amount.token,
             _beneficiaryTokenCount,
             0,
             payable(address(this)),
@@ -141,19 +140,17 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
         );
 
         // Sanity check: we received the native asset.
-        assert(address(this).balance == _nativeBalanceBefore + _reclaimAmount);
+        assert(_balanceOf(context.amount.token, address(this)) == _balanceBefore + _reclaimAmount);
 
         // Sanity check: we redeemed the project tokens.
         assert(_projectToken.balanceOf(address(this)) == _projectTokenBalanceBefore);
 
         // Add the reclaim amount to the messenger queue.
-        _queueItem({
-            _localProjectId: context.projectId,
-            _remoteProjectId: _remoteProjectId,
+        _insertIntoTree({
             _projectTokenAmount: _beneficiaryTokenCount,
+            _redemptionToken: context.amount.token,
             _redemptionTokenAmount: _reclaimAmount,
-            _beneficiary: context.beneficiary,
-            _forceSend: false
+            _beneficiary: context.beneficiary
         });
     }
 
