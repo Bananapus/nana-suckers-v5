@@ -20,6 +20,12 @@ import "../lib/juice-contracts-v4/src/libraries/JBConstants.sol";
 // import {JBFundAccessLimitGroup} from "../lib/juice-contracts-v4/src/structs/JBFundAccessLimitGroup.sol";
 // import {IJBRulesetApprovalHook} from "juice-contracts-v4/src/interfaces/IJBRulesetApprovalHook.sol";
 // import {IJBPermissions, JBPermissionsData} from "juice-contracts-v4/src/interfaces/IJBPermissions.sol";
+import {SafeERC20, IERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+
+interface OPTestBridgeToken is IERC20 { 
+    function faucet() external;
+}
+
 
 contract PermissionsScript is Script {
     // Sepolia config
@@ -52,11 +58,19 @@ contract PermissionsScript is Script {
         vm.createSelectFork(CHAIN_B_RPC);
         vm.startBroadcast();
 
+        uint256 _projectIdB = 7;
+
+        OPTestBridgeToken _testToken = OPTestBridgeToken(0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2);
+        IJBRedeemTerminal _terminal = IJBRedeemTerminal(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBMultiTerminal"));
+        uint256 _amount = 1000_000_000_000_000_000_000;
+
+        _testToken.approve(address(_terminal), _amount);
+
         // Perform the pay to get added to the tree.
-        IJBMultiTerminal(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBMultiTerminal")).pay{value: 0.01 ether}({
-            projectId: PROJECT_ID_CHAIN_B,
-            token: JBConstants.NATIVE_TOKEN,
-            amount: 0.01 ether,
+        _terminal.pay({
+            projectId: _projectIdB,
+            token: address(_testToken),
+            amount: _amount,
             beneficiary: msg.sender,
             minReturnedTokens: 0,
             memo: "",
@@ -64,8 +78,8 @@ contract PermissionsScript is Script {
         });
 
         // Send the tree to the L1.
-        BPSuckerDelegate(payable(0xe0B97fFD19F7707cE8538ccbE4Dcb75117C0a9d2)).toRemote(
-            JBConstants.NATIVE_TOKEN
+        BPSuckerDelegate(payable(0x0af08A4aa6ebC5D158F634d3D02f1A7193BfD9EB)).toRemote(
+            address(_testToken)
         );
     }
 

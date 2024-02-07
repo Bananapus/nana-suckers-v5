@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {Script, console2, stdJson} from "forge-std/Script.sol";
 import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPTokenConfig, OpStandardBridge} from "../src/BPOptimismSucker.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
+// import {BPOptimismSucker} from "../src/BPOptimismSucker.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
 import {Strings} from "../lib/juice-contracts-v4/lib/openzeppelin-contracts/contracts/utils/Strings.sol";
@@ -71,7 +72,7 @@ contract CreateProjectsScript is Script {
         // Deploy the suckers.
         vm.selectFork(_chainA);
         vm.broadcast();
-        BPSuckerDelegate _suckerA = new BPSuckerDelegate(
+        BPSuckerDelegate _suckerA = new BPOptimismSucker(
             IJBPrices(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPrices")),
             IJBRulesets(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBRulesets")),
             CHAIN_A_OP_MESSENGER,
@@ -85,7 +86,7 @@ contract CreateProjectsScript is Script {
 
         vm.selectFork(_chainB);
         vm.broadcast();
-        BPSuckerDelegate _suckerB = new BPSuckerDelegate(
+        BPSuckerDelegate _suckerB = new BPOptimismSucker(
             IJBPrices(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPrices")),
             IJBRulesets(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBRulesets")),
             CHAIN_B_OP_MESSENGER,
@@ -171,31 +172,31 @@ contract CreateProjectsScript is Script {
 
         console2.log("Chain B projectID", Strings.toString(_projectIdB));
 
-        vm.selectFork(_chainA);
-        OPTestBridgeToken _testToken = OPTestBridgeToken(0x12608ff9dac79d8443F17A4d39D93317BAD026Aa);
-        IJBRedeemTerminal _terminal = IJBRedeemTerminal(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBMultiTerminal"));
+        vm.selectFork(_chainB);
+        OPTestBridgeToken _testToken = OPTestBridgeToken(0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2);
+        IJBRedeemTerminal _terminal = IJBRedeemTerminal(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBMultiTerminal"));
         uint256 _amount = 1000_000_000_000_000_000_000;
 
-        vm.startBroadcast();
+        // vm.startBroadcast();
 
-        // Mint some of the ERC20 token.
-        _testToken.faucet();
-        // Approve the terminal.
-        _testToken.approve(address(_terminal), _amount);
-        // Pay.
-        _terminal.pay({
-            projectId: _projectIdA,
-            token: _a_tokens[0],
-            amount: _amount,
-            beneficiary: msg.sender,
-            minReturnedTokens: 0,
-            memo: "",
-            metadata: bytes("")
-        });
-        // Push the root to the remote.
-        _suckerA.toRemote(_a_tokens[0]);
+        // // Mint some of the ERC20 token.
+        // // _testToken.faucet();
+        // // Approve the terminal.
+        // _testToken.approve(address(_terminal), _amount);
+        // // Pay.
+        // _terminal.pay({
+        //     projectId: _projectIdB,
+        //     token: _b_tokens[0],
+        //     amount: _amount,
+        //     beneficiary: msg.sender,
+        //     minReturnedTokens: 0,
+        //     memo: "",
+        //     metadata: bytes("")
+        // });
+        // // Push the root to the remote.
+        // _suckerB.toRemote(_b_tokens[0]);
 
-        vm.stopBroadcast();
+        // vm.stopBroadcast();
     }
 
     function _createProject(

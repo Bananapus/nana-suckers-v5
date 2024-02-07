@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
-import "src/BPOptimismSucker.sol";
+import "./BPSucker.sol";
 import {JBConstants} from "juice-contracts-v4/src/libraries/JBConstants.sol";
 import {IJBPrices} from "juice-contracts-v4/src/interfaces/IJBPrices.sol";
 import {IJBPayHook, JBAfterPayRecordedContext} from "juice-contracts-v4/src/interfaces/IJBPayHook.sol";
@@ -15,11 +15,12 @@ import {
     JBPayHookSpecification,
     JBRedeemHookSpecification
 } from "juice-contracts-v4/src/interfaces/IJBRulesetDataHook.sol";
+import {IJBRedeemTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
 
 import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import {mulDiv} from "juice-contracts-v4/lib/prb-math/src/Common.sol";
 
-contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
+abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
     // A library that parses the packed ruleset metadata into a friendlier format.
     using JBRulesetMetadataResolver for JBRuleset;
 
@@ -42,15 +43,8 @@ contract BPSuckerDelegate is BPOptimismSucker, IJBRulesetDataHook, IJBPayHook {
 
     constructor(
         IJBPrices _prices,
-        IJBRulesets _rulesets,
-        OPMessenger _messenger,
-        OpStandardBridge _bridge,
-        IJBDirectory _directory,
-        IJBTokens _tokens,
-        IJBPermissions _permissions,
-        address _peer,
-        uint256 _projectId
-    ) BPOptimismSucker(_messenger, _bridge, _directory, _tokens, _permissions, _peer, _projectId) {
+        IJBRulesets _rulesets
+    ) {
         PRICES = _prices;
         RULESETS = _rulesets;
     }

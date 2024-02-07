@@ -4,6 +4,7 @@ pragma solidity ^0.8.21;
 import {OPMessenger} from "./interfaces/OPMessenger.sol";
 
 import "./BPSucker.sol";
+import "./BPSuckerDelegate.sol";
 
 
 interface OpStandardBridge {
@@ -34,9 +35,11 @@ interface OpStandardBridge {
 
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.
-contract BPOptimismSucker is BPSucker {
+contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
+
+    event SuckingToRemote(address token, uint64 nonce);
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -51,6 +54,8 @@ contract BPOptimismSucker is BPSucker {
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
     constructor(
+        IJBPrices _prices,
+        IJBRulesets _rulesets,
         OPMessenger _messenger,
         OpStandardBridge _bridge,
         IJBDirectory _directory,
@@ -58,7 +63,7 @@ contract BPOptimismSucker is BPSucker {
         IJBPermissions _permissions,
         address _peer,
         uint256 _projectId
-    ) BPSucker(_directory, _tokens, _permissions, _peer, _projectId) {
+    ) BPSucker(_directory, _tokens, _permissions, _peer, _projectId) BPSuckerDelegate(_prices, _rulesets) {
         OPMESSENGER = _messenger;
         OPBRIDGE = _bridge;
     }
@@ -125,6 +130,9 @@ contract BPOptimismSucker is BPSucker {
             ),
             MESSENGER_BASE_GAS_LIMIT
         );
+
+        // Emit an event for the relayers to watch for.
+        emit SuckingToRemote(_token, _nonce);
     }
 
     /// @notice checks if the _sender (msg.sender) is a valid representative of the remote peer. 
