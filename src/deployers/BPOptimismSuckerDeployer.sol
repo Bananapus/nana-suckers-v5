@@ -32,7 +32,7 @@ contract BPOptimismSuckerDeployer {
         TOKENS = _tokens;
         PERMISSIONS = _permissions;
 
-        SUCKER_BYTECODE_HASH = keccak256(type(BPOptimismSucker).creationCode);
+        SUCKER_BYTECODE_HASH = keccak256(abi.encodePacked(type(BPOptimismSucker).creationCode));
     }
 
     function createForSender(
@@ -40,9 +40,7 @@ contract BPOptimismSuckerDeployer {
         bytes32 _salt
     ) external returns (address) {
         _salt = keccak256(abi.encodePacked(msg.sender, _salt));
-
-        address _computed = Create2.computeAddress(_salt, SUCKER_BYTECODE_HASH);
-        address _sucker = address(new BPOptimismSucker{salt: _salt}(
+        return address(new BPOptimismSucker{salt: _salt}(
             PRICES,
             RULESETS,
             MESSENGER,
@@ -50,12 +48,8 @@ contract BPOptimismSuckerDeployer {
             DIRECTORY,
             TOKENS,
             PERMISSIONS,
-            _computed,
+            address(0),
             _localProjectId
         ));
-
-        // Sanity-check: Make sure we actually deployed to the computed address.
-        assert(_computed == _sucker);
-        return _sucker;
     }
 }

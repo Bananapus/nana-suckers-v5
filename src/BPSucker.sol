@@ -156,7 +156,7 @@ abstract contract BPSucker is JBPermissioned {
     ) JBPermissioned(_permissions) {
         DIRECTORY = _directory;
         TOKENS = _tokens;
-        PEER = _peer;
+        PEER = _peer == address(0) ? address(this) : _peer;
         PROJECT_ID = _projectId;
 
         // sanity check: make sure equal depth tree is configured.

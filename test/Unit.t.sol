@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 
 import "../src/BPOptimismSucker.sol";
+import "../src/deployers/BPOptimismSuckerDeployer.sol";
 
 contract UnitTest is BPOptimismSucker, Test{
     using MerkleLib for MerkleLib.Tree;
@@ -156,5 +157,21 @@ contract UnitTest is BPOptimismSucker, Test{
             }),
             proof: __proof
         }));
+    }
+}
+
+
+contract DeployerUnitTest is Test {
+    function testDoesntRevert() public {
+        BPOptimismSuckerDeployer _deployer = new BPOptimismSuckerDeployer(
+            IJBPrices(address(0)),
+            IJBRulesets(address(0)),
+            OPMessenger(address(0)),
+            OpStandardBridge(address(0)),
+            IJBDirectory(address(0)),
+            IJBTokens(address(0)),
+            IJBPermissions(address(0))
+        );
+        _deployer.createForSender(1, bytes32(0));
     }
 }

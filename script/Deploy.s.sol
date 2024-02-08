@@ -71,7 +71,7 @@ contract Deploy is Script {
         ));
 
         console2.log("Suckers deployed.");
-        console2.log("Sucker A: ", Strings.toHexString(uint160(address(_deployerA)), 20));
+        // console2.log("Sucker A: ", Strings.toHexString(uint160(address(_deployerA)), 20));
         console2.log("Sucker B: ", Strings.toHexString(uint160(address(_deployerB)), 20));
     }
 
