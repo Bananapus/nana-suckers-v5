@@ -12,7 +12,7 @@
 
 You must have [Foundry](https://book.getfoundry.sh/) and [NodeJS](https://nodejs.dev/en/learn/how-to-install-nodejs/) to use this repo.
 
-Install with `forge install && npm install`
+Install with `forge install`
 
 If you run into trouble with nested dependencies, try running `git submodule update --init --force --recursive`.
 
