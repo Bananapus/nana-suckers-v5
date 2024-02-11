@@ -6,11 +6,13 @@ import {IJBController} from "juice-contracts-v4/src/interfaces/IJBController.sol
 import {IJBTokens, IJBToken} from "juice-contracts-v4/src/interfaces/IJBTokens.sol";
 import {IJBTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBTerminal.sol";
 import {IJBRedeemTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
+import {IJBPayoutTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBPayoutTerminal.sol";
 
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 // import {BPSuckQueueItem} from "./structs/BPSuckQueueItem.sol";
 // import {BPSuckBridgeItem} from "./structs/BPSuckBridgeItem.sol";
+import {JBAccountingContext} from "juice-contracts-v4/src/structs/JBAccountingContext.sol";
 import {BPTokenConfig} from "./structs/BPTokenConfig.sol";
 import {JBConstants} from "juice-contracts-v4/src/libraries/JBConstants.sol";
 import {JBPermissioned, IJBPermissions} from "juice-contracts-v4/src/abstract/JBPermissioned.sol";
@@ -479,23 +481,46 @@ abstract contract BPSucker is JBPermissioned {
         address _token,
         uint256 _minRedeemedTokens
     ) internal virtual returns (uint256 _redeemAmount) {
-        // Get the terminal we will use to redeem the tokens.
+        // Get the projectToken total supply.
+        uint256 _totalSupply = _projectToken.totalSupply();
+
+        // Burn the project tokens.
+        IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).burnTokensOf(
+            address(this), PROJECT_ID, _amount, string("")
+        );
+
+        // Get the primaty terminal of the project for the token.
         IJBRedeemTerminal _terminal =
             IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, _token)));
-        
+
+        // Make sure a terminal is configured for the token.
         if(address(_terminal) == address(0))
             revert TOKEN_NOT_CONFIGURED(_token);
 
-         // Perform the redemption.
+        // Get the accounting context for the token.
+        JBAccountingContext memory _accountingContext = _terminal.accountingContextForTokenOf(PROJECT_ID, _token);
+        if(_accountingContext.decimals == 0 && _accountingContext.currency == 0)
+            revert TOKEN_NOT_CONFIGURED(_token);
+
+        uint256 _surplus = _terminal.currentSurplusOf(
+            PROJECT_ID,
+            _accountingContext.decimals,
+            _accountingContext.currency
+        );
+
+        // TODO: replace with PRB-Math muldiv.
+        uint256 _backingAssets = _amount * _surplus / _totalSupply;
+
+        // Get the balance before we redeem.
         uint256 _balanceBefore = _balanceOf(_token, address(this));
-        _redeemAmount = _terminal.redeemTokensOf(
-            address(this),
+        _redeemAmount = IJBPayoutTerminal(address(_terminal)).useAllowanceOf(
             PROJECT_ID,
             _token,
-            _amount,
+            _backingAssets,
+            _accountingContext.currency,
             _minRedeemedTokens,
             payable(address(this)),
-            bytes("")
+            string("")
         );
 
         // Sanity check to make sure we actually received the reported amount.
