@@ -198,7 +198,7 @@ abstract contract BPSucker is JBPermissioned {
         _projectToken.transferFrom(msg.sender, address(this), _projectTokenAmount);
 
         // Perform the redemption.
-        uint256 _redemptionTokenAmount = _redeemTokensFor(
+        uint256 _redemptionTokenAmount = _redeemTokens(
             _projectToken,
             _projectTokenAmount,
             _token,
@@ -473,7 +473,7 @@ abstract contract BPSucker is JBPermissioned {
     /// @param _token the token to redeem for.
     /// @param _minRedeemedTokens the minimum amount of tokens to receive.
     /// @return _redeemAmount the amount of tokens received by redeeming.
-    function _redeemTokensFor(
+    function _redeemTokens(
         IERC20 _projectToken,
         uint256 _amount,
         address _token,

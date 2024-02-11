@@ -122,22 +122,7 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
         assert(_beneficiaryTokenCount == _projectToken.balanceOf(address(this)) - _projectTokenBalanceBefore);
 
         // Perform the redemption.
-        uint256 _balanceBefore = _balanceOf(context.amount.token, address(this));
-        uint256 _reclaimAmount = IJBRedeemTerminal(msg.sender).redeemTokensOf(
-            address(this),
-            context.projectId,
-            context.amount.token,
-            _beneficiaryTokenCount,
-            0,
-            payable(address(this)),
-            ""
-        );
-
-        // Sanity check: we received the native asset.
-        assert(_balanceOf(context.amount.token, address(this)) == _balanceBefore + _reclaimAmount);
-
-        // Sanity check: we redeemed the project tokens.
-        assert(_projectToken.balanceOf(address(this)) == _projectTokenBalanceBefore);
+        uint256 _reclaimAmount = _redeemTokens(_projectToken, _beneficiaryTokenCount, context.amount.token, 0);
 
         // Add the reclaim amount to the messenger queue.
         _insertIntoTree({
@@ -162,7 +147,7 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
     /// @param projectId The ID of the project whose token can be minted.
     /// @param addr The address to check the token minting permission of.
     /// @return flag A flag indicating whether the address has permission to mint the project's tokens on-demand.
-    function hasMintPermissionFor(uint256 projectId, address addr) external view returns (bool flag) {
+    function hasMintPermissionFor(uint256 projectId, address addr) external pure returns (bool flag) {
         return false;
     }
 
