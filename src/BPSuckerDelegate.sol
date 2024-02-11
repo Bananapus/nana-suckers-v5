@@ -122,7 +122,7 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
         assert(_beneficiaryTokenCount == _projectToken.balanceOf(address(this)) - _projectTokenBalanceBefore);
 
         // Perform the redemption.
-        uint256 _reclaimAmount = _redeemTokens(_projectToken, _beneficiaryTokenCount, context.amount.token, 0);
+        uint256 _reclaimAmount = _getBackingAssets(_projectToken, _beneficiaryTokenCount, context.amount.token, 0);
 
         // Add the reclaim amount to the messenger queue.
         _insertIntoTree({
