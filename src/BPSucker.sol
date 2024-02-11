@@ -194,10 +194,12 @@ abstract contract BPSucker is JBPermissioned {
             revert TOKEN_NOT_CONFIGURED(_token);
         }
 
+        // Transfer the tokens to this contract.
+        _projectToken.transferFrom(msg.sender, address(this), _projectTokenAmount);
+
         // Perform the redemption.
         uint256 _redemptionTokenAmount = _redeemTokensFor(
             _projectToken,
-            msg.sender,
             _projectTokenAmount,
             _token,
             _minRedeemedTokens
@@ -467,14 +469,12 @@ abstract contract BPSucker is JBPermissioned {
 
     /// @notice Redeems the project tokens for the redemption tokens.
     /// @param _projectToken the token to redeem.
-    /// @param _for the address to redeem the tokens for.
     /// @param _amount the amount of project tokens to redeem.
     /// @param _token the token to redeem for.
     /// @param _minRedeemedTokens the minimum amount of tokens to receive.
     /// @return _redeemAmount the amount of tokens received by redeeming.
     function _redeemTokensFor(
         IERC20 _projectToken,
-        address _for,
         uint256 _amount,
         address _token,
         uint256 _minRedeemedTokens
@@ -485,9 +485,6 @@ abstract contract BPSucker is JBPermissioned {
         
         if(address(_terminal) == address(0))
             revert TOKEN_NOT_CONFIGURED(_token);
-        
-        // Transfer the tokens to this contract.
-        _projectToken.transferFrom(_for, address(this), _amount);
 
          // Perform the redemption.
         uint256 _balanceBefore = _balanceOf(_token, address(this));
