@@ -183,42 +183,25 @@ abstract contract BPSucker is JBPermissioned {
             revert BENEFICIARY_NOT_ALLOWED();
         }
 
-        // Get the terminal we will use to redeem the tokens.
-        IJBRedeemTerminal _terminal =
-            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, _token)));
-
-        // Make sure that the token is configured to be sucked (both is redeemable and is mapped to a remote token)
-        if(address(_terminal) == address(0) || token[_token].remoteToken == address(0)){
-            revert TOKEN_NOT_CONFIGURED(_token);
-        }
-
-        // Get the token for the project.
+         // Get the token for the project.
         IERC20 _projectToken = IERC20(address(TOKENS.tokenOf(PROJECT_ID)));
         if (address(_projectToken) == address(0)) {
             revert REQUIRE_ISSUED_TOKEN();
         }
 
-        // Transfer the tokens to this contract.
-        _projectToken.transferFrom(msg.sender, address(this), _projectTokenAmount);
-
-        // Approve the terminal.
-        _projectToken.approve(address(_terminal), _projectTokenAmount);
+        // Make sure that the token is configured to be sucked.
+        if( token[_token].remoteToken == address(0)){
+            revert TOKEN_NOT_CONFIGURED(_token);
+        }
 
         // Perform the redemption.
-        uint256 _balanceBefore = _balanceOf(_token, address(this));
-        uint256 _redemptionTokenAmount = _terminal.redeemTokensOf(
-            address(this),
-            PROJECT_ID,
-            _token,
+        uint256 _redemptionTokenAmount = _redeemTokensFor(
+            _projectToken,
+            msg.sender,
             _projectTokenAmount,
-            _minRedeemedTokens,
-            payable(address(this)),
-            bytes("")
+            _token,
+            _minRedeemedTokens
         );
-
-        // Sanity check to make sure we actually received the reported amount.
-        // Prevents a malicious terminal from reporting a higher amount than it actually sent.
-        assert(_redemptionTokenAmount == _balanceOf(_token, address(this)) - _balanceBefore);
 
         // Insert the item.
         _insertIntoTree(
@@ -480,6 +463,47 @@ abstract contract BPSucker is JBPermissioned {
                 PROJECT_ID, _token, _amount, false, string(""), bytes("")
             );
         }
+    }
+
+    /// @notice Redeems the project tokens for the redemption tokens.
+    /// @param _projectToken the token to redeem.
+    /// @param _for the address to redeem the tokens for.
+    /// @param _amount the amount of project tokens to redeem.
+    /// @param _token the token to redeem for.
+    /// @param _minRedeemedTokens the minimum amount of tokens to receive.
+    /// @return _redeemAmount the amount of tokens received by redeeming.
+    function _redeemTokensFor(
+        IERC20 _projectToken,
+        address _for,
+        uint256 _amount,
+        address _token,
+        uint256 _minRedeemedTokens
+    ) internal virtual returns (uint256 _redeemAmount) {
+        // Get the terminal we will use to redeem the tokens.
+        IJBRedeemTerminal _terminal =
+            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, _token)));
+        
+        if(address(_terminal) == address(0))
+            revert TOKEN_NOT_CONFIGURED(_token);
+        
+        // Transfer the tokens to this contract.
+        _projectToken.transferFrom(_for, address(this), _amount);
+
+         // Perform the redemption.
+        uint256 _balanceBefore = _balanceOf(_token, address(this));
+        _redeemAmount = _terminal.redeemTokensOf(
+            address(this),
+            PROJECT_ID,
+            _token,
+            _amount,
+            _minRedeemedTokens,
+            payable(address(this)),
+            bytes("")
+        );
+
+        // Sanity check to make sure we actually received the reported amount.
+        // Prevents a malicious terminal from reporting a higher amount than it actually sent.
+        assert(_redeemAmount == _balanceOf(_token, address(this)) - _balanceBefore);
     }
 
     /// @notice builds the hash as its stored in the tree.
