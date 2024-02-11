@@ -15,8 +15,8 @@ import {BPTokenConfig} from "./structs/BPTokenConfig.sol";
 import {JBConstants} from "juice-contracts-v4/src/libraries/JBConstants.sol";
 import {JBPermissioned, IJBPermissions} from "juice-contracts-v4/src/abstract/JBPermissioned.sol";
 import {JBPermissionIds} from "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
-import {SafeERC20, IERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
+import {SafeERC20, IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "lib/openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
 
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.

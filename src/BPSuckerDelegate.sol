@@ -17,7 +17,7 @@ import {
 } from "juice-contracts-v4/src/interfaces/IJBRulesetDataHook.sol";
 import {IJBRedeemTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
 
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import {ERC165Checker} from "openzeppelin-contracts/contracts/utils/introspection/ERC165Checker.sol";
 import {mulDiv} from "juice-contracts-v4/lib/prb-math/src/Common.sol";
 
 abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
@@ -155,6 +155,15 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
         returns (uint256 , JBRedeemHookSpecification[] memory)
     {
         return (context.reclaimAmount.value, new JBRedeemHookSpecification[](0));
+    }
+
+    /// @notice A flag indicating whether an address has permission to mint a project's tokens on-demand.
+    /// @dev A project's data hook can allow any address to mint its tokens.
+    /// @param projectId The ID of the project whose token can be minted.
+    /// @param addr The address to check the token minting permission of.
+    /// @return flag A flag indicating whether the address has permission to mint the project's tokens on-demand.
+    function hasMintPermissionFor(uint256 projectId, address addr) external view returns (bool flag) {
+        return false;
     }
 
     function supportsInterface(bytes4 interfaceId) external view returns (bool) {

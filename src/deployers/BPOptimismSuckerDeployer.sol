@@ -3,7 +3,7 @@ pragma solidity ^0.8.21;
 
 import "../BPOptimismSucker.sol";
 
-import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
+import {Create2} from "openzeppelin-contracts/contracts/utils/Create2.sol";
 
 contract BPOptimismSuckerDeployer {
     IJBPrices immutable PRICES;

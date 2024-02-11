@@ -242,7 +242,7 @@ contract CreateProjectsScript is Script {
         vm.broadcast();
         _projectId = _controller.launchProjectFor({
             owner: msg.sender,
-            projectMetadata: "myIPFSHash",
+            projectUri: "myIPFSHash",
             rulesetConfigurations: _rulesetConfig,
             terminalConfigurations: _terminalConfigurations,
             memo: ""
