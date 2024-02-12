@@ -4,7 +4,6 @@ pragma solidity ^0.8.21;
 import "../BPOptimismSucker.sol";
 
 import {Create2} from "openzeppelin-contracts/contracts/utils/Create2.sol";
-
 import {JBPermissioned, IJBPermissions} from "juice-contracts-v4/src/abstract/JBPermissioned.sol";
 import {IJBPayoutTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBPayoutTerminal.sol";
 
@@ -19,6 +18,7 @@ contract BPOptimismSuckerDeployer is JBPermissioned {
     IJBDirectory immutable DIRECTORY;
     IJBTokens immutable TOKENS;
 
+    /// @notice A mapping of suckers deployed by this contract.
     mapping(address => bool) public isSucker;
 
     constructor(
@@ -38,6 +38,11 @@ contract BPOptimismSuckerDeployer is JBPermissioned {
         TOKENS = _tokens;
     }
 
+    /// @notice Create a new sucker for a specific project.
+    /// @dev uses the sender address as the salt, requires the same sender to deploy on both chains.
+    /// @param _localProjectId the project id on this chain.
+    /// @param _salt the salt to use for the create2 address.
+    /// @return _sucker the address of the new sucker.
     function createForSender(
         uint256 _localProjectId,
         bytes32 _salt
@@ -58,7 +63,7 @@ contract BPOptimismSuckerDeployer is JBPermissioned {
     }
 
     /// @notice Use the allowance of a project witgout paying exit fees.
-    /// @dev This function can only be called by suckers deploted by this contract, and only if the project owner has given the specicifc sucker permission to use the allowance.
+    /// @dev This function can only be called by suckers deployed by this contract, and only if the project owner has given the specicifc sucker permission to use the allowance.
     /// @dev This is not necesarily feeless, as it still requires JBDAO to mark this as feeless first. 
     /// @param _projectId the project id.
     /// @param _terminal the terminal to use.
