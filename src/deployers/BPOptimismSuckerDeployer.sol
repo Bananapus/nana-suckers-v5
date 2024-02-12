@@ -18,7 +18,6 @@ contract BPOptimismSuckerDeployer is JBPermissioned {
     OpStandardBridge immutable BRIDGE;
     IJBDirectory immutable DIRECTORY;
     IJBTokens immutable TOKENS;
-    bytes32 immutable SUCKER_BYTECODE_HASH;
 
     mapping(address => bool) public isSucker;
 
@@ -37,8 +36,6 @@ contract BPOptimismSuckerDeployer is JBPermissioned {
         BRIDGE = _bridge;
         DIRECTORY = _directory;
         TOKENS = _tokens;
-
-        SUCKER_BYTECODE_HASH = keccak256(abi.encodePacked(type(BPOptimismSucker).creationCode));
     }
 
     function createForSender(
