@@ -7,7 +7,7 @@ import {IJBTokens, IJBToken} from "juice-contracts-v4/src/interfaces/IJBTokens.s
 import {IJBTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBTerminal.sol";
 import {IJBRedeemTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
 import {IJBPayoutTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBPayoutTerminal.sol";
-
+import {FeelessDeployer} from "./interfaces/FeelessDeployer.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 // import {BPSuckQueueItem} from "./structs/BPSuckQueueItem.sol";
@@ -128,6 +128,9 @@ abstract contract BPSucker is JBPermissioned {
     /// @notice The Juicebox Tokenstore
     IJBTokens public immutable TOKENS;
 
+    /// @notice The addres of the deployer.
+    address public immutable DEPLOYER;
+
     /// @notice The peer sucker on the remote chain.
     address public immutable PEER;
 
@@ -192,7 +195,7 @@ abstract contract BPSucker is JBPermissioned {
         }
 
         // Make sure that the token is configured to be sucked.
-        if( token[_token].remoteToken == address(0)){
+        if(token[_token].remoteToken == address(0)){
             revert TOKEN_NOT_CONFIGURED(_token);
         }
 
@@ -473,14 +476,14 @@ abstract contract BPSucker is JBPermissioned {
     /// @param _projectToken the token to redeem.
     /// @param _amount the amount of project tokens to redeem.
     /// @param _token the token to redeem for.
-    /// @param _minRedeemedTokens the minimum amount of tokens to receive.
-    /// @return _redeemAmount the amount of tokens received by redeeming.
+    /// @param _minReceivedTokens the minimum amount of tokens to receive.
+    /// @return _receivedAmount the amount of tokens received by redeeming.
     function _getBackingAssets(
         IERC20 _projectToken,
         uint256 _amount,
         address _token,
-        uint256 _minRedeemedTokens
-    ) internal virtual returns (uint256 _redeemAmount) {
+        uint256 _minReceivedTokens
+    ) internal virtual returns (uint256 _receivedAmount) {
         // Get the projectToken total supply.
         uint256 _totalSupply = _projectToken.totalSupply();
 
@@ -513,19 +516,18 @@ abstract contract BPSucker is JBPermissioned {
 
         // Get the balance before we redeem.
         uint256 _balanceBefore = _balanceOf(_token, address(this));
-        _redeemAmount = IJBPayoutTerminal(address(_terminal)).useAllowanceOf(
+        _receivedAmount = FeelessDeployer(DEPLOYER).useAllowanceFeeless(
             PROJECT_ID,
+            IJBPayoutTerminal(address(_terminal)),
             _token,
-            _backingAssets,
             _accountingContext.currency,
-            _minRedeemedTokens,
-            payable(address(this)),
-            string("")
+            _backingAssets,
+            _minReceivedTokens
         );
 
         // Sanity check to make sure we actually received the reported amount.
         // Prevents a malicious terminal from reporting a higher amount than it actually sent.
-        assert(_redeemAmount == _balanceOf(_token, address(this)) - _balanceBefore);
+        assert(_receivedAmount == _balanceOf(_token, address(this)) - _balanceBefore);
     }
 
     /// @notice builds the hash as its stored in the tree.
