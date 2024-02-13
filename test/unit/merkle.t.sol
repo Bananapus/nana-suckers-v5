@@ -3,10 +3,10 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 
-import "../src/BPOptimismSucker.sol";
-import "../src/deployers/BPOptimismSuckerDeployer.sol";
+import "../../src/BPOptimismSucker.sol";
+import "../../src/deployers/BPOptimismSuckerDeployer.sol";
 
-contract UnitTest is BPOptimismSucker, Test{
+contract MerkleUnitTest is BPOptimismSucker, Test{
     using MerkleLib for MerkleLib.Tree;
 
     bytes32[32] _proof;
