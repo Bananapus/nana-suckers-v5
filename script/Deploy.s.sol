@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, OPStandardBridge} from "../src/BPOptimismSucker.sol";
+import {IJBDirectory, IJBTokens, IJBPermissions, OPStandardBridge} from "../src/BPOptimismSucker.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 import "../src/deployers/BPOptimismSuckerDeployer.sol";
 import "openzeppelin-contracts/contracts/utils/Strings.sol";
