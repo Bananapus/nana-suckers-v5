@@ -6,17 +6,17 @@ import {IJBController} from "juice-contracts-v4/src/interfaces/IJBController.sol
 import {IJBTokens, IJBToken} from "juice-contracts-v4/src/interfaces/IJBTokens.sol";
 import {IJBTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBTerminal.sol";
 import {IJBRedeemTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
-
+import {IJBPayoutTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBPayoutTerminal.sol";
+import {FeelessDeployer} from "./interfaces/FeelessDeployer.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
-// import {BPSuckQueueItem} from "./structs/BPSuckQueueItem.sol";
-// import {BPSuckBridgeItem} from "./structs/BPSuckBridgeItem.sol";
+import {JBAccountingContext} from "juice-contracts-v4/src/structs/JBAccountingContext.sol";
 import {BPTokenConfig} from "./structs/BPTokenConfig.sol";
 import {JBConstants} from "juice-contracts-v4/src/libraries/JBConstants.sol";
 import {JBPermissioned, IJBPermissions} from "juice-contracts-v4/src/abstract/JBPermissioned.sol";
 import {JBPermissionIds} from "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
 import {SafeERC20, IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "lib/openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
+import {BitMaps} from "lib/openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
 
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.
@@ -126,6 +126,9 @@ abstract contract BPSucker is JBPermissioned {
     /// @notice The Juicebox Tokenstore
     IJBTokens public immutable TOKENS;
 
+    /// @notice The addres of the deployer.
+    address public immutable DEPLOYER;
+
     /// @notice The peer sucker on the remote chain.
     address public immutable PEER;
 
@@ -190,7 +193,7 @@ abstract contract BPSucker is JBPermissioned {
         }
 
         // Make sure that the token is configured to be sucked.
-        if( token[_token].remoteToken == address(0)){
+        if(token[_token].remoteToken == address(0)){
             revert TOKEN_NOT_CONFIGURED(_token);
         }
 
@@ -471,36 +474,58 @@ abstract contract BPSucker is JBPermissioned {
     /// @param _projectToken the token to redeem.
     /// @param _amount the amount of project tokens to redeem.
     /// @param _token the token to redeem for.
-    /// @param _minRedeemedTokens the minimum amount of tokens to receive.
-    /// @return _redeemAmount the amount of tokens received by redeeming.
+    /// @param _minReceivedTokens the minimum amount of tokens to receive.
+    /// @return _receivedAmount the amount of tokens received by redeeming.
     function _getBackingAssets(
         IERC20 _projectToken,
         uint256 _amount,
         address _token,
-        uint256 _minRedeemedTokens
-    ) internal virtual returns (uint256 _redeemAmount) {
-        // Get the terminal we will use to redeem the tokens.
+        uint256 _minReceivedTokens
+    ) internal virtual returns (uint256 _receivedAmount) {
+        // Get the projectToken total supply.
+        uint256 _totalSupply = _projectToken.totalSupply();
+
+        // Burn the project tokens.
+        IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).burnTokensOf(
+            address(this), PROJECT_ID, _amount, string("")
+        );
+
+        // Get the primaty terminal of the project for the token.
         IJBRedeemTerminal _terminal =
             IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, _token)));
-        
+
+        // Make sure a terminal is configured for the token.
         if(address(_terminal) == address(0))
             revert TOKEN_NOT_CONFIGURED(_token);
 
-         // Perform the redemption.
-        uint256 _balanceBefore = _balanceOf(_token, address(this));
-        _redeemAmount = _terminal.redeemTokensOf(
-            address(this),
+        // Get the accounting context for the token.
+        JBAccountingContext memory _accountingContext = _terminal.accountingContextForTokenOf(PROJECT_ID, _token);
+        if(_accountingContext.decimals == 0 && _accountingContext.currency == 0)
+            revert TOKEN_NOT_CONFIGURED(_token);
+
+        uint256 _surplus = _terminal.currentSurplusOf(
             PROJECT_ID,
+            _accountingContext.decimals,
+            _accountingContext.currency
+        );
+
+        // TODO: replace with PRB-Math muldiv.
+        uint256 _backingAssets = _amount * _surplus / _totalSupply;
+
+        // Get the balance before we redeem.
+        uint256 _balanceBefore = _balanceOf(_token, address(this));
+        _receivedAmount = FeelessDeployer(DEPLOYER).useAllowanceFeeless(
+            PROJECT_ID,
+            IJBPayoutTerminal(address(_terminal)),
             _token,
-            _amount,
-            _minRedeemedTokens,
-            payable(address(this)),
-            bytes("")
+            _accountingContext.currency,
+            _backingAssets,
+            _minReceivedTokens
         );
 
         // Sanity check to make sure we actually received the reported amount.
         // Prevents a malicious terminal from reporting a higher amount than it actually sent.
-        assert(_redeemAmount == _balanceOf(_token, address(this)) - _balanceBefore);
+        assert(_receivedAmount == _balanceOf(_token, address(this)) - _balanceBefore);
     }
 
     /// @notice builds the hash as its stored in the tree.
