@@ -3,7 +3,7 @@ pragma solidity ^0.8.21;
 
 import {IJBDirectory} from "juice-contracts-v4/src/interfaces/IJBDirectory.sol";
 import {IJBController} from "juice-contracts-v4/src/interfaces/IJBController.sol";
-import {IJBTokens, IJBToken} from "juice-contracts-v4/src/interfaces/IJBTokens.sol";
+import {IJBTokens} from "juice-contracts-v4/src/interfaces/IJBTokens.sol";
 import {IJBTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBTerminal.sol";
 import {IJBRedeemTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
 import {IJBPayoutTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBPayoutTerminal.sol";

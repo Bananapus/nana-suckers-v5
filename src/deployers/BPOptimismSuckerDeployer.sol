@@ -14,7 +14,7 @@ contract BPOptimismSuckerDeployer is JBPermissioned {
     IJBPrices immutable PRICES;
     IJBRulesets immutable RULESETS;
     OPMessenger immutable MESSENGER;
-    OpStandardBridge immutable BRIDGE;
+    OPStandardBridge immutable BRIDGE;
     IJBDirectory immutable DIRECTORY;
     IJBTokens immutable TOKENS;
 
@@ -25,7 +25,7 @@ contract BPOptimismSuckerDeployer is JBPermissioned {
         IJBPrices _prices,
         IJBRulesets _rulesets,
         OPMessenger _messenger,
-        OpStandardBridge _bridge,
+        OPStandardBridge _bridge,
         IJBDirectory _directory,
         IJBTokens _tokens,
         IJBPermissions _permissions

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.21;
 
 import "./BPSucker.sol";
-import {JBConstants} from "juice-contracts-v4/src/libraries/JBConstants.sol";
 import {IJBPrices} from "juice-contracts-v4/src/interfaces/IJBPrices.sol";
 import {IJBPayHook, JBAfterPayRecordedContext} from "juice-contracts-v4/src/interfaces/IJBPayHook.sol";
 import {JBRuleset} from "juice-contracts-v4/src/structs/JBRuleset.sol";

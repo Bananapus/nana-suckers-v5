@@ -15,7 +15,7 @@ contract MerkleUnitTest is BPOptimismSucker, Test{
         IJBPrices(address(500)),
         IJBRulesets(address(500)),
         OPMessenger(address(500)),
-        OpStandardBridge(address(550)),
+        OPStandardBridge(address(550)),
         IJBDirectory(address(600)),
         IJBTokens(address(700)),
         IJBPermissions(address(800)),
@@ -167,7 +167,7 @@ contract DeployerUnitTest is Test {
             IJBPrices(address(0)),
             IJBRulesets(address(0)),
             OPMessenger(address(0)),
-            OpStandardBridge(address(0)),
+            OPStandardBridge(address(0)),
             IJBDirectory(address(0)),
             IJBTokens(address(0)),
             IJBPermissions(address(0))
