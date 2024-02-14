@@ -2,15 +2,21 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPTokenConfig, OPStandardBridge} from "../src/BPOptimismSucker.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {
+    BPOptimismSucker,
+    IJBDirectory,
+    IJBTokens,
+    IJBPermissions,
+    BPTokenConfig,
+    OPStandardBridge
+} from "../src/BPOptimismSucker.sol";
 
-interface OPTestBridgeToken is IERC20 { 
+interface OPTestBridgeToken is IERC20 {
     function faucet() external;
 }
 
 contract FundWithTestERC20 is Script {
-
     string CHAIN_A_RPC;
     string CHAIN_B_RPC;
 
@@ -29,7 +35,7 @@ contract FundWithTestERC20 is Script {
         }
     }
 
-     function run() public {
+    function run() public {
         uint256 _chainA = vm.createSelectFork(CHAIN_A_RPC);
 
         OPTestBridgeToken _testToken = OPTestBridgeToken(0x12608ff9dac79d8443F17A4d39D93317BAD026Aa);
@@ -50,7 +56,7 @@ contract FundWithTestERC20 is Script {
             to: address(msg.sender),
             amount: _amount,
             minGasLimit: 200_000,
-            extraData: bytes('')
+            extraData: bytes("")
         });
-     }
+    }
 }

@@ -2,22 +2,22 @@
 pragma solidity ^0.8.21;
 
 import "./BPSucker.sol";
-import {IJBPrices} from "juice-contracts-v4/src/interfaces/IJBPrices.sol";
-import {IJBPayHook, JBAfterPayRecordedContext} from "juice-contracts-v4/src/interfaces/IJBPayHook.sol";
-import {JBRuleset} from "juice-contracts-v4/src/structs/JBRuleset.sol";
-import {IJBRulesets} from "juice-contracts-v4/src/interfaces/IJBRulesets.sol";
-import {JBRulesetMetadataResolver} from "juice-contracts-v4/src/libraries/JBRulesetMetadataResolver.sol";
+import {IJBPrices} from "@bananapus/core/src/interfaces/IJBPrices.sol";
+import {IJBPayHook, JBAfterPayRecordedContext} from "@bananapus/core/src/interfaces/IJBPayHook.sol";
+import {JBRuleset} from "@bananapus/core/src/structs/JBRuleset.sol";
+import {IJBRulesets} from "@bananapus/core/src/interfaces/IJBRulesets.sol";
+import {JBRulesetMetadataResolver} from "@bananapus/core/src/libraries/JBRulesetMetadataResolver.sol";
 import {
     IJBRulesetDataHook,
     JBBeforePayRecordedContext,
     JBBeforeRedeemRecordedContext,
     JBPayHookSpecification,
     JBRedeemHookSpecification
-} from "juice-contracts-v4/src/interfaces/IJBRulesetDataHook.sol";
-import {IJBRedeemTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
+} from "@bananapus/core/src/interfaces/IJBRulesetDataHook.sol";
+import {IJBRedeemTerminal} from "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
 
-import {ERC165Checker} from "openzeppelin-contracts/contracts/utils/introspection/ERC165Checker.sol";
-import {mulDiv} from "juice-contracts-v4/lib/prb-math/src/Common.sol";
+import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import {mulDiv} from "@prb/math/src/Common.sol";
 
 abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
     // A library that parses the packed ruleset metadata into a friendlier format.
@@ -40,10 +40,7 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
     /// @notice The contract that exposes price feeds.
     IJBPrices public immutable PRICES;
 
-    constructor(
-        IJBPrices _prices,
-        IJBRulesets _rulesets
-    ) {
+    constructor(IJBPrices _prices, IJBRulesets _rulesets) {
         PRICES = _prices;
         RULESETS = _rulesets;
     }
@@ -59,12 +56,13 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
         view
         returns (uint256 weight, JBPayHookSpecification[] memory hookSpecifications)
     {
-        if(context.projectId != PROJECT_ID) revert INVALID_REMOTE_PROJECT_ID(PROJECT_ID, context.projectId);
+        if (context.projectId != PROJECT_ID) revert INVALID_REMOTE_PROJECT_ID(PROJECT_ID, context.projectId);
 
         address _token = context.amount.token;
         if (
-            // Check if the token is is configured.
-            token[_token].remoteToken == address(0)
+            token[_token]
+                // Check if the token is is configured.
+                .remoteToken == address(0)
             // Check if the terminal supports the redeem terminal interface.
             && !ERC165Checker.supportsInterface(address(context.terminal), type(IJBRedeemTerminal).interfaceId)
         ) {
@@ -74,11 +72,7 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
 
         // We return zero weight, so that we can do the mint on the remote chain.
         hookSpecifications = new JBPayHookSpecification[](1);
-        hookSpecifications[0] = JBPayHookSpecification({
-            hook: IJBPayHook(address(this)),
-            amount: 0,
-            metadata: ''
-        });
+        hookSpecifications[0] = JBPayHookSpecification({hook: IJBPayHook(address(this)), amount: 0, metadata: ""});
 
         return (0, hookSpecifications);
     }
@@ -136,7 +130,7 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
     function beforeRedeemRecordedWith(JBBeforeRedeemRecordedContext calldata context)
         external
         pure
-        returns (uint256 , JBRedeemHookSpecification[] memory)
+        returns (uint256, JBRedeemHookSpecification[] memory)
     {
         return (context.reclaimAmount.value, new JBRedeemHookSpecification[](0));
     }

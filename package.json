@@ -1,5 +1,23 @@
 {
+  "name": "@bananapus/suckers",
+  "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bananapus/nana-suckers"
+  },
+  "scripts": {
+    "test": "forge test",
+    "coverage": "forge coverage --match-path \"./src/*.sol\" --report lcov --report summary",
+    "deploy:ethereum-mainnet": "source .env && forge script Deploy --chain-id 1 --rpc-url $RPC_ETHEREUM_MAINNET --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_ETHEREUM_MAINNET -vvv",
+    "deploy:ethereum-sepolia": "source .env && forge script Deploy --chain-id 11155111 --rpc-url $RPC_ETHEREUM_SEPOLIA --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_ETHEREUM_SEPOLIA -vvv",
+    "deploy:optimism-mainnet": "source .env && forge script Deploy --chain-id 420 --rpc-url $RPC_OPTIMISM_MAINNET --broadcast --verify --etherscan-api-key $OPTIMISTIC_ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_OPTIMISM_MAINNET -vvv",
+    "deploy:optimism-sepolia": "source .env && forge script Deploy --chain-id 11155420 --rpc-url $RPC_OPTIMISM_SEPOLIA --broadcast --verify --etherscan-api-key $OPTIMISTIC_ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_OPTIMISM_SEPOLIA -vvv"
+  },
   "dependencies": {
-    "@jbx-protocol/juice-contracts-v3": "^5.0.0"
+    "@bananapus/core": "^0.0.3",
+    "@openzeppelin/contracts": "^5.0.1",
+    "@prb/math": "^4.0.2",
+    "@arbitrum/nitro-contracts": "github:OffchainLabs/nitro-contracts"
   }
 }

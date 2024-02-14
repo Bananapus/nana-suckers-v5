@@ -2,7 +2,9 @@
 pragma solidity ^0.8.21;
 
 import {OPMessenger} from "../../src/interfaces/OPMessenger.sol";
-import "../../lib/permit2/lib/openzeppelin-contracts/contracts/mocks/ERC20Mock.sol";
+import "./ERC20Mock.sol";
+
+// FROM https://github.com/OpenZeppelin/openzeppelin-contracts/blob/d3ff81b37f3c773b44dcaf5fda212c7176eef0e2/contracts/mocks/ERC20Mock.sol
 
 contract MockMessenger is OPMessenger {
     address public xDomainMessageSender;
@@ -31,11 +33,7 @@ contract MockMessenger is OPMessenger {
         ERC20Mock(remoteToken).mint(to, amount);
     }
 
-
-    function setRemoteToken(
-        address localToken,
-        address remoteToken
-    ) external {
+    function setRemoteToken(address localToken, address remoteToken) external {
         tokens[localToken] = remoteToken;
     }
 }

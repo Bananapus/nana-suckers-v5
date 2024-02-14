@@ -6,38 +6,37 @@ import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions} from "../src/
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
-import {Strings} from "../lib/juice-contracts-v4/lib/openzeppelin-contracts/contracts/utils/Strings.sol";
-import {IJBPermissions, JBPermissionsData} from "juice-contracts-v4/src/interfaces/IJBPermissions.sol";
-import "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
-// import "../lib/juice-contracts-v4/src/interfaces/IJBController.sol";
-// import "../lib/juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
-import "juice-contracts-v4/src/interfaces/terminal/IJBMultiTerminal.sol";
-// import "juice-contracts-v4/src/interfaces/IJBPriceFeed.sol"; 
-// import "../lib/juice-contracts-v4/src/interfaces/IJBPrices.sol"; 
-import "../lib/juice-contracts-v4/src/libraries/JBConstants.sol";
-// import "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
-// import {JBRulesetConfig} from "juice-contracts-v4/src/structs/JBRulesetConfig.sol";
-// import {JBFundAccessLimitGroup} from "../lib/juice-contracts-v4/src/structs/JBFundAccessLimitGroup.sol";
-// import {IJBRulesetApprovalHook} from "juice-contracts-v4/src/interfaces/IJBRulesetApprovalHook.sol";
-// import {IJBPermissions, JBPermissionsData} from "juice-contracts-v4/src/interfaces/IJBPermissions.sol";
-import {SafeERC20, IERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {IJBPermissions, JBPermissionsData} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
+import "@bananapus/core/src/libraries/JBPermissionIds.sol";
+// import "@bananapus/core/src/interfaces/IJBController.sol";
+// import "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
+import "@bananapus/core/src/interfaces/terminal/IJBMultiTerminal.sol";
+// import "@bananapus/core/src/interfaces/IJBPriceFeed.sol";
+// import "@bananapus/core/src/interfaces/IJBPrices.sol";
+import "@bananapus/core/src/libraries/JBConstants.sol";
+// import "@bananapus/core/src/libraries/JBPermissionIds.sol";
+// import {JBRulesetConfig} from "@bananapus/core/src/structs/JBRulesetConfig.sol";
+// import {JBFundAccessLimitGroup} from "@bananapus/core/src/structs/JBFundAccessLimitGroup.sol";
+// import {IJBRulesetApprovalHook} from "@bananapus/core/src/interfaces/IJBRulesetApprovalHook.sol";
+// import {IJBPermissions, JBPermissionsData} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-interface OPTestBridgeToken is IERC20 { 
+interface OPTestBridgeToken is IERC20 {
     function faucet() external;
 }
-
 
 contract PermissionsScript is Script {
     // Sepolia config
     string CHAIN_A_RPC;
     OPMessenger constant CHAIN_A_OP_MESSENGER = OPMessenger(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef);
-    string CHAIN_A_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json";
+    string CHAIN_A_DEPLOYMENT_JSON = "@bananapus/core/broadcast/Deploy.s.sol/11155111/run-latest.json";
     uint256 PROJECT_ID_CHAIN_A = 2;
 
     // OP Sepolia config
     string CHAIN_B_RPC;
     OPMessenger constant CHAIN_B_OP_MESSENGER = OPMessenger(0x4200000000000000000000000000000000000007);
-    string CHAIN_B_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155420/run-latest.json";
+    string CHAIN_B_DEPLOYMENT_JSON = "@bananapus/core/broadcast/Deploy.s.sol/11155420/run-latest.json";
     uint256 PROJECT_ID_CHAIN_B = 2;
 
     function setUp() public {
@@ -61,7 +60,8 @@ contract PermissionsScript is Script {
         uint256 _projectIdB = 7;
 
         OPTestBridgeToken _testToken = OPTestBridgeToken(0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2);
-        IJBRedeemTerminal _terminal = IJBRedeemTerminal(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBMultiTerminal"));
+        IJBRedeemTerminal _terminal =
+            IJBRedeemTerminal(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBMultiTerminal"));
         uint256 _amount = 1000_000_000_000_000_000_000;
 
         _testToken.approve(address(_terminal), _amount);
@@ -78,12 +78,10 @@ contract PermissionsScript is Script {
         });
 
         // Send the tree to the L1.
-        BPSuckerDelegate(payable(0x0af08A4aa6ebC5D158F634d3D02f1A7193BfD9EB)).toRemote(
-            address(_testToken)
-        );
+        BPSuckerDelegate(payable(0x0af08A4aa6ebC5D158F634d3D02f1A7193BfD9EB)).toRemote(address(_testToken));
     }
 
-     /**
+    /**
      * @notice Get the address of a contract that was deployed by the Deploy script.
      *     @dev Reverts if the contract was not found.
      *     @param _path The path to the deployment file.
@@ -108,5 +106,4 @@ contract PermissionsScript is Script {
             string.concat("Could not find contract with name '", _contractName, "' in deployment file '", _path, "'")
         );
     }
-
 }

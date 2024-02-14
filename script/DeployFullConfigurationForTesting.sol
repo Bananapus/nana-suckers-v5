@@ -2,26 +2,33 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPTokenConfig, OPStandardBridge} from "../src/BPOptimismSucker.sol";
+import {
+    BPOptimismSucker,
+    IJBDirectory,
+    IJBTokens,
+    IJBPermissions,
+    BPTokenConfig,
+    OPStandardBridge
+} from "../src/BPOptimismSucker.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
 // import {BPOptimismSucker} from "../src/BPOptimismSucker.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
-import {Strings} from "../lib/juice-contracts-v4/lib/openzeppelin-contracts/contracts/utils/Strings.sol";
-import "../lib/juice-contracts-v4/src/interfaces/IJBController.sol";
-import "../lib/juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
-// import "juice-contracts-v4/src/interfaces/terminal/IJBMultiTerminal.sol";
-// import "juice-contracts-v4/src/interfaces/IJBPriceFeed.sol"; 
-import "../lib/juice-contracts-v4/src/interfaces/IJBPrices.sol"; 
-import "../lib/juice-contracts-v4/src/libraries/JBConstants.sol";
-// import "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
-// import {JBRulesetConfig} from "juice-contracts-v4/src/structs/JBRulesetConfig.sol";
-import {JBFundAccessLimitGroup} from "../lib/juice-contracts-v4/src/structs/JBFundAccessLimitGroup.sol";
-import {SafeERC20, IERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-// import {IJBRulesetApprovalHook} from "juice-contracts-v4/src/interfaces/IJBRulesetApprovalHook.sol";
-// import {IJBPermissions, JBPermissionsData} from "juice-contracts-v4/src/interfaces/IJBPermissions.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import "@bananapus/core/src/interfaces/IJBController.sol";
+import "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
+// import "@bananapus/core/src/interfaces/terminal/IJBMultiTerminal.sol";
+// import "@bananapus/core/src/interfaces/IJBPriceFeed.sol";
+import "@bananapus/core/src/interfaces/IJBPrices.sol";
+import "@bananapus/core/src/libraries/JBConstants.sol";
+// import "@bananapus/core/src/libraries/JBPermissionIds.sol";
+// import {JBRulesetConfig} from "@bananapus/core/src/structs/JBRulesetConfig.sol";
+import {JBFundAccessLimitGroup} from "@bananapus/core/src/structs/JBFundAccessLimitGroup.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+// import {IJBRulesetApprovalHook} from "@bananapus/core/src/interfaces/IJBRulesetApprovalHook.sol";
+// import {IJBPermissions, JBPermissionsData} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 
-interface OPTestBridgeToken is IERC20 { 
+interface OPTestBridgeToken is IERC20 {
     function faucet() external;
 }
 
@@ -30,13 +37,13 @@ contract CreateProjectsScript is Script {
     string CHAIN_A_RPC;
     OPMessenger constant CHAIN_A_OP_MESSENGER = OPMessenger(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef);
     OPStandardBridge constant CHAIN_A_OP_BRIDGE = OPStandardBridge(0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1);
-    string CHAIN_A_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json";
+    string CHAIN_A_DEPLOYMENT_JSON = "@bananapus/core/broadcast/Deploy.s.sol/11155111/run-latest.json";
 
     // OP Sepolia config
     string CHAIN_B_RPC;
     OPMessenger constant CHAIN_B_OP_MESSENGER = OPMessenger(0x4200000000000000000000000000000000000007);
     OPStandardBridge constant CHAIN_B_OP_BRIDGE = OPStandardBridge(0x4200000000000000000000000000000000000010);
-    string CHAIN_B_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155420/run-latest.json";
+    string CHAIN_B_DEPLOYMENT_JSON = "@bananapus/core/broadcast/Deploy.s.sol/11155420/run-latest.json";
 
     function setUp() public {
         CHAIN_A_RPC = vm.envString("CHAIN_A_RPC");
@@ -54,11 +61,13 @@ contract CreateProjectsScript is Script {
     function run() public {
         // Get the nonces for the two chains.
         uint256 _chainA = vm.createSelectFork(CHAIN_A_RPC);
-        uint256 _expectedChainAProjectID = IJBProjects(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBProjects")).count() + 1;
+        uint256 _expectedChainAProjectID =
+            IJBProjects(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBProjects")).count() + 1;
         uint256 _chainANonce = vm.getNonce(msg.sender);
 
         uint256 _chainB = vm.createSelectFork(CHAIN_B_RPC);
-        uint256 _expectedChainBProjectID = IJBProjects(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBProjects")).count() + 1;
+        uint256 _expectedChainBProjectID =
+            IJBProjects(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBProjects")).count() + 1;
         uint256 _chainBNonce = vm.getNonce(msg.sender);
 
         if (_chainANonce != _chainANonce) {
@@ -110,7 +119,6 @@ contract CreateProjectsScript is Script {
         console2.log("Sucker A: ", Strings.toHexString(uint160(address(_suckerA)), 20));
         console2.log("Sucker B: ", Strings.toHexString(uint160(address(_suckerB)), 20));
 
-
         address[] memory _a_tokens = new address[](1);
         _a_tokens[0] = address(0x12608ff9dac79d8443F17A4d39D93317BAD026Aa);
 
@@ -139,11 +147,11 @@ contract CreateProjectsScript is Script {
             _suckerB
         );
 
-        if(_expectedChainAProjectID != _projectIdA) {
+        if (_expectedChainAProjectID != _projectIdA) {
             revert("Project ID A is not what we expected it to be.");
         }
 
-        if(_expectedChainBProjectID != _projectIdB) {
+        if (_expectedChainBProjectID != _projectIdB) {
             revert("Project ID B is not what we expected it to be.");
         }
 
@@ -151,30 +159,21 @@ contract CreateProjectsScript is Script {
         vm.selectFork(_chainA);
         vm.broadcast();
         _suckerA.configureToken(
-            _a_tokens[0],
-            BPTokenConfig({
-                minGas: 200_000,
-                remoteToken: _b_tokens[0],
-                minBridgeAmount: 0.001 ether
-            })
+            _a_tokens[0], BPTokenConfig({minGas: 200_000, remoteToken: _b_tokens[0], minBridgeAmount: 0.001 ether})
         );
 
         vm.selectFork(_chainB);
         vm.broadcast();
         _suckerB.configureToken(
-            _b_tokens[0],
-            BPTokenConfig({
-                minGas: 200_000,
-                remoteToken: _a_tokens[0],
-                minBridgeAmount: 0.001 ether
-            })
+            _b_tokens[0], BPTokenConfig({minGas: 200_000, remoteToken: _a_tokens[0], minBridgeAmount: 0.001 ether})
         );
 
         console2.log("Chain B projectID", Strings.toString(_projectIdB));
 
         vm.selectFork(_chainB);
         OPTestBridgeToken _testToken = OPTestBridgeToken(0x7c6b91D9Be155A6Db01f749217d76fF02A7227F2);
-        IJBRedeemTerminal _terminal = IJBRedeemTerminal(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBMultiTerminal"));
+        IJBRedeemTerminal _terminal =
+            IJBRedeemTerminal(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBMultiTerminal"));
         uint256 _amount = 1000_000_000_000_000_000_000;
 
         // vm.startBroadcast();
@@ -252,7 +251,7 @@ contract CreateProjectsScript is Script {
         _controller.deployERC20For(_projectId, _tokenName, _tokenSymbol);
     }
 
-     /**
+    /**
      * @notice Get the address of a contract that was deployed by the Deploy script.
      *     @dev Reverts if the contract was not found.
      *     @param _path The path to the deployment file.
@@ -277,5 +276,4 @@ contract CreateProjectsScript is Script {
             string.concat("Could not find contract with name '", _contractName, "' in deployment file '", _path, "'")
         );
     }
-
 }
