@@ -2,7 +2,9 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, OPStandardBridge} from "../src/BPOptimismSucker.sol";
+import {
+    BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, OPStandardBridge
+} from "../src/BPOptimismSucker.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 import "../src/deployers/BPOptimismSuckerDeployer.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -19,7 +21,7 @@ contract Deploy is Script {
     OPMessenger constant CHAIN_B_OP_MESSENGER = OPMessenger(0x4200000000000000000000000000000000000007);
     OPStandardBridge constant CHAIN_B_OP_BRIDGE = OPStandardBridge(0x4200000000000000000000000000000000000010);
     string CHAIN_B_DEPLOYMENT_JSON = "@bananapus/core/broadcast/Deploy.s.sol/11155420/run-latest.json";
-    
+
     function setUp() public {
         CHAIN_A_RPC = vm.envString("CHAIN_A_RPC");
         CHAIN_B_RPC = vm.envString("CHAIN_B_RPC");
@@ -48,27 +50,31 @@ contract Deploy is Script {
         // Deploy the suckers.
         vm.selectFork(_chainA);
         vm.broadcast();
-        address _deployerA = address(new BPOptimismSuckerDeployer(
-            IJBPrices(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPrices")),
-            IJBRulesets(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBRulesets")),
-            CHAIN_A_OP_MESSENGER,
-            CHAIN_A_OP_BRIDGE,
-            IJBDirectory(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBDirectory")),
-            IJBTokens(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBTokens")),
-            IJBPermissions(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPermissions"))
-        ));
+        address _deployerA = address(
+            new BPOptimismSuckerDeployer(
+                IJBPrices(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPrices")),
+                IJBRulesets(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBRulesets")),
+                CHAIN_A_OP_MESSENGER,
+                CHAIN_A_OP_BRIDGE,
+                IJBDirectory(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBDirectory")),
+                IJBTokens(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBTokens")),
+                IJBPermissions(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPermissions"))
+            )
+        );
 
         vm.selectFork(_chainB);
         vm.broadcast();
-        address _deployerB = address(new BPOptimismSuckerDeployer(
-            IJBPrices(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPrices")),
-            IJBRulesets(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBRulesets")),
-            CHAIN_B_OP_MESSENGER,
-            CHAIN_B_OP_BRIDGE,
-            IJBDirectory(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBDirectory")),
-            IJBTokens(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBTokens")),
-            IJBPermissions(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPermissions"))
-        ));
+        address _deployerB = address(
+            new BPOptimismSuckerDeployer(
+                IJBPrices(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPrices")),
+                IJBRulesets(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBRulesets")),
+                CHAIN_B_OP_MESSENGER,
+                CHAIN_B_OP_BRIDGE,
+                IJBDirectory(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBDirectory")),
+                IJBTokens(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBTokens")),
+                IJBPermissions(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPermissions"))
+            )
+        );
 
         console2.log("Suckers deployed.");
         // console2.log("Sucker A: ", Strings.toHexString(uint160(address(_deployerA)), 20));

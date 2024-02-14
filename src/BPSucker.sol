@@ -41,11 +41,7 @@ abstract contract BPSucker is JBPermissioned {
     error ON_DEMAND_NOT_ALLOWED();
     error UNEXPECTED_MSG_VALUE();
 
-    event NewRoot(
-        address indexed token,
-        uint64 nonce,
-        bytes32 root
-    );
+    event NewRoot(address indexed token, uint64 nonce, bytes32 root);
 
     event insertedIntoTree(
         address indexed beneficiary,
@@ -63,7 +59,7 @@ abstract contract BPSucker is JBPermissioned {
         MerkleLib.Tree tree;
     }
 
-    struct MessageRoot{
+    struct MessageRoot {
         /// @notice the token that the root is for.
         address token;
         /// @notice the amount of tokens being send.
@@ -118,7 +114,7 @@ abstract contract BPSucker is JBPermissioned {
     //*********************************************************************//
 
     /// @notice Configuration option regarding when `addToBalance` gets called.
-    AddToBalanceMode public immutable ATB_MODE; 
+    AddToBalanceMode public immutable ATB_MODE;
 
     /// @notice The Juicebox Directory
     IJBDirectory public immutable DIRECTORY;
@@ -175,25 +171,22 @@ abstract contract BPSucker is JBPermissioned {
     /// @param _beneficiary the recipient of the tokens on the remote chain.
     /// @param _minRedeemedTokens the minimum amount of assets that gets moved.
     /// @param _token the token to redeem for.
-    function bridge(
-        uint256 _projectTokenAmount,
-        address _beneficiary,
-        uint256 _minRedeemedTokens,
-        address _token
-    ) external {
+    function bridge(uint256 _projectTokenAmount, address _beneficiary, uint256 _minRedeemedTokens, address _token)
+        external
+    {
         // Make sure the beneficiary is not the zero address, as this would revert when minting on the remote chain.
         if (_beneficiary == address(0)) {
             revert BENEFICIARY_NOT_ALLOWED();
         }
 
-         // Get the token for the project.
+        // Get the token for the project.
         IERC20 _projectToken = IERC20(address(TOKENS.tokenOf(PROJECT_ID)));
         if (address(_projectToken) == address(0)) {
             revert REQUIRE_ISSUED_TOKEN();
         }
 
         // Make sure that the token is configured to be sucked.
-        if(token[_token].remoteToken == address(0)){
+        if (token[_token].remoteToken == address(0)) {
             revert TOKEN_NOT_CONFIGURED(_token);
         }
 
@@ -201,47 +194,32 @@ abstract contract BPSucker is JBPermissioned {
         _projectToken.transferFrom(msg.sender, address(this), _projectTokenAmount);
 
         // Perform the redemption.
-        uint256 _redemptionTokenAmount = _getBackingAssets(
-            _projectToken,
-            _projectTokenAmount,
-            _token,
-            _minRedeemedTokens
-        );
+        uint256 _redemptionTokenAmount =
+            _getBackingAssets(_projectToken, _projectTokenAmount, _token, _minRedeemedTokens);
 
         // Insert the item.
-        _insertIntoTree(
-            _projectTokenAmount,
-            _token,
-            _redemptionTokenAmount,
-            _beneficiary
-        );
+        _insertIntoTree(_projectTokenAmount, _token, _redemptionTokenAmount, _beneficiary);
     }
 
     /// @notice Bridge funds for one or multiple beneficiaries.
     /// @param _token the token to bridge the tree for.
-    function toRemote(
-        address _token
-    ) external payable {
+    function toRemote(address _token) external payable {
         // TODO: Add some way to prevent spam.
         BPTokenConfig memory _tokenConfig = token[_token];
 
         // Require that the min amount being bridged is enough.
-        if(outbox[_token].balance < _tokenConfig.minBridgeAmount)
+        if (outbox[_token].balance < _tokenConfig.minBridgeAmount) {
             revert();
+        }
 
         // Send the root to the remote.
-        _sendRoot(
-            _token,
-            _tokenConfig
-        );
+        _sendRoot(_token, _tokenConfig);
     }
 
     /// @notice Receive from the remote project.
     /// @dev can only be called by the OP messenger and with messages from the PEER.
     /// @param _root the root and all the information regarding it.
-    function fromRemote(
-        MessageRoot calldata _root
-    ) external payable {
+    function fromRemote(MessageRoot calldata _root) external payable {
         // Make sure that the message came from our peer.
         if (!_isRemotePeer(msg.sender)) {
             revert NOT_PEER();
@@ -253,7 +231,7 @@ abstract contract BPSucker is JBPermissioned {
         // If the nonce is a newer one than we already have we update it.
         // We can't revert in the case that this is a native token transfer
         // otherwise we would lose the native tokens.
-        if(_root.remoteRoot.nonce > inbox[_root.token].nonce) {
+        if (_root.remoteRoot.nonce > inbox[_root.token].nonce) {
             inbox[_root.token] = _root.remoteRoot;
             emit NewRoot(_root.token, _root.remoteRoot.nonce, _root.remoteRoot.root);
         }
@@ -261,9 +239,7 @@ abstract contract BPSucker is JBPermissioned {
 
     /// @notice Performs a claim.
     /// @param _claim The data for the claim.
-    function claim(
-        Claim calldata _claim
-    ) public {
+    function claim(Claim calldata _claim) public {
         // Attempt to validate proof.
         _validate({
             _projectTokenAmount: _claim.leaf.projectTokenAmount,
@@ -275,8 +251,9 @@ abstract contract BPSucker is JBPermissioned {
         });
 
         // Perform the add to balance if this sucker is configured to perform it on claim.
-        if(ATB_MODE == AddToBalanceMode.ON_CLAIM)
+        if (ATB_MODE == AddToBalanceMode.ON_CLAIM) {
             _addToBalance(_claim.token, _claim.leaf.redemptionTokenAmount);
+        }
 
         IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).mintTokensOf(
             PROJECT_ID, _claim.leaf.projectTokenAmount, _claim.leaf.beneficiary, "", false
@@ -285,9 +262,7 @@ abstract contract BPSucker is JBPermissioned {
 
     /// @notice Performs multiple claims.
     /// @param _claims The data for the claims.
-    function claim(
-        Claim[] calldata _claims
-    ) external {
+    function claim(Claim[] calldata _claims) external {
         for (uint256 _i = 0; _i < _claims.length; _i++) {
             claim(_claims[_i]);
         }
@@ -295,12 +270,11 @@ abstract contract BPSucker is JBPermissioned {
 
     /// @notice Adds the redeemed funds to the projects terminal. Can only be used if AddToBalanceMode is ON_DEMAND.
     /// @param _token The token to add to the terminal.
-    function claimToBalance(
-        address _token
-    ) external {
-        if(ATB_MODE != AddToBalanceMode.ON_DEMAND)
+    function claimToBalance(address _token) external {
+        if (ATB_MODE != AddToBalanceMode.ON_DEMAND) {
             revert ON_DEMAND_NOT_ALLOWED();
-        
+        }
+
         // Add entire outstanding amount to the projects balance.
         _addToBalance(_token, outstandingATB[_token]);
     }
@@ -313,24 +287,21 @@ abstract contract BPSucker is JBPermissioned {
 
         // If the native token is being configured then the remoteToken has to also be the native token.
         // Unless we are disabling native token bridging, then it can also be 0.
-        if (_isNative && _config.remoteToken != JBConstants.NATIVE_TOKEN && _config.remoteToken != address(0))
+        if (_isNative && _config.remoteToken != JBConstants.NATIVE_TOKEN && _config.remoteToken != address(0)) {
             revert();
-            
+        }
+
         // As misconfiguration can lead to loss of funds we enforce a reasonable minimum.
-        if(_config.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT && !_isNative) 
+        if (_config.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT && !_isNative) {
             revert BELOW_MIN_GAS(MESSENGER_ERC20_MIN_GAS_LIMIT, _config.minGas);
+        }
 
         // Access control.
-        _requirePermissionFrom(
-            DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, JBPermissionIds.QUEUE_RULESETS
-        );
+        _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, JBPermissionIds.QUEUE_RULESETS);
 
-        // If we have a remaining balance in the outbox. 
+        // If we have a remaining balance in the outbox.
         // We send a final bridge before disabling so all users can exit with their funds.
-        if(
-            _config.remoteToken == address(0) &&
-            outbox[_token].balance != 0
-        ) _sendRoot(_token, token[_token]);
+        if (_config.remoteToken == address(0) && outbox[_token].balance != 0) _sendRoot(_token, token[_token]);
 
         token[_token] = _config;
     }
@@ -353,16 +324,10 @@ abstract contract BPSucker is JBPermissioned {
         uint256 _redemptionTokenAmount,
         address _beneficiary
     ) internal {
-        bytes32 _hash = _buildTreeHash(
-            _projectTokenAmount,
-            _redemptionTokenAmount,
-            _beneficiary
-        );
+        bytes32 _hash = _buildTreeHash(_projectTokenAmount, _redemptionTokenAmount, _beneficiary);
 
         // Insert the item into the tree.
-        MerkleLib.Tree memory _tree = outbox[_redemptionToken].tree.insert(
-            _hash
-        );
+        MerkleLib.Tree memory _tree = outbox[_redemptionToken].tree.insert(_hash);
 
         // Update the outbox.
         outbox[_redemptionToken].tree = _tree;
@@ -383,17 +348,12 @@ abstract contract BPSucker is JBPermissioned {
     /// @dev Call may have a `msg.value`, require it to be `0` if its not needed.
     /// @param _token the token to bridge for.
     /// @param _tokenConfig the config for the token to send.
-    function _sendRoot(
-        address _token,
-        BPTokenConfig memory _tokenConfig
-    ) internal virtual;
+    function _sendRoot(address _token, BPTokenConfig memory _tokenConfig) internal virtual;
 
-    /// @notice checks if the _sender (msg.sender) is a valid representative of the remote peer. 
+    /// @notice checks if the _sender (msg.sender) is a valid representative of the remote peer.
     /// @param _sender the message sender.
-    function _isRemotePeer(
-        address _sender
-    ) internal virtual returns (bool _valid);
-    
+    function _isRemotePeer(address _sender) internal virtual returns (bool _valid);
+
     /// @notice validates a leaf as being in the smt and registers as being redeemed.
     /// @dev Reverts if invalid.
     /// @param _projectTokenAmount the amount of project tokens redeemed.
@@ -411,62 +371,54 @@ abstract contract BPSucker is JBPermissioned {
         bytes32[TREE_DEPTH] calldata _leaves
     ) internal {
         // Make sure the item has not been executed before.
-        if(executed[_redemptionToken].get(_index))
+        if (executed[_redemptionToken].get(_index)) {
             revert ALREADY_EXECUTED(_index);
+        }
 
         // Toggle it as being executed now.
         executed[_redemptionToken].set(_index);
 
         // Calculate the root from the proof.
         bytes32 _root = MerkleLib.branchRoot({
-            _item: _buildTreeHash(
-                    _projectTokenAmount,
-                    _redemptionTokenAmount,
-                    _beneficiary
-                ),
+            _item: _buildTreeHash(_projectTokenAmount, _redemptionTokenAmount, _beneficiary),
             _branch: _leaves,
             _index: _index
         });
 
         // Compare the root.
-        if(_root != inbox[_redemptionToken].root)
+        if (_root != inbox[_redemptionToken].root) {
             revert INVALID_PROOF(inbox[_redemptionToken].root, _root);
+        }
     }
 
     /// @notice Adds funds to the projects balance.
     /// @param _token the token to add.
     /// @param _amount the amount of the token to add.
-    function _addToBalance(
-        address _token,
-        uint256 _amount
-    ) internal {
+    function _addToBalance(address _token, uint256 _amount) internal {
         // Make sure that the current balance in the contract is suffecient to perform the ATB.
         uint256 _atbAmount = outstandingATB[_token];
-        if(_amount > _atbAmount)
+        if (_amount > _atbAmount) {
             revert CURRENT_BALANCE_INSUFFECIENT();
+        }
 
         // Update the new outstanding ATB amount.
         outstandingATB[_token] = _atbAmount - _amount;
 
         // Get the terminal.
         IJBTerminal _terminal = DIRECTORY.primaryTerminalOf(PROJECT_ID, _token);
-        if(address(_terminal) == address(0)) revert NO_TERMINAL_FOR(PROJECT_ID, _token);
+        if (address(_terminal) == address(0)) revert NO_TERMINAL_FOR(PROJECT_ID, _token);
 
         // Perform the `addToBalance`.
-        if(_token != JBConstants.NATIVE_TOKEN) {
+        if (_token != JBConstants.NATIVE_TOKEN) {
             uint256 _balanceBefore = IERC20(_token).balanceOf(address(this));
             SafeERC20.forceApprove(IERC20(_token), address(_terminal), _amount);
 
-            _terminal.addToBalanceOf(
-                PROJECT_ID, _token, _amount, false, string(""), bytes("")
-            );
+            _terminal.addToBalanceOf(PROJECT_ID, _token, _amount, false, string(""), bytes(""));
 
             // Sanity check: make sure we transfer the full amount.
             assert(IERC20(_token).balanceOf(address(this)) == _balanceBefore - _amount);
         } else {
-            _terminal.addToBalanceOf{value: _amount}(
-                PROJECT_ID, _token, _amount, false, string(""), bytes("")
-            );
+            _terminal.addToBalanceOf{value: _amount}(PROJECT_ID, _token, _amount, false, string(""), bytes(""));
         }
     }
 
@@ -476,12 +428,11 @@ abstract contract BPSucker is JBPermissioned {
     /// @param _token the token to redeem for.
     /// @param _minReceivedTokens the minimum amount of tokens to receive.
     /// @return _receivedAmount the amount of tokens received by redeeming.
-    function _getBackingAssets(
-        IERC20 _projectToken,
-        uint256 _amount,
-        address _token,
-        uint256 _minReceivedTokens
-    ) internal virtual returns (uint256 _receivedAmount) {
+    function _getBackingAssets(IERC20 _projectToken, uint256 _amount, address _token, uint256 _minReceivedTokens)
+        internal
+        virtual
+        returns (uint256 _receivedAmount)
+    {
         // Get the projectToken total supply.
         uint256 _totalSupply = _projectToken.totalSupply();
 
@@ -491,23 +442,21 @@ abstract contract BPSucker is JBPermissioned {
         );
 
         // Get the primaty terminal of the project for the token.
-        IJBRedeemTerminal _terminal =
-            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, _token)));
+        IJBRedeemTerminal _terminal = IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, _token)));
 
         // Make sure a terminal is configured for the token.
-        if(address(_terminal) == address(0))
+        if (address(_terminal) == address(0)) {
             revert TOKEN_NOT_CONFIGURED(_token);
+        }
 
         // Get the accounting context for the token.
         JBAccountingContext memory _accountingContext = _terminal.accountingContextForTokenOf(PROJECT_ID, _token);
-        if(_accountingContext.decimals == 0 && _accountingContext.currency == 0)
+        if (_accountingContext.decimals == 0 && _accountingContext.currency == 0) {
             revert TOKEN_NOT_CONFIGURED(_token);
+        }
 
-        uint256 _surplus = _terminal.currentSurplusOf(
-            PROJECT_ID,
-            _accountingContext.decimals,
-            _accountingContext.currency
-        );
+        uint256 _surplus =
+            _terminal.currentSurplusOf(PROJECT_ID, _accountingContext.decimals, _accountingContext.currency);
 
         // TODO: replace with PRB-Math muldiv.
         uint256 _backingAssets = _amount * _surplus / _totalSupply;
@@ -532,28 +481,22 @@ abstract contract BPSucker is JBPermissioned {
     /// @param _projectTokenAmount the amount of project tokens redeemed.
     /// @param _redemptionTokenAmount the amount of redemptionTokens received.
     /// @param _beneficiary the beneficiary of the tokens.
-    function _buildTreeHash(
-        uint256 _projectTokenAmount,
-        uint256 _redemptionTokenAmount,
-        address _beneficiary
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(
-            _projectTokenAmount,
-            _redemptionTokenAmount,
-            _beneficiary
-        ));
+    function _buildTreeHash(uint256 _projectTokenAmount, uint256 _redemptionTokenAmount, address _beneficiary)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(_projectTokenAmount, _redemptionTokenAmount, _beneficiary));
     }
 
     /// @notice Helper to get the balance for a token of an address.
     /// @param _token the token to get the balance for.
     /// @param _address the address to get the token balance of.
     /// @return _balance the balance of the address.
-    function _balanceOf(
-        address _token,
-        address _address
-    ) internal view returns (uint256 _balance){
-        if(_token == JBConstants.NATIVE_TOKEN)
+    function _balanceOf(address _token, address _address) internal view returns (uint256 _balance) {
+        if (_token == JBConstants.NATIVE_TOKEN) {
             return _address.balance;
+        }
 
         return IERC20(_token).balanceOf(_address);
     }

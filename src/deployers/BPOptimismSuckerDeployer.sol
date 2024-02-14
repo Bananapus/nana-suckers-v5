@@ -8,7 +8,6 @@ import {JBPermissioned, IJBPermissions} from "@bananapus/core/src/abstract/JBPer
 import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/terminal/IJBPayoutTerminal.sol";
 
 contract BPOptimismSuckerDeployer is JBPermissioned {
-
     error ONLY_SUCKERS();
 
     IJBPrices immutable PRICES;
@@ -43,28 +42,19 @@ contract BPOptimismSuckerDeployer is JBPermissioned {
     /// @param _localProjectId the project id on this chain.
     /// @param _salt the salt to use for the create2 address.
     /// @return _sucker the address of the new sucker.
-    function createForSender(
-        uint256 _localProjectId,
-        bytes32 _salt
-    ) external returns (address _sucker) {
+    function createForSender(uint256 _localProjectId, bytes32 _salt) external returns (address _sucker) {
         _salt = keccak256(abi.encodePacked(msg.sender, _salt));
-        _sucker = address(new BPOptimismSucker{salt: _salt}(
-            PRICES,
-            RULESETS,
-            MESSENGER,
-            BRIDGE,
-            DIRECTORY,
-            TOKENS,
-            PERMISSIONS,
-            address(0),
-            _localProjectId
-        ));
+        _sucker = address(
+            new BPOptimismSucker{salt: _salt}(
+                PRICES, RULESETS, MESSENGER, BRIDGE, DIRECTORY, TOKENS, PERMISSIONS, address(0), _localProjectId
+            )
+        );
         isSucker[_sucker] = true;
     }
 
     /// @notice Use the allowance of a project witgout paying exit fees.
     /// @dev This function can only be called by suckers deployed by this contract, and only if the project owner has given the specicifc sucker permission to use the allowance.
-    /// @dev This is not necesarily feeless, as it still requires JBDAO to mark this as feeless first. 
+    /// @dev This is not necesarily feeless, as it still requires JBDAO to mark this as feeless first.
     /// @param _projectId the project id.
     /// @param _terminal the terminal to use.
     /// @param _token the token to use the allowance of.
@@ -81,25 +71,16 @@ contract BPOptimismSuckerDeployer is JBPermissioned {
         uint256 _minReceivedTokens
     ) external returns (uint256) {
         // Make sure the caller is a sucker.
-        if(!isSucker[msg.sender]) 
+        if (!isSucker[msg.sender]) {
             revert ONLY_SUCKERS();
+        }
 
-         // Access control: Only allowed suckes can use the allowance.
-        _requirePermissionFrom(
-            DIRECTORY.PROJECTS().ownerOf(_projectId),
-            _projectId,
-            JBPermissionIds.USE_ALLOWANCE
-        );
-        
+        // Access control: Only allowed suckes can use the allowance.
+        _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(_projectId), _projectId, JBPermissionIds.USE_ALLOWANCE);
+
         // Use the allowance.
         return _terminal.useAllowanceOf(
-            _projectId,
-            _token,
-            _amount,
-            _currency,
-            _minReceivedTokens,
-            payable(address(msg.sender)),
-            string("")
+            _projectId, _token, _amount, _currency, _minReceivedTokens, payable(address(msg.sender)), string("")
         );
     }
 }

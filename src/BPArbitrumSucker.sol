@@ -11,12 +11,10 @@ import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "./BPSucker.sol";
 
 interface L2GatewayRouter {
-    function outboundTransfer(
-        address _l1Token,
-        address _to,
-        uint256 _amount,
-        bytes calldata _data
-    ) external payable returns (bytes memory);
+    function outboundTransfer(address _l1Token, address _to, uint256 _amount, bytes calldata _data)
+        external
+        payable
+        returns (bytes memory);
 }
 
 interface L1GatewayRouter {
@@ -30,7 +28,6 @@ interface L1GatewayRouter {
         bytes calldata _data
     ) external payable returns (bytes memory);
 }
-
 
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.
@@ -78,10 +75,7 @@ contract BPArbitrumSucker is BPSucker {
     /// @notice uses the OPMESSENGER to send the root and assets over the bridge to the peer.
     /// @param _token the token to bridge for.
     /// @param _tokenConfig the config for the token to send.
-    function _sendRoot(
-        address _token,
-        BPTokenConfig memory _tokenConfig
-    ) internal override {
+    function _sendRoot(address _token, BPTokenConfig memory _tokenConfig) internal override {
         // Get the amount to send and then clear it.
         uint256 _amount = outbox[_token].balance;
         delete outbox[_token].balance;
@@ -89,8 +83,9 @@ contract BPArbitrumSucker is BPSucker {
         // Increment the nonce.
         uint64 _nonce = ++outbox[_token].nonce;
 
-        if(_tokenConfig.remoteToken == address(0))
+        if (_tokenConfig.remoteToken == address(0)) {
             revert TOKEN_NOT_CONFIGURED(_token);
+        }
 
         // Build the calldata that will be send to the peer.
         bytes memory _data = abi.encodeCall(
@@ -99,43 +94,33 @@ contract BPArbitrumSucker is BPSucker {
                 MessageRoot({
                     token: _tokenConfig.remoteToken,
                     amount: _amount,
-                    remoteRoot: RemoteRoot({
-                        nonce: _nonce,
-                        root: outbox[_token].tree.root()
-                    })
+                    remoteRoot: RemoteRoot({nonce: _nonce, root: outbox[_token].tree.root()})
                 })
             )
         );
 
         // Depending on which layer we are on, we send the call to the other layer.
-        if(LAYER == Layer.L1) {
+        if (LAYER == Layer.L1) {
             _toL2(_token, _amount, _data, _tokenConfig);
         } else {
             _toL1(_token, _amount, _data, _tokenConfig);
         }
     }
 
-    function _toL1(
-        address _token,
-        uint256 _amount,
-        bytes memory _data,
-        BPTokenConfig memory _tokenConfig
-    ) internal {
+    function _toL1(address _token, uint256 _amount, bytes memory _data, BPTokenConfig memory _tokenConfig) internal {
         uint256 _nativeValue;
 
         // Sending a message to L1 does not require any payment.
-        if(msg.value != 0)
+        if (msg.value != 0) {
             revert UNEXPECTED_MSG_VALUE();
+        }
 
-        if(_token != JBConstants.NATIVE_TOKEN){
+        if (_token != JBConstants.NATIVE_TOKEN) {
             // TODO: Approve the tokens to be bridged?
             // SafeERC20.forceApprove(IERC20(_token), address(OPMESSENGER), _amount);
 
             L2GatewayRouter(GATEWAY_ROUTER).outboundTransfer(
-                _tokenConfig.remoteToken,
-                address(PEER),
-                _amount,
-                bytes("")
+                _tokenConfig.remoteToken, address(PEER), _amount, bytes("")
             );
         } else {
             _nativeValue = _amount;
@@ -145,15 +130,10 @@ contract BPArbitrumSucker is BPSucker {
         ArbSys(address(100)).sendTxToL1{value: _nativeValue}(address(PEER), _data);
     }
 
-    function _toL2(
-        address _token,
-        uint256 _amount,
-        bytes memory _data,
-        BPTokenConfig memory _tokenConfig
-    ) internal {
+    function _toL2(address _token, uint256 _amount, bytes memory _data, BPTokenConfig memory _tokenConfig) internal {
         uint256 _nativeValue;
 
-        if(_token != JBConstants.NATIVE_TOKEN){
+        if (_token != JBConstants.NATIVE_TOKEN) {
             // Approve the tokens to be bridged.
             SafeERC20.forceApprove(IERC20(_token), address(GATEWAY_ROUTER), _amount);
             // Perform the ERC20 bridge transfer.
@@ -185,20 +165,17 @@ contract BPArbitrumSucker is BPSucker {
             // TODO: Is this a sane default?
             maxFeePerGas: 1 gwei,
             data: _data
-        });        
+        });
     }
 
-    /// @notice checks if the _sender (msg.sender) is a valid representative of the remote peer. 
+    /// @notice checks if the _sender (msg.sender) is a valid representative of the remote peer.
     /// @param _sender the message sender.
-    function _isRemotePeer(
-        address _sender
-    ) internal override returns (bool _valid) {
+    function _isRemotePeer(address _sender) internal override returns (bool _valid) {
         // We are the L1 peer.
-        if(LAYER == Layer.L1) {
+        if (LAYER == Layer.L1) {
             IBridge _bridge = INBOX.bridge();
             // Check that the sender is the bridge and that the outbox has our peer as the sender.
-            return _sender == address(_bridge) &&
-                address(PEER) == IOutbox(_bridge.activeOutbox()).l2ToL1Sender();
+            return _sender == address(_bridge) && address(PEER) == IOutbox(_bridge.activeOutbox()).l2ToL1Sender();
         }
 
         // We are the L2 peer.

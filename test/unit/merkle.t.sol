@@ -6,46 +6,33 @@ import "forge-std/Test.sol";
 import "../../src/BPOptimismSucker.sol";
 import "../../src/deployers/BPOptimismSuckerDeployer.sol";
 
-contract MerkleUnitTest is BPOptimismSucker, Test{
+contract MerkleUnitTest is BPOptimismSucker, Test {
     using MerkleLib for MerkleLib.Tree;
 
     bytes32[32] _proof;
 
-    constructor() BPOptimismSucker(
-        IJBPrices(address(500)),
-        IJBRulesets(address(500)),
-        OPMessenger(address(500)),
-        OPStandardBridge(address(550)),
-        IJBDirectory(address(600)),
-        IJBTokens(address(700)),
-        IJBPermissions(address(800)),
-        address(0),
-        0
-    ) {}
+    constructor()
+        BPOptimismSucker(
+            IJBPrices(address(500)),
+            IJBRulesets(address(500)),
+            OPMessenger(address(500)),
+            OPStandardBridge(address(550)),
+            IJBDirectory(address(600)),
+            IJBTokens(address(700)),
+            IJBPermissions(address(800)),
+            address(0),
+            0
+        )
+    {}
 
     function setUp() public {
         // Insert some items into the queue
         // Index 0
-        _insertIntoTree(
-            8 ether,
-            JBConstants.NATIVE_TOKEN,
-            15 ether,
-            address(1000)
-        );
+        _insertIntoTree(8 ether, JBConstants.NATIVE_TOKEN, 15 ether, address(1000));
         // Index 1
-        _insertIntoTree(
-            0.1 ether,
-            JBConstants.NATIVE_TOKEN,
-            200 ether,
-            address(999)
-        );
+        _insertIntoTree(0.1 ether, JBConstants.NATIVE_TOKEN, 200 ether, address(999));
         // Index 2
-        _insertIntoTree(
-            5 ether,
-            JBConstants.NATIVE_TOKEN,
-            5 ether,
-            address(120)
-        );
+        _insertIntoTree(5 ether, JBConstants.NATIVE_TOKEN, 5 ether, address(120));
 
         // Pre-computed proof thats valid for the above data.
         _proof[0] = 0x0000000000000000000000000000000000000000000000000000000000000000;
@@ -65,9 +52,9 @@ contract MerkleUnitTest is BPOptimismSucker, Test{
         _proof[14] = 0x5c67add7c6caf302256adedf7ab114da0acfe870d449a3a489f781d659e8becc;
         _proof[15] = 0xda7bce9f4e8618b6bd2f4132ce798cdc7a60e7e1460a7299e3c6342a579626d2;
         _proof[16] = 0x2733e50f526ec2fa19a22b31e8ed50f23cd1fdf94c9154ed3a7609a2f1ff981f;
-        _proof[17] =  0xe1d3b5c807b281e4683cc6d6315cf95b9ade8641defcb32372f1c126e398ef7a;
+        _proof[17] = 0xe1d3b5c807b281e4683cc6d6315cf95b9ade8641defcb32372f1c126e398ef7a;
         _proof[18] = 0x5a2dce0a8a7f68bb74560f8f71837c2c2ebbcbf7fffb42ae1896f13f7c7479a0;
-        _proof[19] =0xb46a28b6f55540f89444f63de0378e3d121be09e06cc9ded1c20e65876d36aa0;
+        _proof[19] = 0xb46a28b6f55540f89444f63de0378e3d121be09e06cc9ded1c20e65876d36aa0;
         _proof[20] = 0xc65e9645644786b620e2dd2ad648ddfcbf4a7e5b1a3a4ecfe7f64667a3f0b7e2;
         _proof[21] = 0xf4418588ed35a2458cffeb39b93d26f18d2ab13bdce6aee58e7b99359ec2dfd9;
         _proof[22] = 0x5a9c16dc00d6ef18b7933a6f8dc65ccb55667138776f7dea101070dc8796e377;
@@ -84,82 +71,88 @@ contract MerkleUnitTest is BPOptimismSucker, Test{
 
     function test_insertIntoTree() public {
         // Queue the item.
-        _insertIntoTree(
-            10 ether,
-            JBConstants.NATIVE_TOKEN,
-            10 ether,
-            address(1337)
-        );
+        _insertIntoTree(10 ether, JBConstants.NATIVE_TOKEN, 10 ether, address(1337));
     }
 
     function test_validate() public {
         // Move outbound root to inbound root.
-        inbox[JBConstants.NATIVE_TOKEN] = RemoteRoot({
-            nonce: 0,
-            root: outbox[JBConstants.NATIVE_TOKEN].tree.root()
-        });
+        inbox[JBConstants.NATIVE_TOKEN] = RemoteRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 
         // Mock the token minting.
         address _mockController = address(900);
-        vm.mockCall(address(DIRECTORY), abi.encodeCall(IJBDirectory.controllerOf, (PROJECT_ID)), abi.encode(_mockController));
-        vm.mockCall(_mockController, abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID, 5 ether, address(120), "", false)), abi.encode(0));
+        vm.mockCall(
+            address(DIRECTORY), abi.encodeCall(IJBDirectory.controllerOf, (PROJECT_ID)), abi.encode(_mockController)
+        );
+        vm.mockCall(
+            _mockController,
+            abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID, 5 ether, address(120), "", false)),
+            abi.encode(0)
+        );
 
         // Attempt to validate proof.
-        BPOptimismSucker(this).claim(BPSucker.Claim({
-            token: JBConstants.NATIVE_TOKEN,
-            leaf: Leaf({
-                index: 2,
-                beneficiary: address(120),
-                projectTokenAmount: 5 ether,
-                redemptionTokenAmount: 5 ether
-            }),
-            proof: __proof
-        }));
+        BPOptimismSucker(this).claim(
+            BPSucker.Claim({
+                token: JBConstants.NATIVE_TOKEN,
+                leaf: Leaf({
+                    index: 2,
+                    beneficiary: address(120),
+                    projectTokenAmount: 5 ether,
+                    redemptionTokenAmount: 5 ether
+                }),
+                proof: __proof
+            })
+        );
     }
 
     function test_validate_only_once() public {
         // Move outbound root to inbound root.
-        inbox[JBConstants.NATIVE_TOKEN] = RemoteRoot({
-            nonce: 0,
-            root: outbox[JBConstants.NATIVE_TOKEN].tree.root()
-        });
+        inbox[JBConstants.NATIVE_TOKEN] = RemoteRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 
         // Mock the token minting.
         address _mockController = address(900);
-        vm.mockCall(address(DIRECTORY), abi.encodeCall(IJBDirectory.controllerOf, (PROJECT_ID)), abi.encode(_mockController));
-        vm.mockCall(_mockController, abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID, 5 ether, address(120), "", false)), abi.encode(0));
+        vm.mockCall(
+            address(DIRECTORY), abi.encodeCall(IJBDirectory.controllerOf, (PROJECT_ID)), abi.encode(_mockController)
+        );
+        vm.mockCall(
+            _mockController,
+            abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID, 5 ether, address(120), "", false)),
+            abi.encode(0)
+        );
 
         // Attempt to validate proof.
-        BPOptimismSucker(this).claim(BPSucker.Claim({
-            token: JBConstants.NATIVE_TOKEN,
-            leaf: Leaf({
-                index: 2,
-                beneficiary: address(120),
-                projectTokenAmount: 5 ether,
-                redemptionTokenAmount: 5 ether
-            }),
-            proof: __proof
-        }));
+        BPOptimismSucker(this).claim(
+            BPSucker.Claim({
+                token: JBConstants.NATIVE_TOKEN,
+                leaf: Leaf({
+                    index: 2,
+                    beneficiary: address(120),
+                    projectTokenAmount: 5 ether,
+                    redemptionTokenAmount: 5 ether
+                }),
+                proof: __proof
+            })
+        );
 
         // Attempt to do it again.
         vm.expectRevert();
-        BPOptimismSucker(this).claim(BPSucker.Claim({
-            token: JBConstants.NATIVE_TOKEN,
-            leaf: Leaf({
-                index: 2,
-                beneficiary: address(120),
-                projectTokenAmount: 5 ether,
-                redemptionTokenAmount: 5 ether
-            }),
-            proof: __proof
-        }));
+        BPOptimismSucker(this).claim(
+            BPSucker.Claim({
+                token: JBConstants.NATIVE_TOKEN,
+                leaf: Leaf({
+                    index: 2,
+                    beneficiary: address(120),
+                    projectTokenAmount: 5 ether,
+                    redemptionTokenAmount: 5 ether
+                }),
+                proof: __proof
+            })
+        );
     }
 }
-
 
 contract DeployerUnitTest is Test {
     function testDoesntRevert() public {

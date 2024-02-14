@@ -49,15 +49,13 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
     /// @notice uses the OPMESSENGER to send the root and assets over the bridge to the peer.
     /// @param _token the token to bridge for.
     /// @param _tokenConfig the config for the token to send.
-    function _sendRoot(
-        address _token,
-        BPTokenConfig memory _tokenConfig
-    ) internal override {
+    function _sendRoot(address _token, BPTokenConfig memory _tokenConfig) internal override {
         uint256 _nativeValue;
 
         // The OP bridge does not expect to be paid.
-        if(msg.value != 0)
+        if (msg.value != 0) {
             revert UNEXPECTED_MSG_VALUE();
+        }
 
         // Get the amount to send and then clear it.
         uint256 _amount = outbox[_token].balance;
@@ -66,10 +64,11 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
         // Increment the nonce.
         uint64 _nonce = ++outbox[_token].nonce;
 
-        if(_tokenConfig.remoteToken == address(0))
+        if (_tokenConfig.remoteToken == address(0)) {
             revert TOKEN_NOT_CONFIGURED(_token);
+        }
 
-        if(_token != JBConstants.NATIVE_TOKEN){
+        if (_token != JBConstants.NATIVE_TOKEN) {
             // Approve the tokens to be bridged.
             SafeERC20.forceApprove(IERC20(_token), address(OPBRIDGE), _amount);
 
@@ -80,7 +79,7 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
                 to: PEER,
                 amount: _amount,
                 minGasLimit: _tokenConfig.minGas,
-                extraData: bytes('')
+                extraData: bytes("")
             });
         } else {
             _nativeValue = _amount;
@@ -95,10 +94,7 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
                     MessageRoot({
                         token: _tokenConfig.remoteToken,
                         amount: _amount,
-                        remoteRoot: RemoteRoot({
-                            nonce: _nonce,
-                            root: outbox[_token].tree.root()
-                        })
+                        remoteRoot: RemoteRoot({nonce: _nonce, root: outbox[_token].tree.root()})
                     })
                 )
             ),
@@ -109,11 +105,9 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
         emit SuckingToRemote(_token, _nonce);
     }
 
-    /// @notice checks if the _sender (msg.sender) is a valid representative of the remote peer. 
+    /// @notice checks if the _sender (msg.sender) is a valid representative of the remote peer.
     /// @param _sender the message sender.
-    function _isRemotePeer(
-        address _sender
-    ) internal override returns (bool _valid) {
+    function _isRemotePeer(address _sender) internal override returns (bool _valid) {
         return _sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == PEER;
     }
 }

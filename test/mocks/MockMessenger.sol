@@ -33,11 +33,7 @@ contract MockMessenger is OPMessenger {
         ERC20Mock(remoteToken).mint(to, amount);
     }
 
-
-    function setRemoteToken(
-        address localToken,
-        address remoteToken
-    ) external {
+    function setRemoteToken(address localToken, address remoteToken) external {
         tokens[localToken] = remoteToken;
     }
 }

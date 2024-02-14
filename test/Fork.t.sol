@@ -31,7 +31,6 @@ pragma solidity ^0.8.13;
 //     IJBPermissions PERMISSIONS;
 //     IJBRedeemTerminal MULTI_TERMINAL;
 
-
 //     struct TestBridgeItems {
 //         address sender;
 //         address beneficiary;
@@ -103,12 +102,12 @@ pragma solidity ^0.8.13;
 
 //         IERC20 _l1Token = IERC20(address(TOKENS.tokenOf(_L1Project)));
 //         IERC20 _l2Token = IERC20(address(TOKENS.tokenOf(_L2Project)));
-        
+
 //         for(uint256 _i; _i < _items.length; _i++){
 //             // Beneficiary should now have the tokens on L1
 //             assertEq(_l1Token.balanceOf(_items[_i].beneficiary), _receivedTokens);
 //             // Sender should no longer have any tokens on L2
-//             assertEq(_l2Token.balanceOf(_items[_i].sender), 0);   
+//             assertEq(_l2Token.balanceOf(_items[_i].sender), 0);
 //         }
 //     }
 
@@ -119,7 +118,7 @@ pragma solidity ^0.8.13;
 //         address _projectOwnerL1 = makeAddr("L1ProjectOwner");
 //         address _projectOwnerL2 = makeAddr("L2ProjectOwner");
 //         (uint256 _L1Project, uint256 _L2Project) = _configureAndLinkProjects(_projectOwnerL1, _projectOwnerL2);
-        
+
 //         // Some random DAI token I found on the blockexplorer
 //         ERC20Mock _L2ERC20Token = new ERC20Mock();
 
@@ -201,10 +200,9 @@ pragma solidity ^0.8.13;
 //                 (_L1Project, address(_L1ERC20Token), _payAmount, false, string(""), bytes(""))
 //             )
 //         );
-        
+
 //         // Handle all the bridging.
 //         _bridge(_items, address(_L2ERC20Token), _L2Project, suckerL2);
-
 
 //         IERC20 _l1Token = IERC20(address(TOKENS.tokenOf(_L1Project)));
 //         IERC20 _l2Token = IERC20(address(TOKENS.tokenOf(_L2Project)));
@@ -212,7 +210,7 @@ pragma solidity ^0.8.13;
 //             // Beneficiary should now have the tokens on L1
 //             assertEq(_l1Token.balanceOf(_items[_i].beneficiary), _receivedTokens);
 //             // Sender should no longer have any tokens on L2
-//             assertEq(_l2Token.balanceOf(_items[_i].sender), 0);   
+//             assertEq(_l2Token.balanceOf(_items[_i].sender), 0);
 //         }
 //     }
 
@@ -246,7 +244,6 @@ pragma solidity ^0.8.13;
 //             _totalProjectTokenAmount += _items[_i].projectTokenAmount;
 //             vm.stopPrank();
 //          }
-
 
 //         //  // Execute our queue item.
 //         // _sucker.toRemote(
@@ -388,10 +385,9 @@ pragma solidity ^0.8.13;
 //     }
 // }
 
-
 // contract BPOptimismSuckerHarnass is BPOptimismSucker {
 
-//     // BPSuckBridgeItem[] internal _latestBridgeItems; 
+//     // BPSuckBridgeItem[] internal _latestBridgeItems;
 
 //     constructor(
 //         OPMessenger _messenger,
@@ -428,5 +424,5 @@ pragma solidity ^0.8.13;
 //     //         _latestBridgeItems.push(_itemsToBridge[_i]);
 //     //     }
 //     //     // super._sendItemsOverBridge(_token, _tokenAmount, _itemsToBridge);
-//     // } 
+//     // }
 // }
