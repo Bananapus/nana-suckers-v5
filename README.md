@@ -7,7 +7,7 @@
   - `register`: This function registers a remote project ID as the peer of a local project ID. It requires the caller to have the appropriate permissions.
   - `toRemote`: Send tokens from a local project to a remote project. It first checks if the remote project is valid, then redeems the tokens at the local terminal, and finally sends a message to the peer contract on the remote chain with the redeemed ETH.
   - `fromRemote`: This function receives tokens from a remote project. It checks if the message came from the peer contract and if the remote project is valid, then adds the redeemed funds to the local terminal and mints tokens for the beneficiary.
-  
+
 ## Install
 
 For `npm` projects (recommended):
@@ -26,7 +26,7 @@ Add `@bananapus/sucker/=lib/nana-sucker/` to `remappings.txt`. You'll also need 
 
 ## Develop
 
-`nana-sucker` uses [npm](https://www.npmjs.com/) for package management and the [Foundry](https://github.com/foundry-rs/foundry) development toolchain for builds, tests, and deployments. To get set up, [install Node.js](https://nodejs.org/en/download) and install [Foundry](https://github.com/foundry-rs/foundry):
+`nana-sucker` uses [yarn](https://yarnpkg.com/) for package management and the [Foundry](https://github.com/foundry-rs/foundry) development toolchain for builds, tests, and deployments. To get set up, [install yarn](https://yarnpkg.com/getting-started/install) and install [Foundry](https://github.com/foundry-rs/foundry):
 
 ```bash
 curl -L https://foundry.paradigm.xyz | sh
@@ -35,7 +35,7 @@ curl -L https://foundry.paradigm.xyz | sh
 You can download and install dependencies with:
 
 ```bash
-npm install && forge install
+yarn install && forge install
 ```
 
 If you run into trouble with `forge install`, try using `git submodule update --init --recursive` to ensure that nested submodules have been properly initialized.
@@ -58,12 +58,11 @@ To learn more, visit the [Foundry Book](https://book.getfoundry.sh/) docs.
 
 For convenience, several utility commands are available in `package.json`.
 
-| Command                           | Description                            |
-| --------------------------------- | -------------------------------------- |
-| `npm test`                        | Run local tests.                       |
-| `npm run coverage:lcov`           | Generate an LCOV test coverage report. |
-| `npm run deploy:ethereum-mainnet` | Deploy to Ethereum mainnet             |
-| `npm run deploy:ethereum-sepolia` | Deploy to Ethereum Sepolia testnet     |
-| `npm run deploy:optimism-mainnet` | Deploy to Optimism mainnet             |
-| `npm run deploy:optimism-testnet` | Deploy to Optimism testnet             |
-
+| Command                        | Description                            |
+| ------------------------------ | -------------------------------------- |
+| `yarn test`                    | Run local tests.                       |
+| `yarn coverage`                | Generate an LCOV test coverage report. |
+| `yarn deploy:ethereum-mainnet` | Deploy to Ethereum mainnet             |
+| `yarn deploy:ethereum-sepolia` | Deploy to Ethereum Sepolia testnet     |
+| `yarn deploy:optimism-mainnet` | Deploy to Optimism mainnet             |
+| `yarn deploy:optimism-testnet` | Deploy to Optimism testnet             |

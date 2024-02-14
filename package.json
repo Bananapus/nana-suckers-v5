@@ -19,7 +19,7 @@
     "@openzeppelin/contracts": "^5.0.1",
     "@prb/math": "^4.0.2",
     "@uniswap/permit2": "github:Uniswap/permit2",
-    "@arbitrum/nitro-contracts": "git+ssh://git@github.com:OffchainLabs/nitro-contracts.git",
-    "@arbitrum/token-bridge-contracts": "git+ssh://git@github.com/OffchainLabs/token-bridge-contracts.git"
+    "@arbitrum/nitro-contracts": "github:OffchainLabs/nitro-contracts",
+    "@arbitrum/token-bridge-contracts": "github:OffchainLabs/token-bridge-contracts.git"
   }
 }
