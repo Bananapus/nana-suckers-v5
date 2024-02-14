@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 import {OPMessenger} from "../../src/interfaces/OPMessenger.sol";
-import "../../lib/permit2/lib/openzeppelin-contracts/contracts/mocks/ERC20Mock.sol";
+import "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 
 contract MockMessenger is OPMessenger {
     address public xDomainMessageSender;

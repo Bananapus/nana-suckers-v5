@@ -13,5 +13,13 @@
     "deploy:ethereum-sepolia": "source .env && forge script Deploy --chain-id 11155111 --rpc-url $RPC_ETHEREUM_SEPOLIA --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_ETHEREUM_SEPOLIA -vvv",
     "deploy:optimism-mainnet": "source .env && forge script Deploy --chain-id 420 --rpc-url $RPC_OPTIMISM_MAINNET --broadcast --verify --etherscan-api-key $OPTIMISTIC_ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_OPTIMISM_MAINNET -vvv",
     "deploy:optimism-sepolia": "source .env && forge script Deploy --chain-id 11155420 --rpc-url $RPC_OPTIMISM_SEPOLIA --broadcast --verify --etherscan-api-key $OPTIMISTIC_ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_OPTIMISM_SEPOLIA -vvv"
+  },
+  "dependencies": {
+    "@bananapus/core": "^0.0.3",
+    "@openzeppelin/contracts": "^5.0.1",
+    "@prb/math": "^4.0.2",
+    "@uniswap/permit2": "github:Uniswap/permit2",
+    "@arbitrum/nitro-contracts": "git+ssh://git@github.com:OffchainLabs/nitro-contracts.git",
+    "@arbitrum/token-bridge-contracts": "git+ssh://git@github.com/OffchainLabs/token-bridge-contracts.git"
   }
 }

@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
-import {IJBDirectory} from "juice-contracts-v4/src/interfaces/IJBDirectory.sol";
-import {IJBController} from "juice-contracts-v4/src/interfaces/IJBController.sol";
-import {IJBTokens} from "juice-contracts-v4/src/interfaces/IJBTokens.sol";
-import {IJBTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBTerminal.sol";
-import {IJBRedeemTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
-import {IJBPayoutTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBPayoutTerminal.sol";
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
+import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
+import {IJBTerminal} from "@bananapus/core/src/interfaces/terminal/IJBTerminal.sol";
+import {IJBRedeemTerminal} from "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
+import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/terminal/IJBPayoutTerminal.sol";
 import {FeelessDeployer} from "./interfaces/FeelessDeployer.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
-import {JBAccountingContext} from "juice-contracts-v4/src/structs/JBAccountingContext.sol";
+import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
 import {BPTokenConfig} from "./structs/BPTokenConfig.sol";
-import {JBConstants} from "juice-contracts-v4/src/libraries/JBConstants.sol";
-import {JBPermissioned, IJBPermissions} from "juice-contracts-v4/src/abstract/JBPermissioned.sol";
-import {JBPermissionIds} from "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
-import {SafeERC20, IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {BitMaps} from "lib/openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
+import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
+import {JBPermissioned, IJBPermissions} from "@bananapus/core/src/abstract/JBPermissioned.sol";
+import {JBPermissionIds} from "@bananapus/core/src/libraries/JBPermissionIds.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.

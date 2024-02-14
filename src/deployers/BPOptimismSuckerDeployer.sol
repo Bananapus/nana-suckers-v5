@@ -3,9 +3,9 @@ pragma solidity ^0.8.21;
 
 import "../BPOptimismSucker.sol";
 
-import {Create2} from "openzeppelin-contracts/contracts/utils/Create2.sol";
-import {JBPermissioned, IJBPermissions} from "juice-contracts-v4/src/abstract/JBPermissioned.sol";
-import {IJBPayoutTerminal} from "juice-contracts-v4/src/interfaces/terminal/IJBPayoutTerminal.sol";
+import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
+import {JBPermissioned, IJBPermissions} from "@bananapus/core/src/abstract/JBPermissioned.sol";
+import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/terminal/IJBPayoutTerminal.sol";
 
 contract BPOptimismSuckerDeployer is JBPermissioned {
 

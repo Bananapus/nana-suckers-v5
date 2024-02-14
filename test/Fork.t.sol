@@ -5,19 +5,19 @@ pragma solidity ^0.8.13;
 // import "@openzeppelin/contracts/utils/Strings.sol";
 // import "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
-// import {MockPriceFeed} from "juice-contracts-v4/test/mock/MockPriceFeed.sol";
+// import {MockPriceFeed} from "@bananapus/core/test/mock/MockPriceFeed.sol";
 
 // import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBToken, IERC20, BPTokenConfig, OPMessenger} from "../src/BPOptimismSucker.sol";
-// import "juice-contracts-v4/src/interfaces/IJBController.sol";
-// import "juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
-// import "juice-contracts-v4/src/interfaces/terminal/IJBMultiTerminal.sol";
-// import "juice-contracts-v4/src/interfaces/IJBPriceFeed.sol";
-// import "juice-contracts-v4/src/libraries/JBConstants.sol";
-// import "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
-// import {JBRulesetConfig} from "juice-contracts-v4/src/structs/JBRulesetConfig.sol";
-// import {JBFundAccessLimitGroup} from "juice-contracts-v4/src/structs/JBFundAccessLimitGroup.sol";
-// import {IJBRulesetApprovalHook} from "juice-contracts-v4/src/interfaces/IJBRulesetApprovalHook.sol";
-// import {IJBPermissions, JBPermissionsData} from "juice-contracts-v4/src/interfaces/IJBPermissions.sol";
+// import "@bananapus/core/src/interfaces/IJBController.sol";
+// import "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
+// import "@bananapus/core/src/interfaces/terminal/IJBMultiTerminal.sol";
+// import "@bananapus/core/src/interfaces/IJBPriceFeed.sol";
+// import "@bananapus/core/src/libraries/JBConstants.sol";
+// import "@bananapus/core/src/libraries/JBPermissionIds.sol";
+// import {JBRulesetConfig} from "@bananapus/core/src/structs/JBRulesetConfig.sol";
+// import {JBFundAccessLimitGroup} from "@bananapus/core/src/structs/JBFundAccessLimitGroup.sol";
+// import {IJBRulesetApprovalHook} from "@bananapus/core/src/interfaces/IJBRulesetApprovalHook.sol";
+// import {IJBPermissions, JBPermissionsData} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 
 // import {MockMessenger} from "./mocks/MockMessenger.sol";
 
@@ -38,7 +38,7 @@ pragma solidity ^0.8.13;
 //         uint256 projectTokenAmount;
 //     }
 
-//     string DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json";
+//     string DEPLOYMENT_JSON = "@bananapus/core/broadcast/Deploy.s.sol/11155111/run-latest.json";
 
 //     MockMessenger _mockMessenger;
 

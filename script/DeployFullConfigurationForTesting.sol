@@ -7,19 +7,19 @@ import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
 // import {BPOptimismSucker} from "../src/BPOptimismSucker.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
-import {Strings} from "../lib/juice-contracts-v4/lib/openzeppelin-contracts/contracts/utils/Strings.sol";
-import "../lib/juice-contracts-v4/src/interfaces/IJBController.sol";
-import "../lib/juice-contracts-v4/src/interfaces/terminal/IJBRedeemTerminal.sol";
-// import "juice-contracts-v4/src/interfaces/terminal/IJBMultiTerminal.sol";
-// import "juice-contracts-v4/src/interfaces/IJBPriceFeed.sol"; 
-import "../lib/juice-contracts-v4/src/interfaces/IJBPrices.sol"; 
-import "../lib/juice-contracts-v4/src/libraries/JBConstants.sol";
-// import "juice-contracts-v4/src/libraries/JBPermissionIds.sol";
-// import {JBRulesetConfig} from "juice-contracts-v4/src/structs/JBRulesetConfig.sol";
-import {JBFundAccessLimitGroup} from "../lib/juice-contracts-v4/src/structs/JBFundAccessLimitGroup.sol";
-import {SafeERC20, IERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-// import {IJBRulesetApprovalHook} from "juice-contracts-v4/src/interfaces/IJBRulesetApprovalHook.sol";
-// import {IJBPermissions, JBPermissionsData} from "juice-contracts-v4/src/interfaces/IJBPermissions.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import "@bananapus/core/src/interfaces/IJBController.sol";
+import "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
+// import "@bananapus/core/src/interfaces/terminal/IJBMultiTerminal.sol";
+// import "@bananapus/core/src/interfaces/IJBPriceFeed.sol"; 
+import "@bananapus/core/src/interfaces/IJBPrices.sol"; 
+import "@bananapus/core/src/libraries/JBConstants.sol";
+// import "@bananapus/core/src/libraries/JBPermissionIds.sol";
+// import {JBRulesetConfig} from "@bananapus/core/src/structs/JBRulesetConfig.sol";
+import {JBFundAccessLimitGroup} from "@bananapus/core/src/structs/JBFundAccessLimitGroup.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+// import {IJBRulesetApprovalHook} from "@bananapus/core/src/interfaces/IJBRulesetApprovalHook.sol";
+// import {IJBPermissions, JBPermissionsData} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 
 interface OPTestBridgeToken is IERC20 { 
     function faucet() external;
@@ -30,13 +30,13 @@ contract CreateProjectsScript is Script {
     string CHAIN_A_RPC;
     OPMessenger constant CHAIN_A_OP_MESSENGER = OPMessenger(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef);
     OPStandardBridge constant CHAIN_A_OP_BRIDGE = OPStandardBridge(0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1);
-    string CHAIN_A_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155111/run-latest.json";
+    string CHAIN_A_DEPLOYMENT_JSON = "@bananapus/core/broadcast/Deploy.s.sol/11155111/run-latest.json";
 
     // OP Sepolia config
     string CHAIN_B_RPC;
     OPMessenger constant CHAIN_B_OP_MESSENGER = OPMessenger(0x4200000000000000000000000000000000000007);
     OPStandardBridge constant CHAIN_B_OP_BRIDGE = OPStandardBridge(0x4200000000000000000000000000000000000010);
-    string CHAIN_B_DEPLOYMENT_JSON = "lib/juice-contracts-v4/broadcast/Deploy.s.sol/11155420/run-latest.json";
+    string CHAIN_B_DEPLOYMENT_JSON = "@bananapus/core/broadcast/Deploy.s.sol/11155420/run-latest.json";
 
     function setUp() public {
         CHAIN_A_RPC = vm.envString("CHAIN_A_RPC");

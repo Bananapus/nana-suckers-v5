@@ -1,8 +1,0 @@
-forge-std/=lib/forge-std/src/
-lib/permit2=lib/juice-contracts-v4/lib/permit2/
-lib/prb-math=lib/juice-contracts-v4/lib/prb-math/
-@arbitrum/nitro-contracts=lib/nitro-contracts/
-@arbitrum/token-bridge-contracts=lib/token-bridge-contracts/
-juice-contracts-v4/=lib/juice-contracts-v4/
-openzeppelin-contracts/contracts=lib/openzeppelin-contracts/contracts
-ds-test/=lib/forge-std/lib/ds-test/src/
