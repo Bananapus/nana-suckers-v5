@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
+import {IBPSucker} from "./interfaces/IBPSucker.sol";
 import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IJBTerminal} from "@bananapus/core/src/interfaces/terminal/IJBTerminal.sol";
 import {IJBRedeemTerminal} from "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
 import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/terminal/IJBPayoutTerminal.sol";
-import {FeelessDeployer} from "./interfaces/FeelessDeployer.sol";
+import {IBPSuckerDeployerFeeless} from "./interfaces/IBPSuckerDeployerFeeless.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
 import {BPTokenConfig} from "./structs/BPTokenConfig.sol";
+import {BPRemoteTokenConfig} from "./structs/BPRemoteTokenConfig.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 import {JBPermissioned, IJBPermissions} from "@bananapus/core/src/abstract/JBPermissioned.sol";
 import {JBPermissionIds} from "@bananapus/core/src/libraries/JBPermissionIds.sol";
@@ -20,7 +22,7 @@ import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.
-abstract contract BPSucker is JBPermissioned {
+abstract contract BPSucker is JBPermissioned, IBPSucker {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
@@ -107,7 +109,7 @@ abstract contract BPSucker is JBPermissioned {
     mapping(address _token => uint256 _amount) public outstandingATB;
 
     /// @notice configuration of each token.
-    mapping(address _token => BPTokenConfig _remoteToken) public token;
+    mapping(address _token => BPRemoteTokenConfig _remoteToken) public token;
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -205,7 +207,7 @@ abstract contract BPSucker is JBPermissioned {
     /// @param _token the token to bridge the tree for.
     function toRemote(address _token) external payable {
         // TODO: Add some way to prevent spam.
-        BPTokenConfig memory _tokenConfig = token[_token];
+        BPRemoteTokenConfig memory _tokenConfig = token[_token];
 
         // Require that the min amount being bridged is enough.
         if (outbox[_token].balance < _tokenConfig.minBridgeAmount) {
@@ -280,10 +282,10 @@ abstract contract BPSucker is JBPermissioned {
     }
 
     /// @notice Links an ERC20 token on the local chain to an ERC20 on the remote chain.
-    /// @param _token the token to configure.
     /// @param _config the configuration details.
-    function configureToken(address _token, BPTokenConfig calldata _config) external payable {
-        bool _isNative = _token == JBConstants.NATIVE_TOKEN;
+    function configureToken(BPTokenConfig calldata _config) public payable {
+        address _token = _config.localToken;
+        bool _isNative = _config.localToken == JBConstants.NATIVE_TOKEN;
 
         // If the native token is being configured then the remoteToken has to also be the native token.
         // Unless we are disabling native token bridging, then it can also be 0.
@@ -303,11 +305,32 @@ abstract contract BPSucker is JBPermissioned {
         // We send a final bridge before disabling so all users can exit with their funds.
         if (_config.remoteToken == address(0) && outbox[_token].balance != 0) _sendRoot(_token, token[_token]);
 
-        token[_token] = _config;
+        token[_token] = BPRemoteTokenConfig({
+            minGas: _config.minGas,
+            remoteToken: _config.remoteToken,
+            minBridgeAmount: _config.minBridgeAmount
+        });
+    }
+
+    function configureTokens(BPTokenConfig[] calldata _config) external payable {
+        for (uint256 _i = 0; _i < _config.length; _i++) {
+            configureToken(_config[_i]);
+        }
     }
 
     /// @notice used to receive the redemption ETH.
     receive() external payable {}
+
+    //*********************************************************************//
+    // ------------------------ external views --------------------------- //
+    //*********************************************************************//
+
+    /// @notice checks if a token is supported by the sucker.
+    /// @param _token the token to check.
+    /// @return _supported true if the token is supported.
+    function isTokenSupported(address _token) external view override returns (bool) {
+        return token[_token].remoteToken != address(0);
+    }
 
     //*********************************************************************//
     // --------------------- internal transactions ----------------------- //
@@ -348,7 +371,7 @@ abstract contract BPSucker is JBPermissioned {
     /// @dev Call may have a `msg.value`, require it to be `0` if its not needed.
     /// @param _token the token to bridge for.
     /// @param _tokenConfig the config for the token to send.
-    function _sendRoot(address _token, BPTokenConfig memory _tokenConfig) internal virtual;
+    function _sendRoot(address _token, BPRemoteTokenConfig memory _tokenConfig) internal virtual;
 
     /// @notice checks if the _sender (msg.sender) is a valid representative of the remote peer.
     /// @param _sender the message sender.
@@ -463,7 +486,7 @@ abstract contract BPSucker is JBPermissioned {
 
         // Get the balance before we redeem.
         uint256 _balanceBefore = _balanceOf(_token, address(this));
-        _receivedAmount = FeelessDeployer(DEPLOYER).useAllowanceFeeless(
+        _receivedAmount = IBPSuckerDeployerFeeless(DEPLOYER).useAllowanceFeeless(
             PROJECT_ID,
             IJBPayoutTerminal(address(_terminal)),
             _token,

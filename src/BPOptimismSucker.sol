@@ -49,7 +49,7 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
     /// @notice uses the OPMESSENGER to send the root and assets over the bridge to the peer.
     /// @param _token the token to bridge for.
     /// @param _tokenConfig the config for the token to send.
-    function _sendRoot(address _token, BPTokenConfig memory _tokenConfig) internal override {
+    function _sendRoot(address _token, BPRemoteTokenConfig memory _tokenConfig) internal override {
         uint256 _nativeValue;
 
         // The OP bridge does not expect to be paid.

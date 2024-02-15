@@ -2,12 +2,14 @@
 pragma solidity ^0.8.21;
 
 import "../BPOptimismSucker.sol";
+import {IBPSucker} from "./../interfaces/IBPSucker.sol";
+import {IBPSuckerDeployerFeeless} from "./../interfaces/IBPSuckerDeployerFeeless.sol";
 
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 import {JBPermissioned, IJBPermissions} from "@bananapus/core/src/abstract/JBPermissioned.sol";
 import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/terminal/IJBPayoutTerminal.sol";
 
-contract BPOptimismSuckerDeployer is JBPermissioned {
+contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
     error ONLY_SUCKERS();
 
     IJBPrices immutable PRICES;
@@ -42,14 +44,14 @@ contract BPOptimismSuckerDeployer is JBPermissioned {
     /// @param _localProjectId the project id on this chain.
     /// @param _salt the salt to use for the create2 address.
     /// @return _sucker the address of the new sucker.
-    function createForSender(uint256 _localProjectId, bytes32 _salt) external returns (address _sucker) {
+    function createForSender(uint256 _localProjectId, bytes32 _salt) external returns (IBPSucker _sucker) {
         _salt = keccak256(abi.encodePacked(msg.sender, _salt));
-        _sucker = address(
+        _sucker = IBPSucker(address(
             new BPOptimismSucker{salt: _salt}(
                 PRICES, RULESETS, MESSENGER, BRIDGE, DIRECTORY, TOKENS, PERMISSIONS, address(0), _localProjectId
             )
-        );
-        isSucker[_sucker] = true;
+        ));
+        isSucker[address(_sucker)] = true;
     }
 
     /// @notice Use the allowance of a project witgout paying exit fees.
