@@ -13,20 +13,20 @@
 For `npm` projects (recommended):
 
 ```bash
-npm install @bananapus/sucker
+npm install @bananapus/suckers
 ```
 
 For `forge` projects (not recommended):
 
 ```bash
-forge install Bananapus/nana-sucker
+forge install Bananapus/nana-suckers
 ```
 
-Add `@bananapus/sucker/=lib/nana-sucker/` to `remappings.txt`. You'll also need to install `nana-sucker`'s dependencies and add similar remappings for them.
+Add `@bananapus/suckers/=lib/nana-suckers/` to `remappings.txt`. You'll also need to install `nana-suckers`' dependencies and add similar remappings for them.
 
 ## Develop
 
-`nana-sucker` uses [yarn](https://yarnpkg.com/) for package management and the [Foundry](https://github.com/foundry-rs/foundry) development toolchain for builds, tests, and deployments. To get set up, [install yarn](https://yarnpkg.com/getting-started/install) and install [Foundry](https://github.com/foundry-rs/foundry):
+`nana-suckers` uses [npm](https://www.npmjs.com/) for package management and the [Foundry](https://github.com/foundry-rs/foundry) development toolchain for builds, tests, and deployments. To get set up, [install Node.js](https://nodejs.org/en/download) and install [Foundry](https://github.com/foundry-rs/foundry):
 
 ```bash
 curl -L https://foundry.paradigm.xyz | sh
@@ -35,7 +35,7 @@ curl -L https://foundry.paradigm.xyz | sh
 You can download and install dependencies with:
 
 ```bash
-yarn install && forge install
+npm install && forge install
 ```
 
 If you run into trouble with `forge install`, try using `git submodule update --init --recursive` to ensure that nested submodules have been properly initialized.
@@ -58,11 +58,11 @@ To learn more, visit the [Foundry Book](https://book.getfoundry.sh/) docs.
 
 For convenience, several utility commands are available in `package.json`.
 
-| Command                        | Description                            |
-| ------------------------------ | -------------------------------------- |
-| `yarn test`                    | Run local tests.                       |
-| `yarn coverage`                | Generate an LCOV test coverage report. |
-| `yarn deploy:ethereum-mainnet` | Deploy to Ethereum mainnet             |
-| `yarn deploy:ethereum-sepolia` | Deploy to Ethereum Sepolia testnet     |
-| `yarn deploy:optimism-mainnet` | Deploy to Optimism mainnet             |
-| `yarn deploy:optimism-testnet` | Deploy to Optimism testnet             |
+| Command                           | Description                            |
+| --------------------------------- | -------------------------------------- |
+| `npm test`                        | Run local tests.                       |
+| `npm run coverage`                | Generate an LCOV test coverage report. |
+| `npm run deploy:ethereum-mainnet` | Deploy to Ethereum mainnet             |
+| `npm run deploy:ethereum-sepolia` | Deploy to Ethereum Sepolia testnet     |
+| `npm run deploy:optimism-mainnet` | Deploy to Optimism mainnet             |
+| `npm run deploy:optimism-testnet` | Deploy to Optimism testnet             |
