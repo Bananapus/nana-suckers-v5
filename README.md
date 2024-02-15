@@ -8,6 +8,8 @@
   - `toRemote`: Send tokens from a local project to a remote project. It first checks if the remote project is valid, then redeems the tokens at the local terminal, and finally sends a message to the peer contract on the remote chain with the redeemed ETH.
   - `fromRemote`: This function receives tokens from a remote project. It checks if the message came from the peer contract and if the remote project is valid, then adds the redeemed funds to the local terminal and mints tokens for the beneficiary.
 
+_If you're having trouble understanding this contract, take a look at the [core protocol contracts](https://github.com/Bananapus/nana-core) and the [documentation](https://docs.juicebox.money/) first. If you have questions, reach out on [Discord](https://discord.com/invite/ErQYmth4dS)._
+
 ## Install
 
 For `npm` projects (recommended):
