@@ -32,7 +32,6 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
 
     error NOT_ALLOWED();
     error INVALID_REMOTE_PROJECT_ID(uint256 expected, uint256 received);
-    error INCORRECT_PROJECT_ID();
 
     /// @notice The contract storing and managing project rulesets.
     IJBRulesets public immutable RULESETS;
