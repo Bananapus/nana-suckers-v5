@@ -59,7 +59,7 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
 
         address _token = context.amount.token;
         if (
-            token[_token]
+            remoteConfigOf[_token]
                 // Check if the token is is configured.
                 .remoteToken == address(0)
             // Check if the terminal supports the redeem terminal interface.
@@ -118,10 +118,10 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
 
         // Add the reclaim amount to the messenger queue.
         _insertIntoTree({
-            _projectTokenAmount: _beneficiaryTokenCount,
-            _redemptionToken: context.amount.token,
-            _redemptionTokenAmount: _reclaimAmount,
-            _beneficiary: context.beneficiary
+            projectTokenAmount: _beneficiaryTokenCount,
+            redemptionToken: context.amount.token,
+            redemptionTokenAmount: _reclaimAmount,
+            beneficiary: context.beneficiary
         });
     }
 

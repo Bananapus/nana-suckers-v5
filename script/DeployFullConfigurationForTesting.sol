@@ -7,7 +7,7 @@ import {
     IJBDirectory,
     IJBTokens,
     IJBPermissions,
-    BPTokenConfig,
+    BPTokenMapConfig,
     OPStandardBridge
 } from "../src/BPOptimismSucker.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
@@ -158,14 +158,14 @@ contract CreateProjectsScript is Script {
         // Configure the suckers.
         vm.selectFork(_chainA);
         vm.broadcast();
-        _suckerA.configureToken(
-            BPTokenConfig({localToken: _a_tokens[0], minGas: 200_000, remoteToken: _b_tokens[0], minBridgeAmount: 0.001 ether})
+        _suckerA.mapToken(
+            BPTokenMapConfig({localToken: _a_tokens[0], minGas: 200_000, remoteToken: _b_tokens[0], minBridgeAmount: 0.001 ether})
         );
 
         vm.selectFork(_chainB);
         vm.broadcast();
-        _suckerB.configureToken(
-            BPTokenConfig({localToken: _b_tokens[0], minGas: 200_000, remoteToken: _a_tokens[0], minBridgeAmount: 0.001 ether})
+        _suckerB.mapToken(
+            BPTokenMapConfig({localToken: _b_tokens[0], minGas: 200_000, remoteToken: _a_tokens[0], minBridgeAmount: 0.001 ether})
         );
 
         console2.log("Chain B projectID", Strings.toString(_projectIdB));

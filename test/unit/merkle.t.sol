@@ -76,7 +76,7 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
 
     function test_validate() public {
         // Move outbound root to inbound root.
-        inbox[JBConstants.NATIVE_TOKEN] = RemoteRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
+        inbox[JBConstants.NATIVE_TOKEN] = InboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 
@@ -108,7 +108,7 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
 
     function test_validate_only_once() public {
         // Move outbound root to inbound root.
-        inbox[JBConstants.NATIVE_TOKEN] = RemoteRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
+        inbox[JBConstants.NATIVE_TOKEN] = InboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 

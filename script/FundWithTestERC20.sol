@@ -8,7 +8,7 @@ import {
     IJBDirectory,
     IJBTokens,
     IJBPermissions,
-    BPTokenConfig,
+    BPTokenMapConfig,
     OPStandardBridge
 } from "../src/BPOptimismSucker.sol";
 

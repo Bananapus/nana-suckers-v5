@@ -84,7 +84,7 @@ contract BPArbitrumSucker is BPSucker {
         uint64 _nonce = ++outbox[_token].nonce;
 
         if (_tokenConfig.remoteToken == address(0)) {
-            revert TOKEN_NOT_CONFIGURED(_token);
+            revert TOKEN_NOT_MAPPED(_token);
         }
 
         // Build the calldata that will be send to the peer.
@@ -94,7 +94,7 @@ contract BPArbitrumSucker is BPSucker {
                 MessageRoot({
                     token: _tokenConfig.remoteToken,
                     amount: _amount,
-                    remoteRoot: RemoteRoot({nonce: _nonce, root: outbox[_token].tree.root()})
+                    remoteRoot: InboxTreeRoot({nonce: _nonce, root: outbox[_token].tree.root()})
                 })
             )
         );
