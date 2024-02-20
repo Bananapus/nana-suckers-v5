@@ -16,7 +16,7 @@ import {BPTokenMapping} from "./structs/BPTokenMapping.sol";
 import {BPRemoteTokenConfig} from "./structs/BPRemoteTokenConfig.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 import {JBPermissioned, IJBPermissions} from "@bananapus/core/src/abstract/JBPermissioned.sol";
-import {JBPermissionIds} from "@bananapus/core/src/libraries/JBPermissionIds.sol";
+import {BPSuckerPermissionIds} from "./libraries/BPSuckerPermissionIds.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
@@ -315,9 +315,8 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
             revert BELOW_MIN_GAS(MESSENGER_ERC20_MIN_GAS_LIMIT, map.minGas);
         }
 
-        // TODO: Should we add a `BPSuckerPermissionIds.MAP_TOKEN` permission?
         // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
-        _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, JBPermissionIds.QUEUE_RULESETS);
+        _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, BPSuckerPermissionIds.MAP_TOKEN);
 
         // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds to the remote chain.
         if (map.remoteToken == address(0) && outbox[token].balance != 0) _sendRoot(token, remoteMappingFor[token]);
