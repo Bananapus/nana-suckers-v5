@@ -49,7 +49,7 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
     /// @notice uses the OPMESSENGER to send the root and assets over the bridge to the peer.
     /// @param _token the token to bridge for.
     /// @param _tokenConfig the config for the token to send.
-    function _sendRoot(address _token, BPRemoteTokenConfig memory _tokenConfig) internal override {
+    function _sendRoot(address _token, BPRemoteToken memory _tokenConfig) internal override {
         uint256 _nativeValue;
 
         // The OP bridge does not expect to be paid.
@@ -64,7 +64,7 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
         // Increment the nonce.
         uint64 _nonce = ++outbox[_token].nonce;
 
-        if (_tokenConfig.remoteToken == address(0)) {
+        if (_tokenConfig.addr == address(0)) {
             revert TOKEN_NOT_MAPPED(_token);
         }
 
@@ -75,7 +75,7 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
             // Bridge the tokens to the payer address.
             OPBRIDGE.bridgeERC20To({
                 localToken: _token,
-                remoteToken: _tokenConfig.remoteToken,
+                remoteToken: _tokenConfig.addr,
                 to: PEER,
                 amount: _amount,
                 minGasLimit: _tokenConfig.minGas,
@@ -92,7 +92,7 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
                 BPSucker.fromRemote,
                 (
                     MessageRoot({
-                        token: _tokenConfig.remoteToken,
+                        token: _tokenConfig.addr,
                         amount: _amount,
                         remoteRoot: InboxTreeRoot({nonce: _nonce, root: outbox[_token].tree.root()})
                     })

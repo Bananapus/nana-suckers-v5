@@ -99,7 +99,7 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
                     index: 2,
                     beneficiary: address(120),
                     projectTokenAmount: 5 ether,
-                    redemptionTokenAmount: 5 ether
+                    terminalTokenAmount: 5 ether
                 }),
                 proof: __proof
             })
@@ -131,7 +131,7 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
                     index: 2,
                     beneficiary: address(120),
                     projectTokenAmount: 5 ether,
-                    redemptionTokenAmount: 5 ether
+                    terminalTokenAmount: 5 ether
                 }),
                 proof: __proof
             })
@@ -146,7 +146,7 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
                     index: 2,
                     beneficiary: address(120),
                     projectTokenAmount: 5 ether,
-                    redemptionTokenAmount: 5 ether
+                    terminalTokenAmount: 5 ether
                 }),
                 proof: __proof
             })

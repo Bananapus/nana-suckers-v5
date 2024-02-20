@@ -71,7 +71,7 @@ contract ExecuteOnL1Script is Script {
         //   uint256 index;
         // address beneficiary;
         // uint256 projectTokenAmount;
-        // uint256 redemptionTokenAmount;
+        // uint256 terminalTokenAmount;
 
         bytes32[32] memory _proofArr = abi.decode(
             abi.encode(
@@ -121,7 +121,7 @@ contract ExecuteOnL1Script is Script {
                     index: 0,
                     beneficiary: msg.sender,
                     projectTokenAmount: 0.01 ether,
-                    redemptionTokenAmount: 0.01 ether
+                    terminalTokenAmount: 0.01 ether
                 }),
                 proof: _proofArr
             })
@@ -129,7 +129,7 @@ contract ExecuteOnL1Script is Script {
         // BPSuckerDelegate(payable(0xa3cedC2A2bdA2487132273d4eE1107Dad81B6eF9)).executeMessage({
         //     _nonce: 0,
         //     _token: JBConstants.NATIVE_TOKEN,
-        //     _redemptionTokenAmount: 50_000,
+        //     _terminalTokenAmount: 50_000,
         //     _items: _items
         // });
     }

@@ -59,9 +59,9 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
 
         address _token = context.amount.token;
         if (
-            remoteMappingFor[_token]
+            remoteTokenFor[_token]
                 // Check if the token is is configured.
-                .remoteToken == address(0)
+                .addr == address(0)
             // Check if the terminal supports the redeem terminal interface.
             && !ERC165Checker.supportsInterface(address(context.terminal), type(IJBRedeemTerminal).interfaceId)
         ) {
@@ -119,8 +119,8 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
         // Add the reclaim amount to the messenger queue.
         _insertIntoTree({
             projectTokenAmount: _beneficiaryTokenCount,
-            redemptionToken: context.amount.token,
-            redemptionTokenAmount: _reclaimAmount,
+            token: context.amount.token,
+            terminalTokenAmount: _reclaimAmount,
             beneficiary: context.beneficiary
         });
     }
