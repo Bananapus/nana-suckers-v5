@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-struct BPTokenMapConfig {
+struct BPTokenMapping {
     address localToken;
     uint32 minGas;
     address remoteToken;

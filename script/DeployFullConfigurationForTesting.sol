@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
@@ -7,7 +7,7 @@ import {
     IJBDirectory,
     IJBTokens,
     IJBPermissions,
-    BPTokenMapConfig,
+    BPTokenMapping,
     OPStandardBridge
 } from "../src/BPOptimismSucker.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
@@ -159,13 +159,13 @@ contract CreateProjectsScript is Script {
         vm.selectFork(_chainA);
         vm.broadcast();
         _suckerA.mapToken(
-            BPTokenMapConfig({localToken: _a_tokens[0], minGas: 200_000, remoteToken: _b_tokens[0], minBridgeAmount: 0.001 ether})
+            BPTokenMapping({localToken: _a_tokens[0], minGas: 200_000, remoteToken: _b_tokens[0], minBridgeAmount: 0.001 ether})
         );
 
         vm.selectFork(_chainB);
         vm.broadcast();
         _suckerB.mapToken(
-            BPTokenMapConfig({localToken: _b_tokens[0], minGas: 200_000, remoteToken: _a_tokens[0], minBridgeAmount: 0.001 ether})
+            BPTokenMapping({localToken: _b_tokens[0], minGas: 200_000, remoteToken: _a_tokens[0], minBridgeAmount: 0.001 ether})
         );
 
         console2.log("Chain B projectID", Strings.toString(_projectIdB));

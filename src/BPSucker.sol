@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
 import {IBPSucker} from "./interfaces/IBPSucker.sol";
@@ -12,7 +12,7 @@ import {IBPSuckerDeployerFeeless} from "./interfaces/IBPSuckerDeployerFeeless.so
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
-import {BPTokenMapConfig} from "./structs/BPTokenMapConfig.sol";
+import {BPTokenMapping} from "./structs/BPTokenMapping.sol";
 import {BPRemoteTokenConfig} from "./structs/BPRemoteTokenConfig.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 import {JBPermissioned, IJBPermissions} from "@bananapus/core/src/abstract/JBPermissioned.sol";
@@ -22,6 +22,7 @@ import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
 /// @notice An abstract contract for bridging a Juicebox project's tokens and the corresponding funds to and from a remote chain.
 /// @dev Beneficiaries and balances are tracked on two merkle trees: the outbox tree is used to send from the local chain to the remote chain, and the inbox tree is used to receive from the remote chain to the local chain.
+/// @dev Throughout this contract, "terminal token" refers to any token accepted by a project's terminal.
 abstract contract BPSucker is JBPermissioned, IBPSucker {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
@@ -66,7 +67,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     }
 
     /// @notice The root of an inbox tree for a given token.
-    /// @dev Inbox trees are used to receive from the remote chain to the local chain.
+    /// @dev Inbox trees are used to receive from the remote chain to the local chain. Tokens can be `claim`ed from the inbox tree.
     /// @custom:member nonce Tracks the nonce of the tree. The nonce cannot decrease.
     /// @custom:member root The root of the tree.
     struct InboxTreeRoot {
@@ -75,9 +76,9 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     }
 
     /// @notice Information about the remote (inbox) tree's root, passed in a message from the remote chain.
-    /// @custom:member The address of the token that the tree tracks.
+    /// @custom:member The address of the terminal token that the tree tracks.
     /// @custom:member The amount of tokens being sent.
-    /// @custom:member The root of the tree.
+    /// @custom:member The root of the merkle tree.
     struct MessageRoot {
         address token;
         uint256 amount;
@@ -113,14 +114,14 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     /// @notice The outbox merkle tree for a given token.
     mapping(address token => OutboxTree) public outbox;
 
-    /// @notice The inbox trees.
+    /// @notice The inbox merkle tree root for a given token.
     mapping(address token => InboxTreeRoot root) public inbox;
 
     /// @notice The outstanding amount of tokens to be added to the project's balance by `claim` or `addOutstandingAmountToBalance`.
     mapping(address token => uint256 amount) public amountToAddToBalance;
 
-    /// @notice The remote config for a given token.
-    mapping(address token => BPRemoteTokenConfig remoteToken) public remoteConfigOf;
+    /// @notice Information about the token on the remote chain that a token on the local chain is mapped to.
+    mapping(address token => BPRemoteTokenConfig remoteToken) public remoteMappingFor;
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -129,32 +130,35 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     /// @notice Whether the `amountToAddToBalance` gets added to the project's balance automatically when `claim` is called or manually by calling `addOutstandingAmountToBalance`.
     AddToBalanceMode public immutable ADD_TO_BALANCE_MODE;
 
-    /// @notice The Juicebox Directory
+    /// @notice The directory of terminals and controllers for projects.
     IJBDirectory public immutable DIRECTORY;
 
-    /// @notice The Juicebox Tokenstore
+    /// @notice The contract that manages token minting and burning.
     IJBTokens public immutable TOKENS;
 
-    /// @notice The addres of the deployer.
+    /// @notice The address of this contract's deployer.
     address public immutable DEPLOYER;
 
     /// @notice The peer sucker on the remote chain.
     address public immutable PEER;
 
-    /// @notice the project ID this sucker is for (on this chain).
+    /// @notice The ID of the project (on the local chain) that this sucker is associated with.
     uint256 public immutable PROJECT_ID;
 
-    /// @notice The amount of gas the basic xchain call will use.
+    // TODO: These two constants should be more clearly explained.
+    /// @notice A reasonable minimum gas limit for a basic cross-chain call.
     uint32 constant MESSENGER_BASE_GAS_LIMIT = 300_000;
 
-    /// @notice The minimum amount of gas an ERC20 bridge can be configured to.
+    /// @notice A reasonable minimum gas limit used when bridging ERC-20s.
     uint32 constant MESSENGER_ERC20_MIN_GAS_LIMIT = 200_000;
 
     //*********************************************************************//
     // -------------------- internal stored properties ------------------- //
     //*********************************************************************//
-    /// @notice Tracks if a item has been executed or not, prevents double executing the same item.
-    mapping(address _token => BitMaps.BitMap) executed;
+
+    /// @notice Tracks whether individual leaves in a given token's merkle tree have been executed (to prevent double-spending).
+    /// @dev A leaf is "executed" when the tokens it represents are minted for its beneficiary.
+    mapping(address token => BitMaps.BitMap) executed;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -180,12 +184,12 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     //*********************************************************************//
 
     /// @notice Prepare project tokens and the redemption amount backing them to be bridged to the remote chain.
-    /// @dev This adds the tokens and funds to the outbox tree, preparing them to be bridged by the next call to `toRemote`.
-    /// @param projectTokenAmount the amount of tokens to move.
-    /// @param beneficiary the recipient of the tokens on the remote chain.
-    /// @param minRedeemedTokens the minimum amount of assets that gets moved.
-    /// @param token the token to redeem for.
-    function prepare(uint256 projectTokenAmount, address beneficiary, uint256 minRedeemedTokens, address token)
+    /// @dev This adds the tokens and funds to the outbox tree for the `token`. They will be bridged by the next call to `toRemote` for the same `token`.
+    /// @param projectTokenAmount The amount of project tokens to prepare for bridging.
+    /// @param beneficiary The address of the recipient of the tokens on the remote chain.
+    /// @param minTokensReclaimed The minimum amount of terminal tokens to redeem for. If the amount reclaimed is less than this, the transaction will revert.
+    /// @param token The address of the terminal token to redeem for.
+    function prepare(uint256 projectTokenAmount, address beneficiary, uint256 minTokensReclaimed, address token)
         external
     {
         // Make sure the beneficiary is not the zero address, as this would revert when minting on the remote chain.
@@ -193,68 +197,68 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
             revert BENEFICIARY_NOT_ALLOWED();
         }
 
-        // Get the token for the project.
+        // Get the project's token.
         IERC20 projectToken = IERC20(address(TOKENS.tokenOf(PROJECT_ID)));
         if (address(projectToken) == address(0)) {
             revert ERC20_TOKEN_REQUIRED();
         }
 
-        // Make sure that the token is configured to be sucked.
-        if (remoteConfigOf[token].remoteToken == address(0)) {
+        // Make sure that the token is mapped to a remote token.
+        if (remoteMappingFor[token].remoteToken == address(0)) {
             revert TOKEN_NOT_MAPPED(token);
         }
 
         // Transfer the tokens to this contract.
         projectToken.transferFrom(msg.sender, address(this), projectTokenAmount);
 
-        // Perform the redemption.
+        // Redeem the tokens.
         uint256 redemptionTokenAmount =
-            _getBackingAssets(projectToken, projectTokenAmount, token, minRedeemedTokens);
+            _getBackingAssets(projectToken, projectTokenAmount, token, minTokensReclaimed);
 
-        // Insert the item.
+        // Insert the item into the outbox tree for the terminal `token`.
         _insertIntoTree(projectTokenAmount, token, redemptionTokenAmount, beneficiary);
     }
 
-    /// @notice Bridge funds for one or multiple beneficiaries.
-    /// @param token the token to bridge the tree for.
+    /// @notice Bridge the project tokens, redeemed funds, and beneficiary information for a given `token` to the remote chain.
+    /// @dev This sends the outbox root for the specified `token` to the remote chain.
+    /// @param token The terminal token being bridged.
     function toRemote(address token) external payable {
         // TODO: Add some way to prevent spam.
-        BPRemoteTokenConfig memory tokenConfig = remoteConfigOf[token];
+        BPRemoteTokenConfig memory tokenConfig = remoteMappingFor[token];
 
-        // Require that the min amount being bridged is enough.
+        // Ensure that the amount being bridged exceeds the minimum bridge amount.
         if (outbox[token].balance < tokenConfig.minBridgeAmount) {
-            revert();
+            revert(); // TODO: Should we have a more descriptive error here?
         }
 
-        // Send the root to the remote.
+        // Send the merkle root to the remote chain.
         _sendRoot(token, tokenConfig);
     }
 
-    /// @notice Receive from the remote project.
-    /// @dev can only be called by the OP messenger and with messages from the PEER.
-    /// @param root the root and all the information regarding it.
+    /// @notice Receive a merkle root for a terminal token from the remote project.
+    /// @dev This can only be called by the messenger contract on the local chain, with a message from the remote peer.
+    /// @param root The merkle root, token, and amount being received.
     function fromRemote(MessageRoot calldata root) external payable {
         // Make sure that the message came from our peer.
         if (!_isRemotePeer(msg.sender)) {
             revert NOT_PEER();
         }
 
-        // Increment the outstanding ATB amount with the amount being bridged.
+        // Increase the outstanding amount to be added to the project's balance by the amount being received.
         amountToAddToBalance[root.token] += root.amount;
 
-        // If the nonce is a newer one than we already have we update it.
-        // We can't revert in the case that this is a native token transfer
-        // otherwise we would lose the native tokens.
+        // If the received tree's nonce is greater than the current inbox tree's nonce, update the inbox tree.
+        // We can't revert because this could be a native token transfer. If we reverted, we would lose the native tokens.
         if (root.remoteRoot.nonce > inbox[root.token].nonce) {
             inbox[root.token] = root.remoteRoot;
             emit NewInboxTreeRoot(root.token, root.remoteRoot.nonce, root.remoteRoot.root);
         }
     }
 
-    /// @notice Performs a claim.
-    /// @param claimData The data for the claim.
+    /// @notice Claim project tokens which have been bridged from the remote chain for their beneficiary.
+    /// @param claimData The terminal token, merkle tree leaf, and proof for the claim.
     function claim(Claim calldata claimData) public {
-        // Attempt to validate proof.
+        // Attempt to validate the proof against the inbox tree for the terminal token.
         _validate({
             projectTokenAmount: claimData.leaf.projectTokenAmount,
             redemptionToken: claimData.token,
@@ -264,84 +268,88 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
             leaves: claimData.proof
         });
 
-        // Perform the add to balance if this sucker is configured to perform it on claimData.
+        // If this contract's add to balance mode is `ON_CLAIM`, add the redeemed funds to the project's balance.
         if (ADD_TO_BALANCE_MODE == AddToBalanceMode.ON_CLAIM) {
             _addToBalance(claimData.token, claimData.leaf.redemptionTokenAmount);
         }
 
+        // Mint the project tokens for the beneficiary.
         IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).mintTokensOf(
             PROJECT_ID, claimData.leaf.projectTokenAmount, claimData.leaf.beneficiary, "", false
         );
     }
 
     /// @notice Performs multiple claims.
-    /// @param claims The data for the claims.
+    /// @param claims A list of claims to perform (including the terminal token, merkle tree leaf, and proof for each claim).
     function claim(Claim[] calldata claims) external {
-        for (uint256 _i = 0; _i < claims.length; _i++) {
-            claim(claims[_i]);
+        for (uint256 i = 0; i < claims.length; i++) {
+            claim(claims[i]);
         }
     }
 
-    /// @notice Adds the redeemed funds to the projects terminal. Can only be used if `AddToBalanceMode` is `MANUAL`.
-    /// @param token The address of the token to add to the project's balance.
+    /// @notice Adds the redeemed `token` balance to the projects terminal. Can only be used if `ADD_TO_BALANCE_MODE` is `MANUAL`.
+    /// @param token The address of the terminal token to add to the project's balance.
     function addOutstandingAmountToBalance(address token) external {
         if (ADD_TO_BALANCE_MODE != AddToBalanceMode.MANUAL) {
             revert MANUAL_NOT_ALLOWED();
         }
 
-        // Add entire outstanding amount to the projects balance.
+        // Add entire outstanding amount to the project's balance.
         _addToBalance(token, amountToAddToBalance[token]);
     }
 
-    /// @notice Associate an ERC-20 token on the local chain with an ERC-20 token on the remote chain.
-    /// @param config the configuration details.
-    function mapToken(BPTokenMapConfig calldata config) public payable {
-        address token = config.localToken;
-        bool isNative = config.localToken == JBConstants.NATIVE_TOKEN;
+    /// @notice Map an ERC-20 token on the local chain to an ERC-20 token on the remote chain, allowing that token to be bridged.
+    /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging them.
+    function mapToken(BPTokenMapping calldata map) public payable {
+        address token = map.localToken;
+        bool isNative = map.localToken == JBConstants.NATIVE_TOKEN;
 
-        // If the native token is being configured then the remoteToken has to also be the native token.
-        // Unless we are disabling native token bridging, then it can also be 0.
-        if (isNative && config.remoteToken != JBConstants.NATIVE_TOKEN && config.remoteToken != address(0)) {
-            revert();
+        // If the token being mapped is the native token, the `remoteToken` must also be the native token.
+        // The native token can also be mapped to the 0 address, which is used to disable native token bridging.
+        if (isNative && map.remoteToken != JBConstants.NATIVE_TOKEN && map.remoteToken != address(0)) {
+            revert(); // TODO: Should we have a more descriptive error here?
         }
 
-        // As misconfiguration can lead to loss of funds we enforce a reasonable minimum.
-        if (config.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT && !isNative) {
-            revert BELOW_MIN_GAS(MESSENGER_ERC20_MIN_GAS_LIMIT, config.minGas);
+        // Enforce a reasonable minimum gas limit for bridging. A minimum which is too low could lead to the loss of funds.
+        if (map.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT && !isNative) {
+            revert BELOW_MIN_GAS(MESSENGER_ERC20_MIN_GAS_LIMIT, map.minGas);
         }
 
-        // Access control.
+        // TODO: Should we add a `BPSuckerPermissionIds.MAP_TOKEN` permission?
+        // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
         _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, JBPermissionIds.QUEUE_RULESETS);
 
-        // If we have a remaining balance in the outbox.
-        // We send a final bridge before disabling so all users can exit with their funds.
-        if (config.remoteToken == address(0) && outbox[token].balance != 0) _sendRoot(token, remoteConfigOf[token]);
+        // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds to the remote chain.
+        if (map.remoteToken == address(0) && outbox[token].balance != 0) _sendRoot(token, remoteMappingFor[token]);
 
-        remoteConfigOf[token] = BPRemoteTokenConfig({
-            minGas: config.minGas,
-            remoteToken: config.remoteToken,
-            minBridgeAmount: config.minBridgeAmount
+        // Update the token mapping.
+        remoteMappingFor[token] = BPRemoteTokenConfig({
+            minGas: map.minGas,
+            remoteToken: map.remoteToken,
+            minBridgeAmount: map.minBridgeAmount
         });
     }
 
-    function mapTokens(BPTokenMapConfig[] calldata config) external payable {
-        for (uint256 i = 0; i < config.length; i++) {
-            mapToken(config[i]);
+    /// @notice Map multiple ERC-20 tokens on the local chain to ERC-20 tokens on the remote chain, allowing those tokens to be bridged.
+    /// @param maps A list of local and remote terminal token addresses to map, and minimum amount/gas limits for bridging them.
+    function mapTokens(BPTokenMapping[] calldata maps) external payable {
+        for (uint256 i = 0; i < maps.length; i++) {
+            mapToken(maps[i]);
         }
     }
 
-    /// @notice used to receive the redemption ETH.
+    /// @notice Used to receive redeemed native tokens.
     receive() external payable {}
 
     //*********************************************************************//
     // ------------------------ external views --------------------------- //
     //*********************************************************************//
 
-    /// @notice Checks whether the specified token is supported by this sucker.
-    /// @param tokenAddr The token to check.
-    /// @return A boolean which is `true` if the token is supported and `false` if it is not.
-    function isSupported(address tokenAddr) external view override returns (bool) {
-        return remoteConfigOf[tokenAddr].remoteToken != address(0);
+    /// @notice Checks whether the specified token is mapped to a remote token.
+    /// @param token The terminal token to check.
+    /// @return A boolean which is `true` if the token is mapped to a remote token and `false` if it is not.
+    function isMapped(address token) external view override returns (bool) {
+        return remoteMappingFor[token].remoteToken != address(0);
     }
 
     //*********************************************************************//

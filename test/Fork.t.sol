@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 // import "forge-std/Test.sol";
@@ -7,7 +7,7 @@ pragma solidity ^0.8.13;
 
 // import {MockPriceFeed} from "@bananapus/core/test/mock/MockPriceFeed.sol";
 
-// import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBToken, IERC20, BPTokenMapConfig, OPMessenger} from "../src/BPOptimismSucker.sol";
+// import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBToken, IERC20, BPTokenMapping, OPMessenger} from "../src/BPOptimismSucker.sol";
 // import "@bananapus/core/src/interfaces/IJBController.sol";
 // import "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
 // import "@bananapus/core/src/interfaces/terminal/IJBMultiTerminal.sol";
@@ -166,7 +166,7 @@ pragma solidity ^0.8.13;
 
 //         // // Configure the L2 sucker for the token.
 //         // vm.prank(_projectOwnerL2);
-//         // suckerL2.mapToken(address(_L2ERC20Token), BPTokenMapConfig({
+//         // suckerL2.mapToken(address(_L2ERC20Token), BPTokenMapping({
 //         //     minGas: 200_000,
 //         //     remoteToken: address(_L1ERC20Token)
 //         // }));

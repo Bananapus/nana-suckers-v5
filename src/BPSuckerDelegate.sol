@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
 import "./BPSucker.sol";
@@ -59,7 +59,7 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
 
         address _token = context.amount.token;
         if (
-            remoteConfigOf[_token]
+            remoteMappingFor[_token]
                 // Check if the token is is configured.
                 .remoteToken == address(0)
             // Check if the terminal supports the redeem terminal interface.
