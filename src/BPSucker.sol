@@ -447,29 +447,22 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     /// @param _token the token to redeem for.
     /// @param _minReceivedTokens the minimum amount of tokens to receive.
     /// @return _receivedAmount the amount of tokens received by redeeming.
-    function _getBackingAssets(
-        IERC20,
-        uint256 _amount,
-        address _token,
-        uint256 _minReceivedTokens
-    ) internal virtual returns (uint256 _receivedAmount) {
+    function _getBackingAssets(IERC20, uint256 _amount, address _token, uint256 _minReceivedTokens)
+        internal
+        virtual
+        returns (uint256 _receivedAmount)
+    {
         // Get the terminal we will use to redeem the tokens.
-        IJBRedeemTerminal _terminal =
-            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, _token)));
-        
-        if(address(_terminal) == address(0))
-            revert TOKEN_NOT_CONFIGURED(_token);
+        IJBRedeemTerminal _terminal = IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, _token)));
 
-         // Perform the redemption.
+        if (address(_terminal) == address(0)) {
+            revert TOKEN_NOT_CONFIGURED(_token);
+        }
+
+        // Perform the redemption.
         uint256 _balanceBefore = _balanceOf(_token, address(this));
         _receivedAmount = _terminal.redeemTokensOf(
-            address(this),
-            PROJECT_ID,
-            _token,
-            _amount,
-            _minReceivedTokens,
-            payable(address(this)),
-            bytes("")
+            address(this), PROJECT_ID, _token, _amount, _minReceivedTokens, payable(address(this)), bytes("")
         );
 
         // Sanity check to make sure we actually received the reported amount.

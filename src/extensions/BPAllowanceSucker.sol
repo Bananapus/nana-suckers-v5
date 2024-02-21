@@ -8,7 +8,6 @@ import {IBPSuckerDeployerFeeless} from "../interfaces/IBPSuckerDeployerFeeless.s
 import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
 
 abstract contract BPAllowanceSucker is BPSucker {
-
     /// @notice Redeems the project tokens for the redemption tokens.
     /// @param _projectToken the token to redeem.
     /// @param _amount the amount of project tokens to redeem.
@@ -64,5 +63,4 @@ abstract contract BPAllowanceSucker is BPSucker {
         // Prevents a malicious terminal from reporting a higher amount than it actually sent.
         assert(_receivedAmount == _balanceOf(_token, address(this)) - _balanceBefore);
     }
-
 }

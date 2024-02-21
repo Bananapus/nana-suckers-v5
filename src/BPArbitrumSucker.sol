@@ -107,7 +107,9 @@ contract BPArbitrumSucker is BPSucker {
         }
     }
 
-    function _toL1(address _token, uint256 _amount, bytes memory _data, BPRemoteTokenConfig memory _tokenConfig) internal {
+    function _toL1(address _token, uint256 _amount, bytes memory _data, BPRemoteTokenConfig memory _tokenConfig)
+        internal
+    {
         uint256 _nativeValue;
 
         // Sending a message to L1 does not require any payment.
@@ -130,7 +132,9 @@ contract BPArbitrumSucker is BPSucker {
         ArbSys(address(100)).sendTxToL1{value: _nativeValue}(address(PEER), _data);
     }
 
-    function _toL2(address _token, uint256 _amount, bytes memory _data, BPRemoteTokenConfig memory _tokenConfig) internal {
+    function _toL2(address _token, uint256 _amount, bytes memory _data, BPRemoteTokenConfig memory _tokenConfig)
+        internal
+    {
         uint256 _nativeValue;
 
         if (_token != JBConstants.NATIVE_TOKEN) {
