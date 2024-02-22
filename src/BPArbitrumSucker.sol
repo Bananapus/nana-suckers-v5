@@ -119,9 +119,7 @@ contract BPArbitrumSucker is BPSucker {
             // TODO: Approve the tokens to be bridged?
             // SafeERC20.forceApprove(IERC20(_token), address(OPMESSENGER), _amount);
 
-            L2GatewayRouter(GATEWAY_ROUTER).outboundTransfer(
-                _tokenConfig.addr, address(PEER), _amount, bytes("")
-            );
+            L2GatewayRouter(GATEWAY_ROUTER).outboundTransfer(_tokenConfig.addr, address(PEER), _amount, bytes(""));
         } else {
             _nativeValue = _amount;
         }

@@ -52,7 +52,6 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     error MANUAL_NOT_ALLOWED();
     error UNEXPECTED_MSG_VALUE();
 
-
     //*********************************************************************//
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
@@ -109,13 +108,9 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
-    constructor(
-        IJBDirectory directory,
-        IJBTokens tokens,
-        IJBPermissions permissions,
-        address peer,
-        uint256 projectId
-    ) JBPermissioned(permissions) {
+    constructor(IJBDirectory directory, IJBTokens tokens, IJBPermissions permissions, address peer, uint256 projectId)
+        JBPermissioned(permissions)
+    {
         DIRECTORY = directory;
         TOKENS = tokens;
         PEER = peer == address(0) ? address(this) : peer;
@@ -158,8 +153,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         projectToken.transferFrom(msg.sender, address(this), projectTokenAmount);
 
         // Redeem the tokens.
-        uint256 terminalTokenAmount =
-            _getBackingAssets(projectToken, projectTokenAmount, token, minTokensReclaimed);
+        uint256 terminalTokenAmount = _getBackingAssets(projectToken, projectTokenAmount, token, minTokensReclaimed);
 
         // Insert the item into the outbox tree for the terminal `token`.
         _insertIntoTree(projectTokenAmount, token, terminalTokenAmount, beneficiary);
@@ -268,11 +262,8 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         if (map.remoteToken == address(0) && outbox[token].balance != 0) _sendRoot(token, remoteTokenFor[token]);
 
         // Update the token mapping.
-        remoteTokenFor[token] = BPRemoteToken({
-            minGas: map.minGas,
-            addr: map.remoteToken,
-            minBridgeAmount: map.minBridgeAmount
-        });
+        remoteTokenFor[token] =
+            BPRemoteToken({minGas: map.minGas, addr: map.remoteToken, minBridgeAmount: map.minBridgeAmount});
     }
 
     /// @notice Map multiple ERC-20 tokens on the local chain to ERC-20 tokens on the remote chain, allowing those tokens to be bridged.
@@ -441,15 +432,14 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
 
         // Get the terminal's accounting context for the terminal token.
         JBAccountingContext memory accountingContext = terminal.accountingContextForTokenOf(PROJECT_ID, token);
-        
+
         // Make sure the accounting context exists.
         if (accountingContext.decimals == 0 && accountingContext.currency == 0) {
             revert TOKEN_NOT_MAPPED(token);
         }
 
         // Get the project's surplus for the terminal token.
-        uint256 surplus =
-            terminal.currentSurplusOf(PROJECT_ID, accountingContext.decimals, accountingContext.currency);
+        uint256 surplus = terminal.currentSurplusOf(PROJECT_ID, accountingContext.decimals, accountingContext.currency);
 
         // TODO: replace with PRB-Math muldiv.
         // Calculate the expected amount of terminal tokens to receive.
@@ -457,7 +447,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
 
         // Get this contract's terminal token balance before we redeem.
         uint256 balanceBefore = _balanceOf(token, address(this));
-        
+
         // Redeem.
         receivedAmount = IBPSuckerDeployerFeeless(DEPLOYER).useAllowanceFeeless(
             PROJECT_ID,

@@ -12,7 +12,7 @@ interface IBPSucker {
     function mapToken(BPTokenMapping calldata map) external payable;
 
     function mapTokens(BPTokenMapping[] calldata maps) external payable;
-    
+
     event NewInboxTreeRoot(address indexed token, uint64 nonce, bytes32 root);
 
     event InsertToOutboxTree(
