@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.21;
 
 import {IBPSucker} from "./interfaces/IBPSucker.sol";
-import {IBPSuckerRegistry, SuckerDeployerConfig, BPTokenConfig} from "./interfaces/IBPSuckerRegistry.sol";
+import {IBPSuckerRegistry, SuckerDeployerConfig} from "./interfaces/IBPSuckerRegistry.sol";
 import {JBOwnable, IJBProjects, IJBPermissions} from "@bananapus/ownable/src/JBOwnable.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
@@ -12,12 +12,16 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     error INVALID_DEPLOYER(address _deployer);
 
     // TODO: Replace with correct permission id.
+    /// @notice the permission id required to deploy a sucker on a projects behalf.
     uint8 constant DEPLOY_SUCKERS_PERMISSION_ID = 100;
 
+    /// @notice the constant to show that this sucker does exist and belong to a specific project.
     uint256 constant SUCKER_EXISTS = 1;
 
+    /// @notice tracks suckers for a project.
     mapping(uint256 => EnumerableMap.AddressToUintMap) _suckersOf;
 
+    /// @notice tracks if a sucker deployer is allowed to be deployed through this registry.
     mapping(address deployer => bool) public suckerDeployerIsAllowed;
 
     constructor(
@@ -28,14 +32,28 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
         _transferOwnership(address(0), uint88(1));
     }
 
+    /**
+     * @notice Check if a sucker belongs to a project and that it was deployed using this registry.
+     * @param projectId the projectId to check for.
+     * @param suckerAddress the sucker address to check for.
+     */
     function isSuckerOf(uint256 projectId, address suckerAddress) external view returns (bool) {
         return _suckersOf[projectId].get(suckerAddress) == SUCKER_EXISTS;
     }
 
+    /**
+     * @notice Gets the suckers that were created (through this registry) for the specified project.
+     * @param projectId the project id to get the suckers for.
+     */
     function suckersOf(uint256 projectId) external view returns (address[] memory) {
         return _suckersOf[projectId].keys();
     }
 
+    /**
+     * @notice adds a suckers deployer to the allowlist.
+     * @dev can only be called by the owner (initially JBDAO).
+     * @param deployer the deployer to add.
+     */
     function allowSuckerDeployer(address deployer) public override onlyOwner {
         suckerDeployerIsAllowed[deployer] = true;
     }
