@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.23;
 
 import {IBPSucker} from "./interfaces/IBPSucker.sol";
 import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
@@ -14,6 +14,12 @@ import {MerkleLib} from "./utils/MerkleLib.sol";
 import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
 import {BPTokenMapping} from "./structs/BPTokenMapping.sol";
 import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
+import {BPOutboxTree} from "./structs/BPOutboxTree.sol";
+import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
+import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
+import {BPLeaf} from "./structs/BPLeaf.sol";
+import {BPClaim} from "./structs/BPClaim.sol";
+import {BPAddToBalanceMode} from "./enums/BPAddToBalanceMode.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 import {JBPermissioned, IJBPermissions} from "@bananapus/core/src/abstract/JBPermissioned.sol";
 import {BPSuckerPermissionIds} from "./libraries/BPSuckerPermissionIds.sol";
@@ -46,76 +52,16 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     error MANUAL_NOT_ALLOWED();
     error UNEXPECTED_MSG_VALUE();
 
-    event NewInboxTreeRoot(address indexed token, uint64 nonce, bytes32 root);
-
-    event InsertToOutboxTree(
-        address indexed beneficiary,
-        address indexed terminalToken,
-        bytes32 hashed,
-        uint256 index,
-        bytes32 root,
-        uint256 projectTokenAmount,
-        uint256 terminalTokenAmount
-    );
-
-    /// @notice A merkle tree used to track the outbox for a given token.
-    /// @dev The outbox is used to send from the local chain to the remote chain.
-    struct OutboxTree {
-        uint64 nonce;
-        uint256 balance;
-        MerkleLib.Tree tree;
-    }
-
-    /// @notice The root of an inbox tree for a given token.
-    /// @dev Inbox trees are used to receive from the remote chain to the local chain. Tokens can be `claim`ed from the inbox tree.
-    /// @custom:member nonce Tracks the nonce of the tree. The nonce cannot decrease.
-    /// @custom:member root The root of the tree.
-    struct InboxTreeRoot {
-        uint64 nonce;
-        bytes32 root;
-    }
-
-    /// @notice Information about the remote (inbox) tree's root, passed in a message from the remote chain.
-    /// @custom:member The address of the terminal token that the tree tracks.
-    /// @custom:member The amount of tokens being sent.
-    /// @custom:member The root of the merkle tree.
-    struct MessageRoot {
-        address token;
-        uint256 amount;
-        InboxTreeRoot remoteRoot;
-    }
-
-    /// @notice A leaf in the inbox or outbox tree. Used to `claim` tokens from the inbox tree.
-    struct Leaf {
-        uint256 index;
-        address beneficiary;
-        uint256 projectTokenAmount;
-        uint256 terminalTokenAmount;
-    }
-
-    struct Claim {
-        address token;
-        Leaf leaf;
-        bytes32[TREE_DEPTH] proof;
-    }
-
-    /// @notice Options for how the `amountToAddToBalance` gets added to the project's balance.
-    /// @custom:element MANUAL The amount gets added to the project's balance manually by calling `addOutstandingAmountToBalance`.
-    /// @custom:element ON_CLAIM The amount gets added to the project's balance automatically when `claim` is called.
-    enum AddToBalanceMode {
-        MANUAL,
-        ON_CLAIM
-    }
 
     //*********************************************************************//
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
 
     /// @notice The outbox merkle tree for a given token.
-    mapping(address token => OutboxTree) public outbox;
+    mapping(address token => BPOutboxTree) public outbox;
 
     /// @notice The inbox merkle tree root for a given token.
-    mapping(address token => InboxTreeRoot root) public inbox;
+    mapping(address token => BPInboxTreeRoot root) public inbox;
 
     /// @notice The outstanding amount of tokens to be added to the project's balance by `claim` or `addOutstandingAmountToBalance`.
     mapping(address token => uint256 amount) public amountToAddToBalance;
@@ -128,7 +74,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     //*********************************************************************//
 
     /// @notice Whether the `amountToAddToBalance` gets added to the project's balance automatically when `claim` is called or manually by calling `addOutstandingAmountToBalance`.
-    AddToBalanceMode public immutable ADD_TO_BALANCE_MODE;
+    BPAddToBalanceMode public immutable ADD_TO_BALANCE_MODE;
 
     /// @notice The directory of terminals and controllers for projects.
     IJBDirectory public immutable DIRECTORY;
@@ -238,7 +184,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     /// @notice Receive a merkle root for a terminal token from the remote project.
     /// @dev This can only be called by the messenger contract on the local chain, with a message from the remote peer.
     /// @param root The merkle root, token, and amount being received.
-    function fromRemote(MessageRoot calldata root) external payable {
+    function fromRemote(BPMessageRoot calldata root) external payable {
         // Make sure that the message came from our peer.
         if (!_isRemotePeer(msg.sender)) {
             revert NOT_PEER();
@@ -255,9 +201,9 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         }
     }
 
-    /// @notice Claim project tokens which have been bridged from the remote chain for their beneficiary.
+    /// @notice BPClaim project tokens which have been bridged from the remote chain for their beneficiary.
     /// @param claimData The terminal token, merkle tree leaf, and proof for the claim.
-    function claim(Claim calldata claimData) public {
+    function claim(BPClaim calldata claimData) public {
         // Attempt to validate the proof against the inbox tree for the terminal token.
         _validate({
             projectTokenAmount: claimData.leaf.projectTokenAmount,
@@ -269,7 +215,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         });
 
         // If this contract's add to balance mode is `ON_CLAIM`, add the redeemed funds to the project's balance.
-        if (ADD_TO_BALANCE_MODE == AddToBalanceMode.ON_CLAIM) {
+        if (ADD_TO_BALANCE_MODE == BPAddToBalanceMode.ON_CLAIM) {
             _addToBalance(claimData.token, claimData.leaf.terminalTokenAmount);
         }
 
@@ -281,7 +227,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
 
     /// @notice Performs multiple claims.
     /// @param claims A list of claims to perform (including the terminal token, merkle tree leaf, and proof for each claim).
-    function claim(Claim[] calldata claims) external {
+    function claim(BPClaim[] calldata claims) external {
         for (uint256 i = 0; i < claims.length; i++) {
             claim(claims[i]);
         }
@@ -290,7 +236,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     /// @notice Adds the redeemed `token` balance to the projects terminal. Can only be used if `ADD_TO_BALANCE_MODE` is `MANUAL`.
     /// @param token The address of the terminal token to add to the project's balance.
     function addOutstandingAmountToBalance(address token) external {
-        if (ADD_TO_BALANCE_MODE != AddToBalanceMode.MANUAL) {
+        if (ADD_TO_BALANCE_MODE != BPAddToBalanceMode.MANUAL) {
             revert MANUAL_NOT_ALLOWED();
         }
 

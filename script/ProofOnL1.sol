@@ -5,6 +5,8 @@ import {Script, console2, stdJson} from "forge-std/Script.sol";
 import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPSucker} from "../src/BPOptimismSucker.sol";
 // import {BPSuckQueueItem} from "../src/structs/BPSuckQueueItem.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
+import {BPLeaf} from "../src/structs/BPLeaf.sol";
+import {BPClaim} from "../src/structs/BPClaim.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
@@ -64,7 +66,7 @@ contract ExecuteOnL1Script is Script {
         // /// @param _proof the proof that shows the redemption as being in the smt.
         // function claim(
         //     address _token,
-        //     Leaf calldata _leaf,
+        //     BPLeaf calldata _leaf,
         //     bytes32[TREE_DEPTH] calldata _proof
         // )
 
@@ -115,9 +117,9 @@ contract ExecuteOnL1Script is Script {
 
         vm.broadcast();
         BPSuckerDelegate(payable(0xd00C4DD2dF16b989DC09666861312A3e78DCfc2F)).claim(
-            BPSucker.Claim({
+            BPClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: BPSucker.Leaf({
+                leaf: BPLeaf({
                     index: 0,
                     beneficiary: msg.sender,
                     projectTokenAmount: 0.01 ether,

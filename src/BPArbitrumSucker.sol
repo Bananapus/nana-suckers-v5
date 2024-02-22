@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.23;
 
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
@@ -91,10 +91,10 @@ contract BPArbitrumSucker is BPSucker {
         bytes memory _data = abi.encodeCall(
             BPSucker.fromRemote,
             (
-                MessageRoot({
+                BPMessageRoot({
                     token: _tokenConfig.addr,
                     amount: _amount,
-                    remoteRoot: InboxTreeRoot({nonce: _nonce, root: outbox[_token].tree.root()})
+                    remoteRoot: BPInboxTreeRoot({nonce: _nonce, root: outbox[_token].tree.root()})
                 })
             )
         );

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.23;
 
 import "./BPSucker.sol";
 import "./BPSuckerDelegate.sol";
@@ -91,10 +91,10 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
             abi.encodeCall(
                 BPSucker.fromRemote,
                 (
-                    MessageRoot({
+                    BPMessageRoot({
                         token: _tokenConfig.addr,
                         amount: _amount,
-                        remoteRoot: InboxTreeRoot({nonce: _nonce, root: outbox[_token].tree.root()})
+                        remoteRoot: BPInboxTreeRoot({nonce: _nonce, root: outbox[_token].tree.root()})
                     })
                 )
             ),
