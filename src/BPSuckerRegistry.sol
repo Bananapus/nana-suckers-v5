@@ -63,52 +63,28 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
             permissionId: DEPLOY_SUCKERS_PERMISSION_ID
         });
 
+        // Tracks the addresses of the deployed suckers.
         suckers = new address[](configurations.length);
 
         // This makes it so the sender has to be the same for both chains in order to link projects.
         salt = keccak256(abi.encode(msg.sender, salt));
 
-        // Keep a reference to the number of sucker deployers.
-        uint256 numberOfSuckerDeployers = configurations.length;
-
-        // Keep a reference to the sucker deploy being iterated on.
-        SuckerDeployerConfig memory configuration;
-
-        for (uint256 i; i < numberOfSuckerDeployers; i++) {
-            // Get the configuration being iterated on.
-            configuration = configurations[i];
-
+        for (uint256 i; i < configurations.length; i++) {
             // Make sure the deployer is allowed.
-            if (!suckerDeployerIsAllowed[address(configuration.deployer)])
-                revert INVALID_DEPLOYER(address(configuration.deployer));
+            if (!suckerDeployerIsAllowed[address(configurations[i].deployer)])
+                revert INVALID_DEPLOYER(address(configurations[i].deployer));
 
             // Create the sucker.
-            IBPSucker sucker = configuration.deployer.createForSender({_localProjectId: projectId, _salt: salt});
+            IBPSucker sucker = configurations[i].deployer.createForSender({_localProjectId: projectId, _salt: salt});
             suckers[i] = address(sucker);
 
             // Store the sucker as being deployed for this project.
             _suckersOf[projectId].set(address(sucker), SUCKER_EXISTS);
         
-            // Keep a reference to the number of token configurations for the sucker.
-            uint256 numberOfTokenConfigurations = configuration.tokenConfigurations.length;
-
-            // Keep a reference to the token configurations being iterated on.
-            BPTokenConfig memory tokenConfiguration;
-
             // Configure the tokens for the sucker.
-            for (uint256 j; j < numberOfTokenConfigurations; j++) {
-                // Get a reference to the configuration being iterated on.
-                tokenConfiguration = configuration.tokenConfigurations[j];
-
+            for (uint256 j; j < configurations[i].tokenConfigurations.length; j++) {
                 // Configure the sucker.
-                sucker.configureToken(
-                    BPTokenConfig({
-                        localToken: tokenConfiguration.localToken,
-                        remoteToken: tokenConfiguration.remoteToken,
-                        minGas: tokenConfiguration.minGas,
-                        minBridgeAmount: tokenConfiguration.minBridgeAmount
-                    })
-                );
+                sucker.configureToken(configurations[i].tokenConfigurations[j]);
             }
         }
     }
