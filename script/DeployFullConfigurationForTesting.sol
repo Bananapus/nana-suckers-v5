@@ -159,13 +159,23 @@ contract CreateProjectsScript is Script {
         vm.selectFork(_chainA);
         vm.broadcast();
         _suckerA.configureToken(
-            BPTokenConfig({localToken: _a_tokens[0], minGas: 200_000, remoteToken: _b_tokens[0], minBridgeAmount: 0.001 ether})
+            BPTokenConfig({
+                localToken: _a_tokens[0],
+                minGas: 200_000,
+                remoteToken: _b_tokens[0],
+                minBridgeAmount: 0.001 ether
+            })
         );
 
         vm.selectFork(_chainB);
         vm.broadcast();
         _suckerB.configureToken(
-            BPTokenConfig({localToken: _b_tokens[0], minGas: 200_000, remoteToken: _a_tokens[0], minBridgeAmount: 0.001 ether})
+            BPTokenConfig({
+                localToken: _b_tokens[0],
+                minGas: 200_000,
+                remoteToken: _a_tokens[0],
+                minBridgeAmount: 0.001 ether
+            })
         );
 
         console2.log("Chain B projectID", Strings.toString(_projectIdB));
