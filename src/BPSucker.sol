@@ -7,9 +7,6 @@ import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IJBTerminal} from "@bananapus/core/src/interfaces/terminal/IJBTerminal.sol";
 import {IJBRedeemTerminal} from "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
-import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/terminal/IJBPayoutTerminal.sol";
-import {IBPSuckerDeployerFeeless} from "./interfaces/IBPSuckerDeployerFeeless.sol";
-import {MerkleLib} from "./utils/MerkleLib.sol";
 
 import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
 import {BPTokenMapping} from "./structs/BPTokenMapping.sol";
@@ -20,6 +17,7 @@ import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
 import {BPLeaf} from "./structs/BPLeaf.sol";
 import {BPClaim} from "./structs/BPClaim.sol";
 import {BPAddToBalanceMode} from "./enums/BPAddToBalanceMode.sol";
+import {MerkleLib} from "./utils/MerkleLib.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 import {JBPermissioned, IJBPermissions} from "@bananapus/core/src/abstract/JBPermissioned.sol";
 import {BPSuckerPermissionIds} from "./libraries/BPSuckerPermissionIds.sol";
@@ -48,7 +46,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     error INVALID_PROOF(bytes32 expectedRoot, bytes32 proofRoot);
     error LEAF_ALREADY_EXECUTED(uint256 index);
     error INSUFFICIENT_BALANCE();
-    error TOKEN_NOT_MAPPED(address token);
+    error TOKEN_NOT_MAPPED(address token); // TODO: This needs to be broken out into a few errors.
     error MANUAL_NOT_ALLOWED();
     error UNEXPECTED_MSG_VALUE();
 
@@ -404,58 +402,27 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     }
 
     /// @notice Redeems project tokens for terminal tokens.
-    /// @param projectToken The project token being redeemed.
     /// @param amount The amount of project tokens to redeem.
     /// @param token The terminal token to redeem for.
     /// @param minReceivedTokens The minimum amount of terminal tokens to reclaim. If the amount reclaimed is less than this, the transaction will revert.
     /// @return receivedAmount The amount of terminal tokens reclaimed by the redemption.
-    function _getBackingAssets(IERC20 projectToken, uint256 amount, address token, uint256 minReceivedTokens)
+    function _getBackingAssets(IERC20, uint256 amount, address token, uint256 minReceivedTokens)
         internal
         virtual
         returns (uint256 receivedAmount)
     {
-        // Get the project token's total supply.
-        uint256 totalSupply = projectToken.totalSupply();
-
-        // Burn the project tokens.
-        IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).burnTokensOf(
-            address(this), PROJECT_ID, amount, string("")
-        );
-
-        // Get the project's primary terminal for the terminal token.
+        // Get the project's primary terminal for `token`. We will redeem from this terminal.
         IJBRedeemTerminal terminal = IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, token)));
 
-        // Make sure the primary terminal exists.
+        // If the project doesn't have a primary terminal for `token`, revert.
         if (address(terminal) == address(0)) {
-            revert TOKEN_NOT_MAPPED(token); // TODO: Update the error message here.
-        }
-
-        // Get the terminal's accounting context for the terminal token.
-        JBAccountingContext memory accountingContext = terminal.accountingContextForTokenOf(PROJECT_ID, token);
-
-        // Make sure the accounting context exists.
-        if (accountingContext.decimals == 0 && accountingContext.currency == 0) {
             revert TOKEN_NOT_MAPPED(token);
         }
 
-        // Get the project's surplus for the terminal token.
-        uint256 surplus = terminal.currentSurplusOf(PROJECT_ID, accountingContext.decimals, accountingContext.currency);
-
-        // TODO: replace with PRB-Math muldiv.
-        // Calculate the expected amount of terminal tokens to receive.
-        uint256 backingAssets = amount * surplus / totalSupply;
-
-        // Get this contract's terminal token balance before we redeem.
+        // Redeem the tokens.
         uint256 balanceBefore = _balanceOf(token, address(this));
-
-        // Redeem.
-        receivedAmount = IBPSuckerDeployerFeeless(DEPLOYER).useAllowanceFeeless(
-            PROJECT_ID,
-            IJBPayoutTerminal(address(terminal)),
-            token,
-            accountingContext.currency,
-            backingAssets,
-            minReceivedTokens
+        receivedAmount = terminal.redeemTokensOf(
+            address(this), PROJECT_ID, token, amount, minReceivedTokens, payable(address(this)), bytes("")
         );
 
         // Sanity check to make sure we received the expected amount.
