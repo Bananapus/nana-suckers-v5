@@ -24,10 +24,7 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     /// @notice tracks if a sucker deployer is allowed to be deployed through this registry.
     mapping(address deployer => bool) public suckerDeployerIsAllowed;
 
-    constructor(
-        IJBProjects _projects,
-        IJBPermissions _permissions
-    ) JBOwnable(_projects, _permissions) {
+    constructor(IJBProjects _projects, IJBPermissions _permissions) JBOwnable(_projects, _permissions) {
         // Transfer ownership to projectID 1 owner (JBDAO).
         _transferOwnership(address(0), uint88(1));
     }
@@ -66,11 +63,7 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
      * @param configurations the configuration to deploy.
      * @return suckers the deployed sucker(s).
      */
-    function deploySuckersFor(
-        uint256 projectId,
-        bytes32 salt,
-        SuckerDeployerConfig[] calldata configurations
-    )
+    function deploySuckersFor(uint256 projectId, bytes32 salt, SuckerDeployerConfig[] calldata configurations)
         public
         override
         returns (address[] memory suckers)
@@ -89,8 +82,9 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
 
         for (uint256 i; i < configurations.length; i++) {
             // Make sure the deployer is allowed.
-            if (!suckerDeployerIsAllowed[address(configurations[i].deployer)])
+            if (!suckerDeployerIsAllowed[address(configurations[i].deployer)]) {
                 revert INVALID_DEPLOYER(address(configurations[i].deployer));
+            }
 
             // Create the sucker.
             IBPSucker sucker = configurations[i].deployer.createForSender({_localProjectId: projectId, _salt: salt});
@@ -98,7 +92,7 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
 
             // Store the sucker as being deployed for this project.
             _suckersOf[projectId].set(address(sucker), SUCKER_EXISTS);
-        
+
             // Configure the tokens for the sucker.
             for (uint256 j; j < configurations[i].tokenConfigurations.length; j++) {
                 // Configure the sucker.

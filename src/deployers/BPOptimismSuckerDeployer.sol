@@ -46,11 +46,13 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
     /// @return _sucker the address of the new sucker.
     function createForSender(uint256 _localProjectId, bytes32 _salt) external returns (IBPSucker _sucker) {
         _salt = keccak256(abi.encodePacked(msg.sender, _salt));
-        _sucker = IBPSucker(address(
-            new BPOptimismSucker{salt: _salt}(
-                PRICES, RULESETS, MESSENGER, BRIDGE, DIRECTORY, TOKENS, PERMISSIONS, address(0), _localProjectId
+        _sucker = IBPSucker(
+            address(
+                new BPOptimismSucker{salt: _salt}(
+                    PRICES, RULESETS, MESSENGER, BRIDGE, DIRECTORY, TOKENS, PERMISSIONS, address(0), _localProjectId
+                )
             )
-        ));
+        );
         isSucker[address(_sucker)] = true;
     }
 
