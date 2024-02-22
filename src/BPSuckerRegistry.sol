@@ -94,10 +94,7 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
             _suckersOf[projectId].set(address(sucker), SUCKER_EXISTS);
 
             // Configure the tokens for the sucker.
-            for (uint256 j; j < configurations[i].tokenConfigurations.length; j++) {
-                // Configure the sucker.
-                sucker.configureToken(configurations[i].tokenConfigurations[j]);
-            }
+            sucker.configureTokens(configurations[i].tokenConfigurations);
         }
     }
 }
