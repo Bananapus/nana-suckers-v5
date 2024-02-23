@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
@@ -7,7 +7,7 @@ import {
     IJBDirectory,
     IJBTokens,
     IJBPermissions,
-    BPTokenConfig,
+    BPTokenMapping,
     OPStandardBridge
 } from "../src/BPOptimismSucker.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
@@ -158,8 +158,8 @@ contract CreateProjectsScript is Script {
         // Configure the suckers.
         vm.selectFork(_chainA);
         vm.broadcast();
-        _suckerA.configureToken(
-            BPTokenConfig({
+        _suckerA.mapToken(
+            BPTokenMapping({
                 localToken: _a_tokens[0],
                 minGas: 200_000,
                 remoteToken: _b_tokens[0],
@@ -169,8 +169,8 @@ contract CreateProjectsScript is Script {
 
         vm.selectFork(_chainB);
         vm.broadcast();
-        _suckerB.configureToken(
-            BPTokenConfig({
+        _suckerB.mapToken(
+            BPTokenMapping({
                 localToken: _b_tokens[0],
                 minGas: 200_000,
                 remoteToken: _a_tokens[0],

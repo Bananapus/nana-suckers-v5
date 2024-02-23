@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.21;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.23;
 
 import "../BPOptimismSucker.sol";
 import {IBPSucker} from "./../interfaces/IBPSucker.sol";
@@ -7,6 +7,7 @@ import {IBPSuckerDeployerFeeless} from "./../interfaces/IBPSuckerDeployerFeeless
 
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 import {JBPermissioned, IJBPermissions} from "@bananapus/core/src/abstract/JBPermissioned.sol";
+import {JBPermissionIds} from "@bananapus/core/src/libraries/JBPermissionIds.sol";
 import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/terminal/IJBPayoutTerminal.sol";
 
 contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {

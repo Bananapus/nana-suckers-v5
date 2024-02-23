@@ -1,10 +1,12 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
 import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPSucker} from "../src/BPOptimismSucker.sol";
 // import {BPSuckQueueItem} from "../src/structs/BPSuckQueueItem.sol";
 import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
+import {BPLeaf} from "../src/structs/BPLeaf.sol";
+import {BPClaim} from "../src/structs/BPClaim.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
@@ -64,14 +66,14 @@ contract ExecuteOnL1Script is Script {
         // /// @param _proof the proof that shows the redemption as being in the smt.
         // function claim(
         //     address _token,
-        //     Leaf calldata _leaf,
+        //     BPLeaf calldata _leaf,
         //     bytes32[TREE_DEPTH] calldata _proof
         // )
 
         //   uint256 index;
         // address beneficiary;
         // uint256 projectTokenAmount;
-        // uint256 redemptionTokenAmount;
+        // uint256 terminalTokenAmount;
 
         bytes32[32] memory _proofArr = abi.decode(
             abi.encode(
@@ -115,13 +117,13 @@ contract ExecuteOnL1Script is Script {
 
         vm.broadcast();
         BPSuckerDelegate(payable(0xd00C4DD2dF16b989DC09666861312A3e78DCfc2F)).claim(
-            BPSucker.Claim({
+            BPClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: BPSucker.Leaf({
+                leaf: BPLeaf({
                     index: 0,
                     beneficiary: msg.sender,
                     projectTokenAmount: 0.01 ether,
-                    redemptionTokenAmount: 0.01 ether
+                    terminalTokenAmount: 0.01 ether
                 }),
                 proof: _proofArr
             })
@@ -129,7 +131,7 @@ contract ExecuteOnL1Script is Script {
         // BPSuckerDelegate(payable(0xa3cedC2A2bdA2487132273d4eE1107Dad81B6eF9)).executeMessage({
         //     _nonce: 0,
         //     _token: JBConstants.NATIVE_TOKEN,
-        //     _redemptionTokenAmount: 50_000,
+        //     _terminalTokenAmount: 50_000,
         //     _items: _items
         // });
     }

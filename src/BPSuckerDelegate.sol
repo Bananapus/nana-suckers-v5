@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.21;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.23;
 
 import "./BPSucker.sol";
 import {IJBPrices} from "@bananapus/core/src/interfaces/IJBPrices.sol";
@@ -32,7 +32,6 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
 
     error NOT_ALLOWED();
     error INVALID_REMOTE_PROJECT_ID(uint256 expected, uint256 received);
-    error INCORRECT_PROJECT_ID();
 
     /// @notice The contract storing and managing project rulesets.
     IJBRulesets public immutable RULESETS;
@@ -60,9 +59,9 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
 
         address _token = context.amount.token;
         if (
-            token[_token]
+            remoteTokenFor[_token]
                 // Check if the token is is configured.
-                .remoteToken == address(0)
+                .addr == address(0)
             // Check if the terminal supports the redeem terminal interface.
             && !ERC165Checker.supportsInterface(address(context.terminal), type(IJBRedeemTerminal).interfaceId)
         ) {
@@ -119,10 +118,10 @@ abstract contract BPSuckerDelegate is BPSucker, IJBRulesetDataHook, IJBPayHook {
 
         // Add the reclaim amount to the messenger queue.
         _insertIntoTree({
-            _projectTokenAmount: _beneficiaryTokenCount,
-            _redemptionToken: context.amount.token,
-            _redemptionTokenAmount: _reclaimAmount,
-            _beneficiary: context.beneficiary
+            projectTokenAmount: _beneficiaryTokenCount,
+            token: context.amount.token,
+            terminalTokenAmount: _reclaimAmount,
+            beneficiary: context.beneficiary
         });
     }
 

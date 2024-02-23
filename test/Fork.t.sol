@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 // import "forge-std/Test.sol";
@@ -7,7 +7,7 @@ pragma solidity ^0.8.13;
 
 // import {MockPriceFeed} from "@bananapus/core/test/mock/MockPriceFeed.sol";
 
-// import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBToken, IERC20, BPTokenConfig, OPMessenger} from "../src/BPOptimismSucker.sol";
+// import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBToken, IERC20, BPTokenMapping, OPMessenger} from "../src/BPOptimismSucker.sol";
 // import "@bananapus/core/src/interfaces/IJBController.sol";
 // import "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
 // import "@bananapus/core/src/interfaces/terminal/IJBMultiTerminal.sol";
@@ -166,7 +166,7 @@ pragma solidity ^0.8.13;
 
 //         // // Configure the L2 sucker for the token.
 //         // vm.prank(_projectOwnerL2);
-//         // suckerL2.configureToken(address(_L2ERC20Token), BPTokenConfig({
+//         // suckerL2.mapToken(address(_L2ERC20Token), BPTokenMapping({
 //         //     minGas: 200_000,
 //         //     remoteToken: address(_L1ERC20Token)
 //         // }));
@@ -216,7 +216,7 @@ pragma solidity ^0.8.13;
 
 //     function _bridge(
 //         TestBridgeItems[] memory _items,
-//         address _redemptionToken,
+//         address _terminalToken,
 //         uint256 _project,
 //         BPOptimismSuckerHarnass _sucker
 //     ) internal {
@@ -236,7 +236,7 @@ pragma solidity ^0.8.13;
 //                 _items[_i].projectTokenAmount,
 //                 _items[_i].beneficiary,
 //                 0,
-//                 _redemptionToken
+//                 _terminalToken
 //             );
 
 //             // Add to the list of beneficiaries for the next step.
@@ -247,24 +247,24 @@ pragma solidity ^0.8.13;
 
 //         //  // Execute our queue item.
 //         // _sucker.toRemote(
-//         //     _redemptionToken,
+//         //     _terminalToken,
 //         //     _beneficiaries
 //         // );
 
 //         // Get the remote sucker.
 //         // BPOptimismSuckerHarnass _remoteSucker = BPOptimismSuckerHarnass(payable(address(_sucker.PEER())));
 
-//         // address _remoteRedemptionToken;
-//         // if(_redemptionToken != JBConstants.NATIVE_TOKEN) {
-//         //     (,_remoteRedemptionToken) = _sucker.token(_redemptionToken);
+//         // address _remoteTerminalToken;
+//         // if(_terminalToken != JBConstants.NATIVE_TOKEN) {
+//         //     (,_remoteTerminalToken) = _sucker.token(_terminalToken);
 //         // } else {
-//         //     _remoteRedemptionToken = JBConstants.NATIVE_TOKEN;
+//         //     _remoteTerminalToken = JBConstants.NATIVE_TOKEN;
 //         // }
 
 //         // // On the remote chain we execute the message.
 //         // _remoteSucker.executeMessage(
 //         //     _sucker.ForTest_GetNonce() - 1,
-//         //     _remoteRedemptionToken,
+//         //     _remoteTerminalToken,
 //         //     _totalProjectTokenAmount,
 //         //     _sucker.ForTest_GetBridgeItems()
 //         // );

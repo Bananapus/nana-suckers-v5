@@ -33,13 +33,13 @@ abstract contract BPAllowanceSucker is BPSucker {
 
         // Make sure a terminal is configured for the token.
         if (address(_terminal) == address(0)) {
-            revert TOKEN_NOT_CONFIGURED(_token);
+            revert TOKEN_NOT_MAPPED(_token);
         }
 
         // Get the accounting context for the token.
         JBAccountingContext memory _accountingContext = _terminal.accountingContextForTokenOf(PROJECT_ID, _token);
         if (_accountingContext.decimals == 0 && _accountingContext.currency == 0) {
-            revert TOKEN_NOT_CONFIGURED(_token);
+            revert TOKEN_NOT_MAPPED(_token);
         }
 
         uint256 _surplus =
