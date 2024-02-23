@@ -1,6 +1,6 @@
 {
   "name": "@bananapus/suckers",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -15,7 +15,7 @@
     "deploy:optimism-sepolia": "source .env && forge script Deploy --chain-id 11155420 --rpc-url $RPC_OPTIMISM_SEPOLIA --broadcast --verify --etherscan-api-key $OPTIMISTIC_ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_OPTIMISM_SEPOLIA -vvv"
   },
   "dependencies": {
-    "@bananapus/core": "^0.0.3",
+    "@bananapus/core": "^0.0.6",
     "@openzeppelin/contracts": "^5.0.1",
     "@prb/math": "^4.0.2",
     "@arbitrum/nitro-contracts": "github:OffchainLabs/nitro-contracts"

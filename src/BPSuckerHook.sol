@@ -56,7 +56,10 @@ abstract contract BPSuckerHook is BPSucker, IJBRulesetDataHook, IJBPayHook {
         address token = context.amount.token;
 
         // If there isn't a remote token for the token being paid in, or if the terminal doesn't support the redeem terminal interface, return the information as-is.
-        if (remoteTokenFor[token].addr == address(0) && !ERC165Checker.supportsInterface(address(context.terminal), type(IJBRedeemTerminal).interfaceId)) {
+        if (
+            remoteTokenFor[token].addr == address(0)
+                && !ERC165Checker.supportsInterface(address(context.terminal), type(IJBRedeemTerminal).interfaceId)
+        ) {
             return (context.weight, new JBPayHookSpecification[](0));
         }
 
