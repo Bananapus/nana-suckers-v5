@@ -4,14 +4,14 @@ pragma solidity ^0.8.13;
 import {Script, console2, stdJson} from "forge-std/Script.sol";
 import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPSucker} from "../src/BPOptimismSucker.sol";
 // import {BPSuckQueueItem} from "../src/structs/BPSuckQueueItem.sol";
-import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
+import {BPSuckerHook} from "../src/BPSuckerHook.sol";
 import {BPLeaf} from "../src/structs/BPLeaf.sol";
 import {BPClaim} from "../src/structs/BPClaim.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IJBPermissions, JBPermissionsData} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
-import "@bananapus/core/src/libraries/JBPermissionIds.sol";
+import "@bananapus/permission-ids/src/JBPermissionIds.sol";
 // import "@bananapus/core/src/interfaces/IJBController.sol";
 // import "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
 import "@bananapus/core/src/interfaces/terminal/IJBMultiTerminal.sol";
@@ -116,7 +116,7 @@ contract ExecuteOnL1Script is Script {
         );
 
         vm.broadcast();
-        BPSuckerDelegate(payable(0xd00C4DD2dF16b989DC09666861312A3e78DCfc2F)).claim(
+        BPSuckerHook(payable(0xd00C4DD2dF16b989DC09666861312A3e78DCfc2F)).claim(
             BPClaim({
                 token: JBConstants.NATIVE_TOKEN,
                 leaf: BPLeaf({
@@ -128,7 +128,7 @@ contract ExecuteOnL1Script is Script {
                 proof: _proofArr
             })
         );
-        // BPSuckerDelegate(payable(0xa3cedC2A2bdA2487132273d4eE1107Dad81B6eF9)).executeMessage({
+        // BPSuckerHook(payable(0xa3cedC2A2bdA2487132273d4eE1107Dad81B6eF9)).executeMessage({
         //     _nonce: 0,
         //     _token: JBConstants.NATIVE_TOKEN,
         //     _terminalTokenAmount: 50_000,

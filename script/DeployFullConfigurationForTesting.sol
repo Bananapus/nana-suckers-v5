@@ -10,7 +10,7 @@ import {
     BPTokenMapping,
     OPStandardBridge
 } from "../src/BPOptimismSucker.sol";
-import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
+import {BPSuckerHook} from "../src/BPSuckerHook.sol";
 // import {BPOptimismSucker} from "../src/BPOptimismSucker.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
@@ -81,7 +81,7 @@ contract CreateProjectsScript is Script {
         // Deploy the suckers.
         vm.selectFork(_chainA);
         vm.broadcast();
-        BPSuckerDelegate _suckerA = new BPOptimismSucker(
+        BPSuckerHook _suckerA = new BPOptimismSucker(
             IJBPrices(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPrices")),
             IJBRulesets(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBRulesets")),
             CHAIN_A_OP_MESSENGER,
@@ -95,7 +95,7 @@ contract CreateProjectsScript is Script {
 
         vm.selectFork(_chainB);
         vm.broadcast();
-        BPSuckerDelegate _suckerB = new BPOptimismSucker(
+        BPSuckerHook _suckerB = new BPOptimismSucker(
             IJBPrices(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPrices")),
             IJBRulesets(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBRulesets")),
             CHAIN_B_OP_MESSENGER,
@@ -214,7 +214,7 @@ contract CreateProjectsScript is Script {
         string memory _tokenSymbol,
         IJBRedeemTerminal _multiTerminal,
         address[] memory _tokens,
-        BPSuckerDelegate _delegate
+        BPSuckerHook _delegate
     ) internal returns (uint256 _projectId) {
         JBRulesetMetadata memory _metadata = JBRulesetMetadata({
             reservedRate: 0,
@@ -258,7 +258,7 @@ contract CreateProjectsScript is Script {
         });
 
         vm.broadcast();
-        _controller.deployERC20For(_projectId, _tokenName, _tokenSymbol);
+        _controller.deployERC20For(_projectId, _tokenName, _tokenSymbol, bytes32(0));
     }
 
     /**
