@@ -73,110 +73,110 @@ contract BPArbitrumSucker is BPSucker {
     //*********************************************************************//
 
     /// @notice uses the OPMESSENGER to send the root and assets over the bridge to the peer.
-    /// @param _token the token to bridge for.
-    /// @param _tokenConfig the config for the token to send.
-    function _sendRoot(address _token, BPRemoteToken memory _tokenConfig) internal override {
+    /// @param token the token to bridge for.
+    /// @param tokenConfig the config for the token to send.
+    function _sendRoot(address token, BPRemoteToken memory tokenConfig) internal override {
         // Get the amount to send and then clear it.
-        uint256 _amount = outbox[_token].balance;
-        delete outbox[_token].balance;
+        uint256 amount = outbox[token].balance;
+        delete outbox[token].balance;
 
         // Increment the nonce.
-        uint64 _nonce = ++outbox[_token].nonce;
+        uint64 nonce = ++outbox[token].nonce;
 
-        if (_tokenConfig.addr == address(0)) {
-            revert TOKEN_NOT_MAPPED(_token);
+        if (tokenConfig.addr == address(0)) {
+            revert TOKEN_NOT_MAPPED(token);
         }
 
         // Build the calldata that will be send to the peer.
-        bytes memory _data = abi.encodeCall(
+        bytes memory data = abi.encodeCall(
             BPSucker.fromRemote,
             (
                 BPMessageRoot({
-                    token: _tokenConfig.addr,
-                    amount: _amount,
-                    remoteRoot: BPInboxTreeRoot({nonce: _nonce, root: outbox[_token].tree.root()})
+                    token: tokenConfig.addr,
+                    amount: amount,
+                    remoteRoot: BPInboxTreeRoot({nonce: nonce, root: outbox[token].tree.root()})
                 })
             )
         );
 
         // Depending on which layer we are on, we send the call to the other layer.
         if (LAYER == Layer.L1) {
-            _toL2(_token, _amount, _data, _tokenConfig);
+            _toL2(token, amount, data, tokenConfig);
         } else {
-            _toL1(_token, _amount, _data, _tokenConfig);
+            _toL1(token, amount, data, tokenConfig);
         }
     }
 
-    function _toL1(address _token, uint256 _amount, bytes memory _data, BPRemoteToken memory _tokenConfig) internal {
-        uint256 _nativeValue;
+    function _toL1(address token, uint256 amount, bytes memory data, BPRemoteToken memory tokenConfig) internal {
+        uint256 nativeValue;
 
         // Sending a message to L1 does not require any payment.
         if (msg.value != 0) {
             revert UNEXPECTED_MSG_VALUE();
         }
 
-        if (_token != JBConstants.NATIVE_TOKEN) {
+        if (token != JBConstants.NATIVE_TOKEN) {
             // TODO: Approve the tokens to be bridged?
-            // SafeERC20.forceApprove(IERC20(_token), address(OPMESSENGER), _amount);
+            // SafeERC20.forceApprove(IERC20(token), address(OPMESSENGER), amount);
 
-            L2GatewayRouter(GATEWAY_ROUTER).outboundTransfer(_tokenConfig.addr, address(PEER), _amount, bytes(""));
+            L2GatewayRouter(GATEWAY_ROUTER).outboundTransfer(tokenConfig.addr, address(PEER), amount, bytes(""));
         } else {
-            _nativeValue = _amount;
+            nativeValue = amount;
         }
 
         // address `100` is the ArbSys precompile address.
-        ArbSys(address(100)).sendTxToL1{value: _nativeValue}(address(PEER), _data);
+        ArbSys(address(100)).sendTxToL1{value: nativeValue}(address(PEER), data);
     }
 
-    function _toL2(address _token, uint256 _amount, bytes memory _data, BPRemoteToken memory _tokenConfig) internal {
-        uint256 _nativeValue;
+    function _toL2(address token, uint256 amount, bytes memory data, BPRemoteToken memory tokenConfig) internal {
+        uint256 nativeValue;
 
-        if (_token != JBConstants.NATIVE_TOKEN) {
+        if (token != JBConstants.NATIVE_TOKEN) {
             // Approve the tokens to be bridged.
-            SafeERC20.forceApprove(IERC20(_token), address(GATEWAY_ROUTER), _amount);
+            SafeERC20.forceApprove(IERC20(token), address(GATEWAY_ROUTER), amount);
             // Perform the ERC20 bridge transfer.
             L1GatewayRouter(GATEWAY_ROUTER).outboundTransferCustomRefund({
-                _token: _token,
+                _token: token,
                 // TODO: Something about these 2 address with needing to be aliassed.
                 _refundTo: address(PEER),
                 _to: address(PEER),
-                _amount: _amount,
-                _maxGas: _tokenConfig.minGas,
+                _amount: amount,
+                _maxGas: tokenConfig.minGas,
                 // TODO: Is this a sane default?
                 _gasPriceBid: 1 gwei,
                 _data: bytes((""))
             });
         } else {
-            _nativeValue = _amount;
+            nativeValue = amount;
         }
 
         // Create the retryable ticket that contains the merkleRoot.
         // We could even make this unsafe.
-        INBOX.createRetryableTicket{value: _nativeValue + msg.value}({
+        INBOX.createRetryableTicket{value: nativeValue + msg.value}({
             to: address(PEER),
-            l2CallValue: _nativeValue,
+            l2CallValue: nativeValue,
             // TODO: Check, We get the cost... is this right? this seems odd.
-            maxSubmissionCost: INBOX.calculateRetryableSubmissionFee(_data.length, block.basefee),
+            maxSubmissionCost: INBOX.calculateRetryableSubmissionFee(data.length, block.basefee),
             excessFeeRefundAddress: msg.sender,
             callValueRefundAddress: PEER,
             gasLimit: MESSENGER_BASE_GAS_LIMIT,
             // TODO: Is this a sane default?
             maxFeePerGas: 1 gwei,
-            data: _data
+            data: data
         });
     }
 
-    /// @notice checks if the _sender (msg.sender) is a valid representative of the remote peer.
-    /// @param _sender the message sender.
-    function _isRemotePeer(address _sender) internal override returns (bool _valid) {
+    /// @notice checks if the sender (msg.sender) is a valid representative of the remote peer.
+    /// @param sender the message sender.
+    function _isRemotePeer(address sender) internal override returns (bool _valid) {
         // We are the L1 peer.
         if (LAYER == Layer.L1) {
-            IBridge _bridge = INBOX.bridge();
+            IBridge bridge = INBOX.bridge();
             // Check that the sender is the bridge and that the outbox has our peer as the sender.
-            return _sender == address(_bridge) && address(PEER) == IOutbox(_bridge.activeOutbox()).l2ToL1Sender();
+            return sender == address(bridge) && address(PEER) == IOutbox(bridge.activeOutbox()).l2ToL1Sender();
         }
 
         // We are the L2 peer.
-        return _sender == AddressAliasHelper.applyL1ToL2Alias(address(PEER));
+        return sender == AddressAliasHelper.applyL1ToL2Alias(address(PEER));
     }
 }
