@@ -8,43 +8,24 @@ import {ArbSys} from "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import {AddressAliasHelper} from "@arbitrum/nitro-contracts/src/libraries/AddressAliasHelper.sol";
 import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 
+import {L1GatewayRouter} from "./interfaces/L1GatewayRouter.sol";
+import {L2GatewayRouter} from "./interfaces/L2GatewayRouter.sol";
+
+import {BPLayer} from "./enums/BPLayer.sol";
+
 import "./BPSucker.sol";
-
-interface L2GatewayRouter {
-    function outboundTransfer(address _l1Token, address _to, uint256 _amount, bytes calldata _data)
-        external
-        payable
-        returns (bytes memory);
-}
-
-interface L1GatewayRouter {
-    function outboundTransferCustomRefund(
-        address _token,
-        address _refundTo,
-        address _to,
-        uint256 _amount,
-        uint256 _maxGas,
-        uint256 _gasPriceBid,
-        bytes calldata _data
-    ) external payable returns (bytes memory);
-}
 
 /// @notice A `BPSucker` implementation to suck tokens between two chains connected by an Arbitrum bridge.
 contract BPArbitrumSucker is BPSucker {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
-    enum Layer {
-        L1,
-        L2
-    }
-
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
 
     /// @notice The layer that this contract is on.
-    Layer public immutable LAYER;
+    BPLayer public immutable LAYER;
 
     /// @notice The gateway router used to bridge tokens between the local and remote chain.
     address public immutable GATEWAY_ROUTER;
@@ -56,7 +37,7 @@ contract BPArbitrumSucker is BPSucker {
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
     constructor(
-        Layer layer,
+        BPLayer layer,
         address inbox,
         IJBDirectory directory,
         IJBTokens tokens,
@@ -102,7 +83,7 @@ contract BPArbitrumSucker is BPSucker {
         );
 
         // Depending on which layer we are on, send the call to the other layer.
-        if (LAYER == Layer.L1) {
+        if (LAYER == BPLayer.L1) {
             _toL2(token, amount, data, remoteToken);
         } else {
             _toL1(token, amount, data, remoteToken);
@@ -188,7 +169,7 @@ contract BPArbitrumSucker is BPSucker {
     /// @param sender The message's sender.
     function _isRemotePeer(address sender) internal override returns (bool _valid) {
         // If we are the L1 peer,
-        if (LAYER == Layer.L1) {
+        if (LAYER == BPLayer.L1) {
             IBridge bridge = INBOX.bridge();
             // Check that the sender is the bridge and that the outbox has our peer as the sender.
             return sender == address(bridge) && address(PEER) == IOutbox(bridge.activeOutbox()).l2ToL1Sender();
