@@ -11,7 +11,7 @@ import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IJBPermissions, JBPermissionsData} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
-import "@bananapus/core/src/libraries/JBPermissionIds.sol";
+import "@bananapus/permission-ids/src/JBPermissionIds.sol";
 // import "@bananapus/core/src/interfaces/IJBController.sol";
 // import "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
 import "@bananapus/core/src/interfaces/terminal/IJBMultiTerminal.sol";

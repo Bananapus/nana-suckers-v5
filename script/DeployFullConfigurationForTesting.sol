@@ -258,7 +258,7 @@ contract CreateProjectsScript is Script {
         });
 
         vm.broadcast();
-        _controller.deployERC20For(_projectId, _tokenName, _tokenSymbol);
+        _controller.deployERC20For(_projectId, _tokenName, _tokenSymbol, bytes32(0));
     }
 
     /**

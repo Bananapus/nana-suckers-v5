@@ -124,9 +124,9 @@ abstract contract BPSuckerHook is BPSucker, IJBRulesetDataHook, IJBPayHook {
     function beforeRedeemRecordedWith(JBBeforeRedeemRecordedContext calldata context)
         external
         pure
-        returns (uint256, JBRedeemHookSpecification[] memory)
+        returns (uint256, uint256, uint256, JBRedeemHookSpecification[] memory)
     {
-        return (context.reclaimAmount.value, new JBRedeemHookSpecification[](0));
+        return (context.redemptionRate, context.redeemCount, context.totalSupply, new JBRedeemHookSpecification[](0));
     }
 
     /// @notice A flag indicating whether an address has permission to mint a project's tokens on-demand. For this contract, this is always false.
