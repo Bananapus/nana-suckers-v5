@@ -2,14 +2,14 @@
 pragma solidity 0.8.23;
 
 import "./BPSucker.sol";
-import "./BPSuckerDelegate.sol";
+import "./BPSuckerHook.sol";
 
 import {OPMessenger} from "./interfaces/OPMessenger.sol";
 import {OPStandardBridge} from "./interfaces/OPStandardBridge.sol";
 
 /// @notice A contract that sucks tokens from one chain to another.
 /// @dev This implementation is designed to be deployed on two chains that are connected by an OP bridge.
-contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
+contract BPOptimismSucker is BPSucker, BPSuckerHook {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
@@ -37,7 +37,7 @@ contract BPOptimismSucker is BPSucker, BPSuckerDelegate {
         IJBPermissions _permissions,
         address _peer,
         uint256 _projectId
-    ) BPSucker(_directory, _tokens, _permissions, _peer, _projectId) BPSuckerDelegate(_prices, _rulesets) {
+    ) BPSucker(_directory, _tokens, _permissions, _peer, _projectId) BPSuckerHook(_prices, _rulesets) {
         OPMESSENGER = _messenger;
         OPBRIDGE = _bridge;
     }

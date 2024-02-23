@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
 import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions} from "../src/BPOptimismSucker.sol";
-import {BPSuckerDelegate} from "../src/BPSuckerDelegate.sol";
+import {BPSuckerHook} from "../src/BPSuckerHook.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
@@ -78,7 +78,7 @@ contract PermissionsScript is Script {
         });
 
         // Send the tree to the L1.
-        BPSuckerDelegate(payable(0x0af08A4aa6ebC5D158F634d3D02f1A7193BfD9EB)).toRemote(address(_testToken));
+        BPSuckerHook(payable(0x0af08A4aa6ebC5D158F634d3D02f1A7193BfD9EB)).toRemote(address(_testToken));
     }
 
     /**
