@@ -2,68 +2,58 @@
 pragma solidity ^0.8.21;
 
 import {IBPSucker} from "./interfaces/IBPSucker.sol";
-import {IBPSuckerRegistry, SuckerDeployerConfig} from "./interfaces/IBPSuckerRegistry.sol";
+import {IBPSuckerRegistry} from "./interfaces/IBPSuckerRegistry.sol";
+import {BPSuckerDeployerConfig} from "./structs/BPSuckerDeployerConfig.sol";
 import {JBOwnable, IJBProjects, IJBPermissions} from "@bananapus/ownable/src/JBOwnable.sol";
+import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
-    error INVALID_DEPLOYER(address _deployer);
+    error INVALID_DEPLOYER(address deployer);
 
-    // TODO: Replace with correct permission id.
-    /// @notice the permission id required to deploy a sucker on a projects behalf.
-    uint8 constant DEPLOY_SUCKERS_PERMISSION_ID = 100;
-
-    /// @notice the constant to show that this sucker does exist and belong to a specific project.
+    /// @notice A constant indicating that this sucker exists and belongs to a specific project.
     uint256 constant SUCKER_EXISTS = 1;
 
-    /// @notice tracks suckers for a project.
+    /// @notice Tracks the suckers for the specified project.
     mapping(uint256 => EnumerableMap.AddressToUintMap) _suckersOf;
 
-    /// @notice tracks if a sucker deployer is allowed to be deployed through this registry.
+    /// @notice Tracks whether the specified sucker deployer is approved by this registry.
     mapping(address deployer => bool) public suckerDeployerIsAllowed;
 
-    constructor(IJBProjects _projects, IJBPermissions _permissions) JBOwnable(_projects, _permissions) {
-        // Transfer ownership to projectID 1 owner (JBDAO).
+    constructor(IJBProjects projects, IJBPermissions permissions) JBOwnable(projects, permissions) {
+        // Transfer ownership to the owner of project ID 1 (JuiceboxDAO).
         _transferOwnership(address(0), uint88(1));
     }
 
-    /**
-     * @notice Check if a sucker belongs to a project and that it was deployed using this registry.
-     * @param projectId the projectId to check for.
-     * @param suckerAddress the sucker address to check for.
-     */
+    /// @notice Returns true if the specified sucker belongs to the specified project, and was deployed through this registry.
+    /// @param projectId The ID of the project to check for.
+    /// @param suckerAddress The address of the sucker to check.
     function isSuckerOf(uint256 projectId, address suckerAddress) external view returns (bool) {
         return _suckersOf[projectId].get(suckerAddress) == SUCKER_EXISTS;
     }
 
-    /**
-     * @notice Gets the suckers that were created (through this registry) for the specified project.
-     * @param projectId the project id to get the suckers for.
-     */
+    /// @notice Gets all of the specified project's suckers which were deployed through this registry.
+    /// @param projectId The ID of the project to get the suckers of.
     function suckersOf(uint256 projectId) external view returns (address[] memory) {
         return _suckersOf[projectId].keys();
     }
 
-    /**
-     * @notice adds a suckers deployer to the allowlist.
-     * @dev can only be called by the owner (initially JBDAO).
-     * @param deployer the deployer to add.
-     */
+    /// @notice Adds a suckers deployer to the allowlist.
+    /// @dev Can only be called by this contract's owner (initially project ID 1, or JuiceboxDAO).
+    /// @param deployer The address of the deployer to add.
     function allowSuckerDeployer(address deployer) public override onlyOwner {
         suckerDeployerIsAllowed[deployer] = true;
     }
 
-    /**
-     * @notice deploy sucker(s) for a project.
-     * @dev Requires the sender to have permission from/for the project.
-     * @param projectId the projectId to create the sucker(s) for.
-     * @param salt the salt being used to deploy the contract, has to be the same across chains.
-     * @param configurations the configuration to deploy.
-     * @return suckers the deployed sucker(s).
-     */
-    function deploySuckersFor(uint256 projectId, bytes32 salt, SuckerDeployerConfig[] calldata configurations)
+    /// @notice Deploy one or more suckers for the specified project.
+    /// @dev The caller must be the project's owner or have `JBPermissionIds.DEPLOY_SUCKERS` from the project's owner.
+    /// @param projectId The ID of the project to deploy suckers for.
+    /// @param salt The salt used to deploy the contract. For the suckers to be peers, this must be the same value on each chain where suckers are deployed.
+    /// @param configurations The sucker deployer configs to use to deploy the suckers.
+    /// @return suckers The addresses of the deployed suckers.
+    function deploySuckersFor(uint256 projectId, bytes32 salt, BPSuckerDeployerConfig[] calldata configurations)
         public
         override
         returns (address[] memory suckers)
@@ -71,15 +61,17 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
         _requirePermissionFrom({
             account: PROJECTS.ownerOf(projectId),
             projectId: projectId,
-            permissionId: DEPLOY_SUCKERS_PERMISSION_ID
+            permissionId: JBPermissionIds.DEPLOY_SUCKERS
         });
 
-        // Tracks the addresses of the deployed suckers.
+        // Create an array to store the suckers as they are deployed.
         suckers = new address[](configurations.length);
 
-        // This makes it so the sender has to be the same for both chains in order to link projects.
+        // Calculate the salt using the sender's address and the provided `salt`.
+        // This means that for suckers to be peers, the sender has to be the same on each chain.
         salt = keccak256(abi.encode(msg.sender, salt));
 
+        // Iterate through the configurations and deploy the suckers.
         for (uint256 i; i < configurations.length; i++) {
             // Make sure the deployer is allowed.
             if (!suckerDeployerIsAllowed[address(configurations[i].deployer)]) {
@@ -93,8 +85,8 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
             // Store the sucker as being deployed for this project.
             _suckersOf[projectId].set(address(sucker), SUCKER_EXISTS);
 
-            // Configure the tokens for the sucker.
-            sucker.mapTokens(configurations[i].tokenConfigurations);
+            // Map the tokens for the sucker.
+            sucker.mapTokens(configurations[i].mappings);
         }
     }
 }
