@@ -1,6 +1,6 @@
 {
   "name": "@bananapus/suckers",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -16,8 +16,9 @@
   },
   "dependencies": {
     "@arbitrum/nitro-contracts": "github:OffchainLabs/nitro-contracts",
-    "@bananapus/core": "^0.0.3",
+    "@bananapus/core": "^0.0.6",
     "@bananapus/ownable": "^0.0.2",
+    "@bananapus/permission-ids": "^0.0.2",
     "@openzeppelin/contracts": "^5.0.1",
     "@prb/math": "^4.0.2"
   }

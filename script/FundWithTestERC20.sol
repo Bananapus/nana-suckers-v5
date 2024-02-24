@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
@@ -8,7 +8,7 @@ import {
     IJBDirectory,
     IJBTokens,
     IJBPermissions,
-    BPTokenConfig,
+    BPTokenMapping,
     OPStandardBridge
 } from "../src/BPOptimismSucker.sol";
 

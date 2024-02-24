@@ -1,10 +1,13 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 
 import "../../src/BPOptimismSucker.sol";
 import "../../src/deployers/BPOptimismSuckerDeployer.sol";
+
+import {BPLeaf} from "../../src/structs/BPLeaf.sol";
+import {BPClaim} from "../../src/structs/BPClaim.sol";
 
 contract MerkleUnitTest is BPOptimismSucker, Test {
     using MerkleLib for MerkleLib.Tree;
@@ -76,7 +79,8 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
 
     function test_validate() public {
         // Move outbound root to inbound root.
-        inbox[JBConstants.NATIVE_TOKEN] = RemoteRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
+        inbox[JBConstants.NATIVE_TOKEN] =
+            BPInboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 
@@ -93,13 +97,13 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
 
         // Attempt to validate proof.
         BPOptimismSucker(this).claim(
-            BPSucker.Claim({
+            BPClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: Leaf({
+                leaf: BPLeaf({
                     index: 2,
                     beneficiary: address(120),
                     projectTokenAmount: 5 ether,
-                    redemptionTokenAmount: 5 ether
+                    terminalTokenAmount: 5 ether
                 }),
                 proof: __proof
             })
@@ -108,7 +112,8 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
 
     function test_validate_only_once() public {
         // Move outbound root to inbound root.
-        inbox[JBConstants.NATIVE_TOKEN] = RemoteRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
+        inbox[JBConstants.NATIVE_TOKEN] =
+            BPInboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 
@@ -125,13 +130,13 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
 
         // Attempt to validate proof.
         BPOptimismSucker(this).claim(
-            BPSucker.Claim({
+            BPClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: Leaf({
+                leaf: BPLeaf({
                     index: 2,
                     beneficiary: address(120),
                     projectTokenAmount: 5 ether,
-                    redemptionTokenAmount: 5 ether
+                    terminalTokenAmount: 5 ether
                 }),
                 proof: __proof
             })
@@ -140,13 +145,13 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
         // Attempt to do it again.
         vm.expectRevert();
         BPOptimismSucker(this).claim(
-            BPSucker.Claim({
+            BPClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: Leaf({
+                leaf: BPLeaf({
                     index: 2,
                     beneficiary: address(120),
                     projectTokenAmount: 5 ether,
-                    redemptionTokenAmount: 5 ether
+                    terminalTokenAmount: 5 ether
                 }),
                 proof: __proof
             })

@@ -87,14 +87,14 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
             }
 
             // Create the sucker.
-            IBPSucker sucker = configurations[i].deployer.createForSender({_localProjectId: projectId, _salt: salt});
+            IBPSucker sucker = configurations[i].deployer.createForSender({localProjectId: projectId, salt: salt});
             suckers[i] = address(sucker);
 
             // Store the sucker as being deployed for this project.
             _suckersOf[projectId].set(address(sucker), SUCKER_EXISTS);
 
             // Configure the tokens for the sucker.
-            sucker.configureTokens(configurations[i].tokenConfigurations);
+            sucker.mapTokens(configurations[i].tokenConfigurations);
         }
     }
 }

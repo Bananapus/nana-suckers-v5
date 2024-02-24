@@ -2,11 +2,11 @@
 pragma solidity ^0.8.21;
 
 import {IBPSuckerDeployer} from "./IBPSuckerDeployer.sol";
-import {BPTokenConfig} from "./../structs/BPTokenConfig.sol";
+import {BPTokenMapping} from "../structs/BPTokenMapping.sol";
 
 struct SuckerDeployerConfig {
     IBPSuckerDeployer deployer;
-    BPTokenConfig[] tokenConfigurations;
+    BPTokenMapping[] tokenConfigurations;
 }
 
 interface IBPSuckerRegistry {
