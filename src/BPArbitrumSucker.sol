@@ -1,19 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
-import "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
-
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
+import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
+import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
+import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
+import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
+import {IBridge} from "@arbitrum/nitro-contracts/src/bridge/IBridge.sol";
+import {IOutbox} from "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
 import {ArbSys} from "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import {AddressAliasHelper} from "@arbitrum/nitro-contracts/src/libraries/AddressAliasHelper.sol";
 import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 
 import {L1GatewayRouter} from "./interfaces/L1GatewayRouter.sol";
 import {L2GatewayRouter} from "./interfaces/L2GatewayRouter.sol";
-
+import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
+import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
+import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
 import {BPLayer} from "./enums/BPLayer.sol";
-
-import "./BPSucker.sol";
+import {BPSucker} from "./BPSucker.sol";
+import {MerkleLib} from "./utils/MerkleLib.sol";
 
 /// @notice A `BPSucker` implementation to suck tokens between two chains connected by an Arbitrum bridge.
 contract BPArbitrumSucker is BPSucker {
@@ -167,7 +176,7 @@ contract BPArbitrumSucker is BPSucker {
 
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
-    function _isRemotePeer(address sender) internal override returns (bool _valid) {
+    function _isRemotePeer(address sender) internal view override returns (bool _valid) {
         // If we are the L1 peer,
         if (LAYER == BPLayer.L1) {
             IBridge bridge = INBOX.bridge();

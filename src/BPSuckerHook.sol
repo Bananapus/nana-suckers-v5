@@ -1,23 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "./BPSucker.sol";
 import {IJBPrices} from "@bananapus/core/src/interfaces/IJBPrices.sol";
 import {IJBPayHook, JBAfterPayRecordedContext} from "@bananapus/core/src/interfaces/IJBPayHook.sol";
 import {JBRuleset} from "@bananapus/core/src/structs/JBRuleset.sol";
 import {IJBRulesets} from "@bananapus/core/src/interfaces/IJBRulesets.sol";
 import {JBRulesetMetadataResolver} from "@bananapus/core/src/libraries/JBRulesetMetadataResolver.sol";
-import {
-    IJBRulesetDataHook,
-    JBBeforePayRecordedContext,
-    JBBeforeRedeemRecordedContext,
-    JBPayHookSpecification,
-    JBRedeemHookSpecification
-} from "@bananapus/core/src/interfaces/IJBRulesetDataHook.sol";
+import {IJBRulesetDataHook} from "@bananapus/core/src/interfaces/IJBRulesetDataHook.sol";
+import {JBBeforePayRecordedContext} from "@bananapus/core/src/structs/JBBeforePayRecordedContext.sol";
+import {JBBeforeRedeemRecordedContext} from "@bananapus/core/src/structs/JBBeforeRedeemRecordedContext.sol";
+import {JBPayHookSpecification} from "@bananapus/core/src/structs/JBPayHookSpecification.sol";
+import {JBRedeemHookSpecification} from "@bananapus/core/src/structs/JBRedeemHookSpecification.sol";
 import {IJBRedeemTerminal} from "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
-
 import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import {mulDiv} from "@prb/math/src/Common.sol";
+
+import "./BPSucker.sol";
 
 /// @notice A pay hook which allows the minting of tokens on a remote chain upon payment through a `BPSucker`.
 abstract contract BPSuckerHook is BPSucker, IJBRulesetDataHook, IJBPayHook {

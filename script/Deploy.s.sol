@@ -2,9 +2,10 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {
-    BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, OPStandardBridge
-} from "../src/BPOptimismSucker.sol";
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
+import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
+import {OPStandardBridge} from "../src/interfaces/OPStandardBridge.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 import "../src/deployers/BPOptimismSuckerDeployer.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -41,7 +42,6 @@ contract Deploy is Script {
         uint256 _chainANonce = vm.getNonce(msg.sender);
 
         uint256 _chainB = vm.createSelectFork(CHAIN_B_RPC);
-        uint256 _chainBNonce = vm.getNonce(msg.sender);
 
         if (_chainANonce != _chainANonce) {
             revert("WARNING: Nonces do not match between chains.");
@@ -50,7 +50,7 @@ contract Deploy is Script {
         // Deploy the suckers.
         vm.selectFork(_chainA);
         vm.broadcast();
-        address _deployerA = address(
+        address(
             new BPOptimismSuckerDeployer(
                 IJBPrices(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPrices")),
                 IJBRulesets(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBRulesets")),

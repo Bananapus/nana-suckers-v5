@@ -3,14 +3,12 @@ pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {
-    BPOptimismSucker,
-    IJBDirectory,
-    IJBTokens,
-    IJBPermissions,
-    BPTokenMapping,
-    OPStandardBridge
-} from "../src/BPOptimismSucker.sol";
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
+import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
+import {OPStandardBridge} from "../src/interfaces/OPStandardBridge.sol";
+import {BPOptimismSucker} from "../src/BPOptimismSucker.sol";
+import {BPTokenMapping} from "../src/structs/BPTokenMapping.sol";
 
 interface OPTestBridgeToken is IERC20 {
     function faucet() external;

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
-import {IBPSucker} from "./interfaces/IBPSucker.sol";
-import {IBPSuckerRegistry} from "./interfaces/IBPSuckerRegistry.sol";
-import {BPSuckerDeployerConfig} from "./structs/BPSuckerDeployerConfig.sol";
 import {JBOwnable, IJBProjects, IJBPermissions} from "@bananapus/ownable/src/JBOwnable.sol";
 import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
+import {IBPSucker} from "./interfaces/IBPSucker.sol";
+import {IBPSuckerRegistry} from "./interfaces/IBPSuckerRegistry.sol";
+import {BPSuckerDeployerConfig} from "./structs/BPSuckerDeployerConfig.sol";
 
 contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     using EnumerableMap for EnumerableMap.AddressToUintMap;

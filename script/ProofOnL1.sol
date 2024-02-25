@@ -2,11 +2,15 @@
 pragma solidity ^0.8.13;
 
 import {Script, console2, stdJson} from "forge-std/Script.sol";
-import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBPermissions, BPSucker} from "../src/BPOptimismSucker.sol";
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
+import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 // import {BPSuckQueueItem} from "../src/structs/BPSuckQueueItem.sol";
+import {BPSucker} from "../src/BPSucker.sol";
 import {BPSuckerHook} from "../src/BPSuckerHook.sol";
 import {BPLeaf} from "../src/structs/BPLeaf.sol";
 import {BPClaim} from "../src/structs/BPClaim.sol";
+import {BPOptimismSucker} from "../src/BPOptimismSucker.sol";
 import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";

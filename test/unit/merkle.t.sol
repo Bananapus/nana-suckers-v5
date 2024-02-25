@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 
+import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import "../../src/BPOptimismSucker.sol";
 import "../../src/deployers/BPOptimismSuckerDeployer.sol";
 

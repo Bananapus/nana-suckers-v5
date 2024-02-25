@@ -1,11 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "./BPSucker.sol";
-import "./BPSuckerHook.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IJBPrices} from "@bananapus/core/src/interfaces/IJBPrices.sol";
+import {IJBRulesets} from "@bananapus/core/src/interfaces/IJBRulesets.sol";
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
+import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
+import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 
+import {BPSucker} from "./BPSucker.sol";
+import {BPSuckerHook} from "./BPSuckerHook.sol";
+import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
+import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
+import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
 import {OPMessenger} from "./interfaces/OPMessenger.sol";
 import {OPStandardBridge} from "./interfaces/OPStandardBridge.sol";
+import {MerkleLib} from "./utils/MerkleLib.sol";
 
 /// @notice A `BPSucker` implementation to suck tokens between two chains connected by an OP Bridge.
 contract BPOptimismSucker is BPSucker, BPSuckerHook {
