@@ -9,10 +9,8 @@
   "scripts": {
     "test": "forge test",
     "coverage": "forge coverage --match-path \"./src/*.sol\" --report lcov --report summary",
-    "deploy:ethereum-mainnet": "source .env && forge script Deploy --chain-id 1 --rpc-url $RPC_ETHEREUM_MAINNET --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_ETHEREUM_MAINNET -vvv",
-    "deploy:ethereum-sepolia": "source .env && forge script Deploy --chain-id 11155111 --rpc-url $RPC_ETHEREUM_SEPOLIA --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_ETHEREUM_SEPOLIA -vvv",
-    "deploy:optimism-mainnet": "source .env && forge script Deploy --chain-id 420 --rpc-url $RPC_OPTIMISM_MAINNET --broadcast --verify --etherscan-api-key $OPTIMISTIC_ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_OPTIMISM_MAINNET -vvv",
-    "deploy:optimism-sepolia": "source .env && forge script Deploy --chain-id 11155420 --rpc-url $RPC_OPTIMISM_SEPOLIA --broadcast --verify --etherscan-api-key $OPTIMISTIC_ETHERSCAN_API_KEY --interactives 1 --sender $SENDER_OPTIMISM_SEPOLIA -vvv"
+    "deploy:optimism": "source ./.env && CHAIN_A_RPC=$RPC_ETHEREUM_MAINNET CHAIN_B_RPC=$RPC_OPTIMISM_MAINNET forge script DeployOptimism --sender $SENDER --broadcast --verify --interactives 1 --etherscan-api-key $ETHERSCAN_API_KEY",
+    "deploy:optimism-sepolia": "source ./.env && CHAIN_A_RPC=$RPC_ETHEREUM_SEPOLIA CHAIN_B_RPC=$RPC_OPTIMISM_SEPOLIA forge script DeployOptimism --sender $SENDER --broadcast --verify --interactives 1 --etherscan-api-key $ETHERSCAN_API_KEY"
   },
   "dependencies": {
     "@arbitrum/nitro-contracts": "github:OffchainLabs/nitro-contracts",

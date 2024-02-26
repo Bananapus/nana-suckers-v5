@@ -10,22 +10,18 @@ import {OPMessenger} from "../src/interfaces/OPMessenger.sol";
 import "../src/deployers/BPOptimismSuckerDeployer.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract Deploy is Script {
-    // Sepolia config
-    string CHAIN_A_RPC;
-    OPMessenger constant CHAIN_A_OP_MESSENGER = OPMessenger(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef);
-    string CHAIN_A_DEPLOYMENT_JSON = "@bananapus/core/broadcast/Deploy.s.sol/11155111/run-latest.json";
-    OPStandardBridge constant CHAIN_A_OP_BRIDGE = OPStandardBridge(0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1);
+contract DeployOptimism is Script {
+    OPMessenger CHAIN_A_OP_MESSENGER;
+    string CHAIN_A_DEPLOYMENT_JSON;
+    OPStandardBridge CHAIN_A_OP_BRIDGE;
 
-    // OP Sepolia config
-    string CHAIN_B_RPC;
-    OPMessenger constant CHAIN_B_OP_MESSENGER = OPMessenger(0x4200000000000000000000000000000000000007);
-    OPStandardBridge constant CHAIN_B_OP_BRIDGE = OPStandardBridge(0x4200000000000000000000000000000000000010);
-    string CHAIN_B_DEPLOYMENT_JSON = "@bananapus/core/broadcast/Deploy.s.sol/11155420/run-latest.json";
+    OPMessenger CHAIN_B_OP_MESSENGER;
+    OPStandardBridge CHAIN_B_OP_BRIDGE;
+    string CHAIN_B_DEPLOYMENT_JSON;
 
     function setUp() public {
-        CHAIN_A_RPC = vm.envString("CHAIN_A_RPC");
-        CHAIN_B_RPC = vm.envString("CHAIN_B_RPC");
+        string memory CHAIN_A_RPC = vm.envString("CHAIN_A_RPC");
+        string memory CHAIN_B_RPC = vm.envString("CHAIN_B_RPC");
 
         if (bytes(CHAIN_A_RPC).length == 0) {
             revert("CHAIN_A_RPC not set.");
@@ -34,23 +30,66 @@ contract Deploy is Script {
         if (bytes(CHAIN_B_RPC).length == 0) {
             revert("CHAIN_B_RPC not set.");
         }
-    }
 
-    function run() public {
-        // Get the nonces for the two chains.
-        uint256 _chainA = vm.createSelectFork(CHAIN_A_RPC);
+        // Get chain A its chainId
+        vm.createSelectFork(vm.envString("CHAIN_A_RPC"));
+        uint256 _chainAId = block.chainid;
         uint256 _chainANonce = vm.getNonce(msg.sender);
+        CHAIN_A_DEPLOYMENT_JSON = string.concat(
+            "node_modules/@bananapus/core/broadcast/Deploy.s.sol/", Strings.toString(_chainAId), "/run-latest.json"
+        );
 
-        uint256 _chainB = vm.createSelectFork(CHAIN_B_RPC);
+        vm.createSelectFork(vm.envString("CHAIN_B_RPC"));
+        uint256 _chainBId = block.chainid;
+        uint256 _chainBNonce = vm.getNonce(msg.sender);
+        CHAIN_B_DEPLOYMENT_JSON = string.concat(
+            "node_modules/@bananapus/core/broadcast/Deploy.s.sol/", Strings.toString(_chainBId), "/run-latest.json"
+        );
 
-        if (_chainANonce != _chainANonce) {
+        if (_chainANonce != _chainBNonce) {
             revert("WARNING: Nonces do not match between chains.");
         }
 
+        bool _reverse;
+        if ((_chainAId == 1 && _chainBId == 10) || (_chainAId == 10 && _chainBId == 1)) {
+            CHAIN_A_OP_MESSENGER = OPMessenger(address(0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1));
+            CHAIN_A_OP_BRIDGE = OPStandardBridge(address(0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1));
+            CHAIN_B_OP_MESSENGER = OPMessenger(address(0x4200000000000000000000000000000000000007));
+            CHAIN_B_OP_BRIDGE = OPStandardBridge(address(0x4200000000000000000000000000000000000010));
+
+            if (_chainAId == 420) _reverse = true;
+        } else if ((_chainAId == 11155111 && _chainBId == 11155420) || (_chainAId == 11155111 && _chainBId == 11155420))
+        {
+            CHAIN_A_OP_MESSENGER = OPMessenger(address(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef));
+            CHAIN_A_OP_BRIDGE = OPStandardBridge(address(0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1));
+            CHAIN_B_OP_MESSENGER = OPMessenger(address(0x4200000000000000000000000000000000000007));
+            CHAIN_B_OP_BRIDGE = OPStandardBridge(address(0x4200000000000000000000000000000000000010));
+
+            if (_chainAId == 420) _reverse = true;
+        } else {
+            revert(
+                string.concat(
+                    "The combination of chainIds ",
+                    Strings.toString(_chainAId),
+                    " and ",
+                    Strings.toString(_chainBId),
+                    " was not configured in the optimism deployment script."
+                )
+            );
+        }
+
+        // Flip the order of the chains.
+        if (_reverse) {
+            (CHAIN_A_OP_MESSENGER, CHAIN_A_OP_BRIDGE, CHAIN_B_OP_MESSENGER, CHAIN_B_OP_BRIDGE) =
+                (CHAIN_B_OP_MESSENGER, CHAIN_B_OP_BRIDGE, CHAIN_A_OP_MESSENGER, CHAIN_A_OP_BRIDGE);
+        }
+    }
+
+    function run() public {
         // Deploy the suckers.
-        vm.selectFork(_chainA);
-        vm.broadcast();
-        address(
+        vm.createSelectFork(vm.envString("CHAIN_A_RPC"));
+        vm.startBroadcast();
+        address _deployerA = address(
             new BPOptimismSuckerDeployer(
                 IJBPrices(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPrices")),
                 IJBRulesets(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBRulesets")),
@@ -61,9 +100,11 @@ contract Deploy is Script {
                 IJBPermissions(_getDeploymentAddress(CHAIN_A_DEPLOYMENT_JSON, "JBPermissions"))
             )
         );
+        vm.stopBroadcast();
 
-        vm.selectFork(_chainB);
-        vm.broadcast();
+        // vm.selectFork(CHAIN_B);
+        vm.createSelectFork(vm.envString("CHAIN_B_RPC"));
+        vm.startBroadcast();
         address _deployerB = address(
             new BPOptimismSuckerDeployer(
                 IJBPrices(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPrices")),
@@ -75,9 +116,11 @@ contract Deploy is Script {
                 IJBPermissions(_getDeploymentAddress(CHAIN_B_DEPLOYMENT_JSON, "JBPermissions"))
             )
         );
+        vm.stopBroadcast();
 
-        console2.log("Suckers deployed.");
-        // console2.log("Sucker A: ", Strings.toHexString(uint160(address(_deployerA)), 20));
+        require(_deployerA == _deployerB, "Deployed addresses do not match.");
+
+        console2.log("Sucker A: ", Strings.toHexString(uint160(address(_deployerA)), 20));
         console2.log("Sucker B: ", Strings.toHexString(uint160(address(_deployerB)), 20));
     }
 
