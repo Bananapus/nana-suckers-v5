@@ -9,8 +9,14 @@
   "scripts": {
     "test": "forge test",
     "coverage": "forge coverage --match-path \"./src/*.sol\" --report lcov --report summary",
-    "deploy:optimism": "source ./.env && CHAIN_A_RPC=$RPC_ETHEREUM_MAINNET CHAIN_B_RPC=$RPC_OPTIMISM_MAINNET forge script DeployOptimism --sender $SENDER --broadcast --verify --interactives 1 --etherscan-api-key $ETHERSCAN_API_KEY",
-    "deploy:optimism-sepolia": "source ./.env && CHAIN_A_RPC=$RPC_ETHEREUM_SEPOLIA CHAIN_B_RPC=$RPC_OPTIMISM_SEPOLIA forge script DeployOptimism --sender $SENDER --broadcast --verify --interactives 1 --etherscan-api-key $ETHERSCAN_API_KEY"
+
+    "deploy:registry:ethereum-mainnet": "source ./.env && forge script DeployRegistry --chain-id 1 --rpc-url $RPC_ETHEREUM_MAINNET --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --interactives 1 --sender $REGISTRY_SENDER -vvv",
+    "deploy:registry:ethereum-sepolia": "source ./.env && forge script DeployRegistry --chain-id 11155111 --rpc-url $RPC_ETHEREUM_SEPOLIA --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --interactives 1 --sender $REGISTRY_SENDER -vvv",
+    "deploy:registry:optimism-mainnet": "source ./.env && forge script DeployRegistry --chain-id 420 --rpc-url $RPC_OPTIMISM_MAINNET --broadcast --verify --etherscan-api-key $OPTIMISTIC_ETHERSCAN_API_KEY --interactives 1 --sender $REGISTRY_SENDER -vvv",
+    "deploy:registry:optimism-sepolia": "source ./.env && forge script DeployRegistry --chain-id 11155420 --rpc-url $RPC_OPTIMISM_SEPOLIA --broadcast --verify --etherscan-api-key $OPTIMISTIC_ETHERSCAN_API_KEY --interactives 1 --sender $REGISTRY_SENDER -vvv",
+
+    "deploy:sucker:optimism": "source ./.env && CHAIN_A_RPC=$RPC_ETHEREUM_MAINNET CHAIN_B_RPC=$RPC_OPTIMISM_MAINNET forge script DeployOptimism --sender $SENDER --broadcast --verify --interactives 1 --etherscan-api-key $ETHERSCAN_API_KEY",
+    "deploy:sucker:optimism-sepolia": "source ./.env && CHAIN_A_RPC=$RPC_ETHEREUM_SEPOLIA CHAIN_B_RPC=$RPC_OPTIMISM_SEPOLIA forge script DeployOptimism --sender $SENDER --broadcast --verify --interactives 1 --etherscan-api-key $ETHERSCAN_API_KEY"
   },
   "dependencies": {
     "@arbitrum/nitro-contracts": "github:OffchainLabs/nitro-contracts",
