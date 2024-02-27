@@ -15,6 +15,13 @@ interface IBPSucker {
 
     event NewInboxTreeRoot(address indexed token, uint64 nonce, bytes32 root);
 
+    event RootToRemote(
+        bytes32 indexed root,
+        address indexed terminalToken,
+        uint256 index,
+        uint64 nonce
+    );
+
     event InsertToOutboxTree(
         address indexed beneficiary,
         address indexed terminalToken,

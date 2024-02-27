@@ -102,6 +102,9 @@ contract BPOptimismSucker is BPSucker, BPSuckerHook {
             nativeValue = amount;
         }
 
+        bytes32 _root = outbox[token].tree.root();
+        uint256 _index = outbox[token].tree.count - 1;
+
         // Send the message to the peer with the redeemed ETH.
         OPMESSENGER.sendMessage{value: nativeValue}(
             PEER,
@@ -111,7 +114,7 @@ contract BPOptimismSucker is BPSucker, BPSuckerHook {
                     BPMessageRoot({
                         token: remoteToken.addr,
                         amount: amount,
-                        remoteRoot: BPInboxTreeRoot({nonce: nonce, root: outbox[token].tree.root()})
+                        remoteRoot: BPInboxTreeRoot({nonce: nonce, root: _root})
                     })
                 )
             ),
@@ -119,7 +122,14 @@ contract BPOptimismSucker is BPSucker, BPSuckerHook {
         );
 
         // Emit an event for the relayers to watch for.
+        // TODO: Update the relayer to use the  `RootToRemote` event and remove the `SuckingToRemote` event.
         emit SuckingToRemote(token, nonce);
+        emit RootToRemote(
+            _root,
+            token,
+            _index,
+            nonce
+        );
     }
 
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
