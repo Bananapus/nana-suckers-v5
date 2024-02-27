@@ -8,10 +8,20 @@ import {BPSuckerRegistry, IJBProjects, IJBPermissions} from "./../src/BPSuckerRe
 contract DeployRegistry is Script {
     string DEPLOYMENT_JSON;
 
+    address[] PRE_APPROVED_DEPLOYERS;
+
     function setUp() public {
         // Get the JB deployment JSON.
         DEPLOYMENT_JSON = string.concat(
             "node_modules/@bananapus/core/broadcast/Deploy.s.sol/", Strings.toString(block.chainid), "/run-latest.json"
+        );
+
+        // TODO: Need to improve the way we check what deployers should be pre-approved for this chain
+        // Since OP deployer won't exist on Polygon for example.
+
+        // OPDeployer
+        PRE_APPROVED_DEPLOYERS.push(
+            0xDBA108aE1738F456A0685f4C0aE30532385C4c24
         );
     }
 
@@ -23,7 +33,8 @@ contract DeployRegistry is Script {
         vm.startBroadcast();
         new BPSuckerRegistry(
             IJBProjects(_getDeploymentAddress(DEPLOYMENT_JSON, "JBProjects")),
-            IJBPermissions(_getDeploymentAddress(DEPLOYMENT_JSON, "JBPermissions"))
+            IJBPermissions(_getDeploymentAddress(DEPLOYMENT_JSON, "JBPermissions")),
+            PRE_APPROVED_DEPLOYERS
         );
         vm.stopBroadcast();
     }

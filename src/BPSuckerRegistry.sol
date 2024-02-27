@@ -13,6 +13,8 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
 
     error INVALID_DEPLOYER(address deployer);
 
+    event SuckerDeployerAllowed(address deployer);
+
     /// @notice A constant indicating that this sucker exists and belongs to a specific project.
     uint256 constant SUCKER_EXISTS = 1;
 
@@ -22,9 +24,14 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     /// @notice Tracks whether the specified sucker deployer is approved by this registry.
     mapping(address deployer => bool) public suckerDeployerIsAllowed;
 
-    constructor(IJBProjects projects, IJBPermissions permissions) JBOwnable(projects, permissions) {
+    constructor(IJBProjects projects, IJBPermissions permissions, address[] memory deployers) JBOwnable(projects, permissions) {
         // Transfer ownership to the owner of project ID 1 (JuiceboxDAO).
         _transferOwnership(address(0), uint88(1));
+        
+        for(uint256 _i; _i < deployers.length; _i++) {
+            suckerDeployerIsAllowed[deployers[_i]] = true;
+            emit SuckerDeployerAllowed(deployers[_i]);
+        }
     }
 
     /// @notice Returns true if the specified sucker belongs to the specified project, and was deployed through this registry.
@@ -45,6 +52,7 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     /// @param deployer The address of the deployer to add.
     function allowSuckerDeployer(address deployer) public override onlyOwner {
         suckerDeployerIsAllowed[deployer] = true;
+        emit SuckerDeployerAllowed(deployer);
     }
 
     /// @notice Deploy one or more suckers for the specified project.
