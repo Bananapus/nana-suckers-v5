@@ -16,6 +16,10 @@ contract DeployRegistry is Script {
     }
 
     function run() public {
+        require(
+            vm.getNonce(msg.sender) == 0,
+            "The sender's nonce is non-zero, the registry has to be on the same address on all chains. You probably intended to deploy with a fresh wallet."
+        );
         vm.startBroadcast();
         new BPSuckerRegistry(
             IJBProjects(_getDeploymentAddress(DEPLOYMENT_JSON, "JBProjects")),

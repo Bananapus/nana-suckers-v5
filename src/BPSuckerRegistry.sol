@@ -93,21 +93,18 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     /// @notice returns the address that should become the owner on deployment.
     /// @return _owner the address that will become the owner when this contract is deployed.
     // TODO: have this return both _owner and _projectId, so we can set the initial project ID.
-    function _initialOwner() internal view override virtual returns (address _owner) {
+    function _initialOwner() internal view virtual override returns (address _owner) {
         return address(0);
     }
 
-    function _emitTransferEvent(
-        address previousOwner,
-        address newOwner,
-        uint88 newProjectId
-    )
+    function _emitTransferEvent(address previousOwner, address newOwner, uint88 newProjectId)
         internal
         virtual
         override
     {
         // Only emit after the initial transfer.
-        if(previousOwner != address(0))
+        if (previousOwner != address(0)) {
             emit OwnershipTransferred(previousOwner, newProjectId == 0 ? newOwner : PROJECTS.ownerOf(newProjectId));
+        }
     }
 }
