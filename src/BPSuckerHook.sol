@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import {ERC165, IERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+
 import {IJBPrices} from "@bananapus/core/src/interfaces/IJBPrices.sol";
 import {IJBPayHook, JBAfterPayRecordedContext} from "@bananapus/core/src/interfaces/IJBPayHook.sol";
 import {JBRuleset} from "@bananapus/core/src/structs/JBRuleset.sol";
@@ -18,7 +20,7 @@ import {mulDiv} from "@prb/math/src/Common.sol";
 import "./BPSucker.sol";
 
 /// @notice A pay hook which allows the minting of tokens on a remote chain upon payment through a `BPSucker`.
-abstract contract BPSuckerHook is BPSucker, IJBRulesetDataHook, IJBPayHook {
+abstract contract BPSuckerHook is BPSucker, ERC165, IJBRulesetDataHook, IJBPayHook {
     // A library that parses the packed ruleset metadata into a friendlier format.
     using JBRulesetMetadataResolver for JBRuleset;
 
@@ -132,7 +134,9 @@ abstract contract BPSuckerHook is BPSucker, IJBRulesetDataHook, IJBPayHook {
         return false;
     }
 
-    function supportsInterface(bytes4 interfaceId) external view returns (bool) {
-        // TODO: Implement
+    /// @dev See {IERC165-supportsInterface}.
+    function supportsInterface(bytes4 interfaceId) public view override(IERC165, ERC165) returns (bool) {
+        return interfaceId == type(IJBRulesetDataHook).interfaceId || interfaceId == type(IJBPayHook).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 }
