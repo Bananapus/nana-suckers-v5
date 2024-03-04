@@ -46,7 +46,9 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     error BENEFICIARY_NOT_ALLOWED();
     error NO_TERMINAL_FOR(uint256 projectId, address token);
     error INVALID_PROOF(bytes32 expectedRoot, bytes32 proofRoot);
+    error INVALID_NATIVE_REMOTE_ADDRESS(address addr);
     error LEAF_ALREADY_EXECUTED(uint256 index);
+    error QUEUE_INSUFFECIENT_SIZE(uint256 minSize, uint256 currentSize);
     error INSUFFICIENT_BALANCE();
     error TOKEN_NOT_MAPPED(address token); // TODO: This needs to be broken out into a few errors.
     error MANUAL_NOT_ALLOWED();
@@ -171,7 +173,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
 
         // Ensure that the amount being bridged exceeds the minimum bridge amount.
         if (outbox[token].balance < remoteToken.minBridgeAmount) {
-            revert(); // TODO: Should we have a more descriptive error here?
+            revert QUEUE_INSUFFECIENT_SIZE(remoteToken.minBridgeAmount, outbox[token].balance);
         }
 
         // Send the merkle root to the remote chain.
@@ -250,7 +252,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         // If the token being mapped is the native token, the `remoteToken` must also be the native token.
         // The native token can also be mapped to the 0 address, which is used to disable native token bridging.
         if (isNative && map.remoteToken != JBConstants.NATIVE_TOKEN && map.remoteToken != address(0)) {
-            revert(); // TODO: Should we have a more descriptive error here?
+            revert INVALID_NATIVE_REMOTE_ADDRESS(map.remoteToken);
         }
 
         // Enforce a reasonable minimum gas limit for bridging. A minimum which is too low could lead to the loss of funds.
