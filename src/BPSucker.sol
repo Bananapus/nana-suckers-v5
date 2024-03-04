@@ -31,6 +31,7 @@ import {MerkleLib} from "./utils/MerkleLib.sol";
 abstract contract BPSucker is JBPermissioned, IBPSucker {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
+    using SafeERC20 for IERC20;
 
     /// @notice The depth of the merkle tree used to track beneficiaries, token balances, and redemption values.
     uint256 internal constant TREE_DEPTH = 32;
@@ -114,6 +115,9 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         TOKENS = tokens;
         PEER = peer == address(0) ? address(this) : peer;
         PROJECT_ID = projectId;
+        DEPLOYER = msg.sender;
+
+        // TODO: ADB mode.
 
         // Sanity check: make sure the merkle lib uses the same tree depth.
         assert(MerkleLib.TREE_DEPTH == TREE_DEPTH);
@@ -149,7 +153,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         }
 
         // Transfer the tokens to this contract.
-        projectToken.transferFrom(msg.sender, address(this), projectTokenAmount);
+        projectToken.safeTransferFrom(msg.sender, address(this), projectTokenAmount);
 
         // Redeem the tokens.
         uint256 terminalTokenAmount = _getBackingAssets(projectToken, projectTokenAmount, token, minTokensReclaimed);

@@ -52,12 +52,15 @@ contract BPArbitrumSucker is BPSucker {
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
-        uint256 projectId
+        uint256 projectId,
+        address gatewayRouter
     ) BPSucker(directory, tokens, permissions, peer, projectId) {
         LAYER = layer;
         INBOX = IInbox(inbox);
 
         // TODO: Check if gateway supports `outboundTransferCustomRefund` if LAYER is L1.
+
+        GATEWAY_ROUTER = gatewayRouter;
     }
 
     //*********************************************************************//
