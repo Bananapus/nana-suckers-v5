@@ -122,8 +122,6 @@ contract BPOptimismSucker is BPSucker, BPSuckerHook {
         );
 
         // Emit an event for the relayers to watch for.
-        // TODO: Update the relayer to use the  `RootToRemote` event and remove the `SuckingToRemote` event.
-        emit SuckingToRemote(token, nonce);
         emit RootToRemote(
             _root,
             token,
