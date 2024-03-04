@@ -65,12 +65,18 @@ contract BPArbitrumSucker is BPSucker {
     //*********************************************************************//
 
     /// @notice Uses the L1/L2 gateway to send the root and assets over the bridge to the peer.
+    /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message.
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
-    function _sendRoot(address token, BPRemoteToken memory remoteToken) internal override {
+    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken) internal override {
         // Get the amount to send and then clear it.
         uint256 amount = outbox[token].balance;
         delete outbox[token].balance;
+
+        // TODO: Handle the `transportPayment`
+        if (transportPayment == 0) {
+            revert();
+        }
 
         // Increment the outbox tree's nonce.
         uint64 nonce = ++outbox[token].nonce;

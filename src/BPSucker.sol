@@ -171,7 +171,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         }
 
         // Send the merkle root to the remote chain.
-        _sendRoot(token, remoteToken);
+        _sendRoot(msg.value, token, remoteToken);
     }
 
     /// @notice Receive a merkle root for a terminal token from the remote project.
@@ -239,7 +239,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
 
     /// @notice Map an ERC-20 token on the local chain to an ERC-20 token on the remote chain, allowing that token to be bridged.
     /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging them.
-    function mapToken(BPTokenMapping calldata map) public payable {
+    function mapToken(BPTokenMapping calldata map) public {
         address token = map.localToken;
         bool isNative = map.localToken == JBConstants.NATIVE_TOKEN;
 
@@ -258,7 +258,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, JBPermissionIds.MAP_SUCKER_TOKEN);
 
         // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds to the remote chain.
-        if (map.remoteToken == address(0) && outbox[token].balance != 0) _sendRoot(token, remoteTokenFor[token]);
+        if (map.remoteToken == address(0) && outbox[token].balance != 0) _sendRoot(0, token, remoteTokenFor[token]);
 
         // Update the token mapping.
         remoteTokenFor[token] =
@@ -267,7 +267,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
 
     /// @notice Map multiple ERC-20 tokens on the local chain to ERC-20 tokens on the remote chain, allowing those tokens to be bridged.
     /// @param maps A list of local and remote terminal token addresses to map, and minimum amount/gas limits for bridging them.
-    function mapTokens(BPTokenMapping[] calldata maps) external payable {
+    function mapTokens(BPTokenMapping[] calldata maps) external {
         for (uint256 i = 0; i < maps.length; i++) {
             mapToken(maps[i]);
         }
@@ -324,10 +324,11 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     }
 
     /// @notice Send the outbox root for the specified token to the remote peer.
-    /// @dev The call may have a `msg.value` for bridging native tokens. Require it to be `0` if it is not needed.
+    /// @dev The call may have a `transportPayment` for bridging native tokens. Require it to be `0` if it is not needed. Make sure if a value being paid to the bridge is expected to revert if the given value is `0`.
+    /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message. (usually derived from `msg.value`)
     /// @param token The terminal token to bridge the merkle tree of.
     /// @param remoteToken The remote token which the `token` is mapped to.
-    function _sendRoot(address token, BPRemoteToken memory remoteToken) internal virtual;
+    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken) internal virtual;
 
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
@@ -398,6 +399,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
             assert(IERC20(token).balanceOf(address(this)) == balanceBefore - amount);
         } else {
             // If the token is the native token, use `msg.value`.
+            // slither-disable-next-line arbitrary-send-eth
             terminal.addToBalanceOf{value: amount}(PROJECT_ID, token, amount, false, string(""), bytes(""));
         }
     }

@@ -61,13 +61,14 @@ contract BPOptimismSucker is BPSucker, BPSuckerHook {
     //*********************************************************************//
 
     /// @notice Use the `OPMESSENGER` to send the outbox tree for the `token` and the corresponding funds to the peer over the `OPBRIDGE`.
+    /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message.
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
-    function _sendRoot(address token, BPRemoteToken memory remoteToken) internal override {
+    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken) internal override {
         uint256 nativeValue;
 
         // Revert if there's a `msg.value`. The OP bridge does not expect to be paid.
-        if (msg.value != 0) {
+        if (transportPayment != 0) {
             revert UNEXPECTED_MSG_VALUE();
         }
 
@@ -106,6 +107,7 @@ contract BPOptimismSucker is BPSucker, BPSuckerHook {
         uint256 _index = outbox[token].tree.count - 1;
 
         // Send the message to the peer with the redeemed ETH.
+        // slither-disable-next-line arbitrary-send-eth
         OPMESSENGER.sendMessage{value: nativeValue}(
             PEER,
             abi.encodeCall(

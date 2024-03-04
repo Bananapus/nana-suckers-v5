@@ -9,9 +9,9 @@ interface IBPSucker {
     function prepare(uint256 projectTokenAmount, address beneficiary, uint256 minTokensReclaimed, address token)
         external;
 
-    function mapToken(BPTokenMapping calldata map) external payable;
+    function mapToken(BPTokenMapping calldata map) external;
 
-    function mapTokens(BPTokenMapping[] calldata maps) external payable;
+    function mapTokens(BPTokenMapping[] calldata maps) external;
 
     event NewInboxTreeRoot(address indexed token, uint64 nonce, bytes32 root);
 
