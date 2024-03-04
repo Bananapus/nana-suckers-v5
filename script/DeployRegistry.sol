@@ -20,9 +20,7 @@ contract DeployRegistry is Script {
         // Since OP deployer won't exist on Polygon for example.
 
         // OPDeployer
-        PRE_APPROVED_DEPLOYERS.push(
-            0xDBA108aE1738F456A0685f4C0aE30532385C4c24
-        );
+        PRE_APPROVED_DEPLOYERS.push(0xDBA108aE1738F456A0685f4C0aE30532385C4c24);
     }
 
     function run() public {

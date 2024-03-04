@@ -24,11 +24,13 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     /// @notice Tracks whether the specified sucker deployer is approved by this registry.
     mapping(address deployer => bool) public suckerDeployerIsAllowed;
 
-    constructor(IJBProjects projects, IJBPermissions permissions, address[] memory deployers) JBOwnable(projects, permissions) {
+    constructor(IJBProjects projects, IJBPermissions permissions, address[] memory deployers)
+        JBOwnable(projects, permissions)
+    {
         // Transfer ownership to the owner of project ID 1 (JuiceboxDAO).
         _transferOwnership(address(0), uint88(1));
-        
-        for(uint256 _i; _i < deployers.length; _i++) {
+
+        for (uint256 _i; _i < deployers.length; _i++) {
             suckerDeployerIsAllowed[deployers[_i]] = true;
             emit SuckerDeployerAllowed(deployers[_i]);
         }

@@ -122,12 +122,7 @@ contract BPOptimismSucker is BPSucker, BPSuckerHook {
         );
 
         // Emit an event for the relayers to watch for.
-        emit RootToRemote(
-            _root,
-            token,
-            _index,
-            nonce
-        );
+        emit RootToRemote(_root, token, _index, nonce);
     }
 
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
