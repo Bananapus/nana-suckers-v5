@@ -39,51 +39,51 @@ contract DeployScript is Script, Sphinx {
         _optimismSucker();
 
         // Deploy the registry and pre-aprove the deployers we just deployed.
-        new BPSuckerRegistry(
-            core.projects,
-            core.permissions,
-            PRE_APPROVED_DEPLOYERS
-        );
+        new BPSuckerRegistry(core.projects, core.permissions, PRE_APPROVED_DEPLOYERS);
     }
 
     function _optimismSucker() internal {
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
-        if(block.chainid == 1 || block.chainid == 11155111) {
-            PRE_APPROVED_DEPLOYERS.push(address(
-                new BPOptimismSuckerDeployer(
-                    core.prices,
-                    core.rulesets,
-                    OPMessenger(
-                        block.chainid == 1 ?
-                        address(0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1) :
-                        address(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef)
-                    ),
-                    OPStandardBridge(
-                        block.chainid == 1 ?
-                            address(0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1) :
-                            address(0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1)
-                    ),
-                    core.directory,
-                    core.tokens,
-                    core.permissions
-                ))
+        if (block.chainid == 1 || block.chainid == 11155111) {
+            PRE_APPROVED_DEPLOYERS.push(
+                address(
+                    new BPOptimismSuckerDeployer(
+                        core.prices,
+                        core.rulesets,
+                        OPMessenger(
+                            block.chainid == 1
+                                ? address(0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1)
+                                : address(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef)
+                        ),
+                        OPStandardBridge(
+                            block.chainid == 1
+                                ? address(0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1)
+                                : address(0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1)
+                        ),
+                        core.directory,
+                        core.tokens,
+                        core.permissions
+                    )
+                )
             );
         }
 
         // Check if we should do the L1 portion.
         // OP & OP Sepolia.
-        if(block.chainid == 10 || block.chainid == 11155420) {
-            PRE_APPROVED_DEPLOYERS.push(address(
-                new BPOptimismSuckerDeployer(
-                    core.prices,
-                    core.rulesets,
-                    OPMessenger(address(0x4200000000000000000000000000000000000007)),
-                    OPStandardBridge(address(0x4200000000000000000000000000000000000010)),
-                    core.directory,
-                    core.tokens,
-                    core.permissions
-                ))
+        if (block.chainid == 10 || block.chainid == 11155420) {
+            PRE_APPROVED_DEPLOYERS.push(
+                address(
+                    new BPOptimismSuckerDeployer(
+                        core.prices,
+                        core.rulesets,
+                        OPMessenger(address(0x4200000000000000000000000000000000000007)),
+                        OPStandardBridge(address(0x4200000000000000000000000000000000000010)),
+                        core.directory,
+                        core.tokens,
+                        core.permissions
+                    )
+                )
             );
         }
     }
