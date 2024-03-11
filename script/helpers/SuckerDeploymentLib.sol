@@ -5,10 +5,15 @@ import {stdJson} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {SphinxConstants, NetworkInfo} from "@sphinx-labs/contracts/SphinxConstants.sol";
 
-import {BPSuckerRegistry} from "./../src/BPSuckerRegistry.sol";
+import {BPSuckerRegistry} from "./../../src/BPSuckerRegistry.sol";
+import {IBPSuckerDeployer} from "./../../src/interfaces/IBPSuckerDeployer.sol";
 
 struct SuckerDeployment {
     BPSuckerRegistry registry;
+
+    /// @dev only those that are deployed on the requested chain contain an address.
+    IBPSuckerDeployer optimismDeployer;
+    IBPSuckerDeployer arbitrumDeployer;
 }
 
 library SuckerDeploymentLib {
@@ -37,10 +42,20 @@ library SuckerDeploymentLib {
     function getDeployment(string memory path, string memory network_name)
         internal
         view
-        returns (CoreDeployment memory deployment)
+        returns (SuckerDeployment memory deployment)
     {
+        // Is deployed on all (supported) chains.
         deployment.registry =
             BPSuckerRegistry(_getDeploymentAddress(path, "nana-suckers", network_name, "BPSuckerRegistry"));
+        
+        bytes32 _network = keccak256(abi.encode(network_name));
+        bool _isMainnet = _network == keccak256("ethereum") || _network == keccak256("sepolia");
+        bool _isOP = _network == keccak256("optimism") || _network == keccak256("optimism_sepolia");
+
+        if(_isMainnet || _isOP){
+            deployment.optimismDeployer = 
+                IBPSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "BPOptimismSuckerDeployer"));
+        }
     }
 
     /// @notice Get the address of a contract that was deployed by the Deploy script.

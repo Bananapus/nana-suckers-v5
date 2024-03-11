@@ -14,6 +14,10 @@ contract DeployScript is Script, Sphinx {
     /// @notice tracks the addressed of the deployers that will get pre-approved.
     address[] PRE_APPROVED_DEPLOYERS;
 
+    /// @notice the nonces that are used to deploy the contracts.
+    bytes32 OP_SALT = "SUCKER_ETH_OP";
+    bytes32 REGISTRY_SALT = "REGISTRY";
+
     function configureSphinx() public override {
         // TODO: Update to contain JB Emergency Developers
         sphinxConfig.owners = [0x26416423d530b1931A2a7a6b7D435Fac65eED27d];
@@ -22,6 +26,7 @@ contract DeployScript is Script, Sphinx {
         sphinxConfig.threshold = 1;
         sphinxConfig.mainnets = ["ethereum", "optimism"];
         sphinxConfig.testnets = ["ethereum_sepolia", "optimism_sepolia"];
+        sphinxConfig.saltNonce = 2;
     }
 
     function run() public {
@@ -39,52 +44,63 @@ contract DeployScript is Script, Sphinx {
         _optimismSucker();
 
         // Deploy the registry and pre-aprove the deployers we just deployed.
-        new BPSuckerRegistry(core.projects, core.permissions, PRE_APPROVED_DEPLOYERS);
+        BPSuckerRegistry _registry = new BPSuckerRegistry{salt: REGISTRY_SALT}(core.projects, core.permissions, safeAddress());
+
+        // Before transferring ownership to JBDAO we approve the deployers.
+        if(PRE_APPROVED_DEPLOYERS.length != 0) {
+            _registry.allowSuckerDeployers(PRE_APPROVED_DEPLOYERS);
+        }
+
+        // Transfer ownership to JBDAO.
+        _registry.transferOwnershipToProject(1);
     }
 
+    /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet configuration).
     function _optimismSucker() internal {
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
         if (block.chainid == 1 || block.chainid == 11155111) {
-            PRE_APPROVED_DEPLOYERS.push(
-                address(
-                    new BPOptimismSuckerDeployer(
-                        core.prices,
-                        core.rulesets,
-                        OPMessenger(
-                            block.chainid == 1
-                                ? address(0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1)
-                                : address(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef)
-                        ),
-                        OPStandardBridge(
-                            block.chainid == 1
-                                ? address(0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1)
-                                : address(0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1)
-                        ),
-                        core.directory,
-                        core.tokens,
-                        core.permissions
-                    )
+            BPOptimismSuckerDeployer _opDeployer = new BPOptimismSuckerDeployer{salt: OP_SALT}(
+                core.prices,
+                core.rulesets,
+                core.directory,
+                core.tokens,
+                core.permissions
+            );
+
+            _opDeployer.configureLayerSpecific(
+                OPMessenger(
+                    block.chainid == 1
+                        ? address(0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1)
+                        : address(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef)
+                ),
+                OPStandardBridge(
+                    block.chainid == 1
+                        ? address(0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1)
+                        : address(0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1)
                 )
             );
+
+            PRE_APPROVED_DEPLOYERS.push(address(_opDeployer));
         }
 
         // Check if we should do the L1 portion.
         // OP & OP Sepolia.
         if (block.chainid == 10 || block.chainid == 11155420) {
-            PRE_APPROVED_DEPLOYERS.push(
-                address(
-                    new BPOptimismSuckerDeployer(
-                        core.prices,
-                        core.rulesets,
-                        OPMessenger(address(0x4200000000000000000000000000000000000007)),
-                        OPStandardBridge(address(0x4200000000000000000000000000000000000010)),
-                        core.directory,
-                        core.tokens,
-                        core.permissions
-                    )
-                )
+            BPOptimismSuckerDeployer _opDeployer = new BPOptimismSuckerDeployer{salt: OP_SALT}(
+                core.prices,
+                core.rulesets,
+                core.directory,
+                core.tokens,
+                core.permissions
             );
+
+            _opDeployer.configureLayerSpecific(
+                OPMessenger(0x4200000000000000000000000000000000000007),
+                OPStandardBridge(0x4200000000000000000000000000000000000010)
+            );
+
+            PRE_APPROVED_DEPLOYERS.push(address(_opDeployer));
         }
     }
 }

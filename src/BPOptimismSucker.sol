@@ -16,6 +16,7 @@ import {BPSuckerHook} from "./BPSuckerHook.sol";
 import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
 import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
 import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
+import {BPOptimismSuckerDeployer} from "./deployers/BPOptimismSuckerDeployer.sol";
 import {OPMessenger} from "./interfaces/OPMessenger.sol";
 import {OPStandardBridge} from "./interfaces/OPStandardBridge.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
@@ -44,16 +45,15 @@ contract BPOptimismSucker is BPSucker, BPSuckerHook {
     constructor(
         IJBPrices prices,
         IJBRulesets rulesets,
-        OPMessenger messenger,
-        OPStandardBridge bridge,
         IJBDirectory directory,
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
         uint256 projectId
     ) BPSucker(directory, tokens, permissions, peer, projectId) BPSuckerHook(prices, rulesets) {
-        OPMESSENGER = messenger;
-        OPBRIDGE = bridge;
+        // Fetch the messenger and bridge by doing a callback to the deployer contract.
+        OPMESSENGER = BPOptimismSuckerDeployer(msg.sender).MESSENGER();
+        OPBRIDGE = BPOptimismSuckerDeployer(msg.sender).BRIDGE();
     }
 
     //*********************************************************************//
