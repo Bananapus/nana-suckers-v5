@@ -43,20 +43,46 @@ contract DeployScript is Script, Sphinx {
         // Perform the deployments for this chain, then deploy the registry and pre-approve the deployers.
         _optimismSucker();
 
-        // Deploy the registry and pre-aprove the deployers we just deployed.
-        BPSuckerRegistry _registry = new BPSuckerRegistry{salt: REGISTRY_SALT}(core.projects, core.permissions, safeAddress());
+        // If the registry is already deployed we don't have to deploy it
+        // (and we can't add more pre_approved deployers etc.)
+        if(!_isDeployed(
+            REGISTRY_SALT,
+            type(BPSuckerRegistry).creationCode,
+            abi.encode(
+                core.projects,
+                core.permissions,
+                safeAddress()
+            )
+        )) {
+            // Deploy the registry and pre-aprove the deployers we just deployed.
+            BPSuckerRegistry _registry = new BPSuckerRegistry{salt: REGISTRY_SALT}(core.projects, core.permissions, safeAddress());
 
-        // Before transferring ownership to JBDAO we approve the deployers.
-        if(PRE_APPROVED_DEPLOYERS.length != 0) {
-            _registry.allowSuckerDeployers(PRE_APPROVED_DEPLOYERS);
+            // Before transferring ownership to JBDAO we approve the deployers.
+            if(PRE_APPROVED_DEPLOYERS.length != 0) {
+                _registry.allowSuckerDeployers(PRE_APPROVED_DEPLOYERS);
+            }
+
+            // Transfer ownership to JBDAO.
+            _registry.transferOwnershipToProject(1);
         }
-
-        // Transfer ownership to JBDAO.
-        _registry.transferOwnershipToProject(1);
     }
 
     /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet configuration).
     function _optimismSucker() internal {
+        // Check if this sucker is already deployed on this chain,
+        // if that is the case we don't need to do anything else for this chain.
+        if(_isDeployed(
+            OP_SALT,
+            type(BPOptimismSuckerDeployer).creationCode,
+            abi.encode(
+                core.prices,
+                core.rulesets,
+                core.directory,
+                core.tokens,
+                core.permissions
+            )
+        )) return;
+
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
         if (block.chainid == 1 || block.chainid == 11155111) {
@@ -102,5 +128,19 @@ contract DeployScript is Script, Sphinx {
 
             PRE_APPROVED_DEPLOYERS.push(address(_opDeployer));
         }
+    }
+
+    function _isDeployed(bytes32 salt, bytes memory creationCode, bytes memory arguments) internal returns (bool) {
+        address _deployedTo = vm.computeCreate2Address({
+            salt: salt,
+            initCodeHash: keccak256(abi.encodePacked(
+                creationCode,
+                arguments
+            )),
+            deployer: address(safeAddress())
+        });
+
+        // Return if code is already present at this address. 
+        return address(_deployedTo).code.length == 0;
     }
 }
