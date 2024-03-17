@@ -48,7 +48,7 @@ library SuckerDeploymentLib {
         deployment.registry =
             IBPSuckerRegistry(_getDeploymentAddress(path, "nana-suckers", network_name, "BPSuckerRegistry"));
         
-        bytes32 _network = keccak256(abi.encode(network_name));
+        bytes32 _network = keccak256(abi.encodePacked(network_name));
         bool _isMainnet = _network == keccak256("ethereum") || _network == keccak256("sepolia");
         bool _isOP = _network == keccak256("optimism") || _network == keccak256("optimism_sepolia");
 
