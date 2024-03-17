@@ -5,11 +5,11 @@ import {stdJson} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {SphinxConstants, NetworkInfo} from "@sphinx-labs/contracts/SphinxConstants.sol";
 
-import {BPSuckerRegistry} from "./../../src/BPSuckerRegistry.sol";
+import {IBPSuckerRegistry} from "./../../src/interfaces/IBPSuckerRegistry.sol";
 import {IBPSuckerDeployer} from "./../../src/interfaces/IBPSuckerDeployer.sol";
 
 struct SuckerDeployment {
-    BPSuckerRegistry registry;
+    IBPSuckerRegistry registry;
 
     /// @dev only those that are deployed on the requested chain contain an address.
     IBPSuckerDeployer optimismDeployer;
@@ -46,7 +46,7 @@ library SuckerDeploymentLib {
     {
         // Is deployed on all (supported) chains.
         deployment.registry =
-            BPSuckerRegistry(_getDeploymentAddress(path, "nana-suckers", network_name, "BPSuckerRegistry"));
+            IBPSuckerRegistry(_getDeploymentAddress(path, "nana-suckers", network_name, "BPSuckerRegistry"));
         
         bytes32 _network = keccak256(abi.encode(network_name));
         bool _isMainnet = _network == keccak256("ethereum") || _network == keccak256("sepolia");
