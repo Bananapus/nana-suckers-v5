@@ -6,7 +6,6 @@ import "@bananapus/core/script/helpers/CoreDeploymentLib.sol";
 
 import {Sphinx} from "@sphinx-labs/contracts/SphinxPlugin.sol";
 import {Script} from "forge-std/Script.sol";
-import {console2} from "./../lib/forge-std/src/console2.sol";
 import {BPSuckerRegistry} from "./../src/BPSuckerRegistry.sol";
 
 contract DeployScript is Script, Sphinx {
@@ -131,21 +130,18 @@ contract DeployScript is Script, Sphinx {
         }
     }
 
-    function _isDeployed(bytes32 salt, bytes memory creationCode, bytes memory arguments) internal returns (bool) {
-        return false;
+    function _isDeployed(bytes32 salt, bytes memory creationCode, bytes memory arguments) internal view returns (bool) {
         address _deployedTo = vm.computeCreate2Address({
             salt: salt,
             initCodeHash: keccak256(abi.encodePacked(
                 creationCode,
                 arguments
             )),
-            deployer: address(safeAddress())
+            // Arachnid/deterministic-deployment-proxy address.
+            deployer: address(0x4e59b44847b379578588920cA78FbF26c0B4956C)
         });
 
-        console2.log("Expecting..", _deployedTo);
-        // console2.log("Sphinx expecting..", sphinxUtils.predictDeterministicAddress());
-
         // Return if code is already present at this address. 
-        return address(_deployedTo).code.length == 0;
+        return address(_deployedTo).code.length != 0;
     }
 }
