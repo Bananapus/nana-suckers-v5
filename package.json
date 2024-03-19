@@ -1,6 +1,6 @@
 {
   "name": "@bananapus/suckers",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@arbitrum/nitro-contracts": "github:OffchainLabs/nitro-contracts",
-    "@bananapus/core": "github:Bananapus/nana-core#feat/sphinx",
+    "@bananapus/core": "^0.0.7",
     "@bananapus/ownable": "^0.0.4",
     "@bananapus/permission-ids": "^0.0.4",
     "@openzeppelin/contracts": "^5.0.1",
