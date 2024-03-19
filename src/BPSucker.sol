@@ -87,7 +87,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     address public immutable DEPLOYER;
 
     /// @notice The peer sucker on the remote chain.
-    address public immutable PEER;
+    address public immutable override PEER;
 
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
     uint256 public immutable PROJECT_ID;
@@ -292,6 +292,10 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     function isMapped(address token) external view override returns (bool) {
         return remoteTokenFor[token].addr != address(0);
     }
+
+    /// @notice Returns the chain on which the peer is located.
+    /// @return chain ID of the peer.
+    function peerChainID() external view virtual returns (uint256);
 
     //*********************************************************************//
     // --------------------- internal transactions ----------------------- //

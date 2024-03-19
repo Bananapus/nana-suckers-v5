@@ -1,6 +1,6 @@
 {
   "name": "@bananapus/suckers",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -9,21 +9,17 @@
   "scripts": {
     "test": "forge test",
     "coverage": "forge coverage --match-path \"./src/*.sol\" --report lcov --report summary",
-
-    "deploy:registry:ethereum-mainnet": "source ./.env && forge script DeployRegistry --chain-id 1 --rpc-url $RPC_ETHEREUM_MAINNET --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --interactives 1 --sender $REGISTRY_SENDER -vvv",
-    "deploy:registry:ethereum-sepolia": "source ./.env && forge script DeployRegistry --chain-id 11155111 --rpc-url $RPC_ETHEREUM_SEPOLIA --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY --interactives 1 --sender $REGISTRY_SENDER -vvv",
-    "deploy:registry:optimism-mainnet": "source ./.env && forge script DeployRegistry --chain-id 420 --rpc-url $RPC_OPTIMISM_MAINNET --broadcast --verify --etherscan-api-key $OPTIMISTIC_ETHERSCAN_API_KEY --interactives 1 --sender $REGISTRY_SENDER -vvv",
-    "deploy:registry:optimism-sepolia": "source ./.env && forge script DeployRegistry --chain-id 11155420 --rpc-url $RPC_OPTIMISM_SEPOLIA --broadcast --verify --etherscan-api-key $OPTIMISTIC_ETHERSCAN_API_KEY --interactives 1 --sender $REGISTRY_SENDER -vvv",
-
-    "deploy:sucker:optimism": "source ./.env && CHAIN_A_RPC=$RPC_ETHEREUM_MAINNET CHAIN_B_RPC=$RPC_OPTIMISM_MAINNET forge script DeployOptimism --sender $SENDER --broadcast --verify --interactives 1 --etherscan-api-key $ETHERSCAN_API_KEY",
-    "deploy:sucker:optimism-sepolia": "source ./.env && CHAIN_A_RPC=$RPC_ETHEREUM_SEPOLIA CHAIN_B_RPC=$RPC_OPTIMISM_SEPOLIA forge script DeployOptimism --sender $SENDER --broadcast --verify --interactives 1 --etherscan-api-key $ETHERSCAN_API_KEY"
+    "deploy:mainnets": "source ./.env && npx sphinx propose ./script/Deploy.s.sol --networks mainnets",
+    "deploy:testnets": "source ./.env && npx sphinx propose ./script/Deploy.s.sol --networks testnets",
+    "artifacts":  "source ./.env && npx sphinx artifacts --org-id 'cltepuu9u0003j58rjtbd0hvu' --project-name 'nana-suckers'"
   },
   "dependencies": {
     "@arbitrum/nitro-contracts": "github:OffchainLabs/nitro-contracts",
-    "@bananapus/core": "^0.0.6",
+    "@bananapus/core": "^0.0.7",
     "@bananapus/ownable": "^0.0.4",
     "@bananapus/permission-ids": "^0.0.4",
     "@openzeppelin/contracts": "^5.0.1",
-    "@prb/math": "^4.0.2"
+    "@prb/math": "^4.0.2",
+    "@sphinx-labs/plugins": "^0.30.8"
   }
 }

@@ -20,6 +20,7 @@ import {IBPSuckerDeployerFeeless} from "./../interfaces/IBPSuckerDeployerFeeless
 /// @notice An `IBPSuckerDeployerFeeless` implementation to deploy `BPOptimismSucker` contracts.
 contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
     error ONLY_SUCKERS();
+    error ALREADY_CONFIGURED();
 
     /// @notice The contract that exposes price feeds.
     IJBPrices immutable PRICES;
@@ -27,17 +28,20 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
     /// @notice The contract storing and managing project rulesets.
     IJBRulesets immutable RULESETS;
 
-    /// @notice The messenger used to send messages between the local and remote sucker.
-    OPMessenger immutable MESSENGER;
-
-    /// @notice The bridge used to bridge tokens between the local and remote chain.
-    OPStandardBridge immutable BRIDGE;
-
     /// @notice The directory of terminals and controllers for projects.
     IJBDirectory immutable DIRECTORY;
 
     /// @notice The contract that manages token minting and burning.
     IJBTokens immutable TOKENS;
+
+    /// @notice Only this address can configure this deployer, can only be used once.
+    address immutable LAYER_SPECIFIC_CONFIGURATOR;
+
+    /// @notice The messenger used to send messages between the local and remote sucker.
+    OPMessenger public MESSENGER;
+
+    /// @notice The bridge used to bridge tokens between the local and remote chain.
+    OPStandardBridge public BRIDGE;
 
     /// @notice A mapping of suckers deployed by this contract.
     mapping(address => bool) public isSucker;
@@ -45,16 +49,14 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
     constructor(
         IJBPrices prices,
         IJBRulesets rulesets,
-        OPMessenger messenger,
-        OPStandardBridge bridge,
         IJBDirectory directory,
         IJBTokens tokens,
         IJBPermissions permissions
     ) JBPermissioned(permissions) {
+        LAYER_SPECIFIC_CONFIGURATOR = msg.sender;
+
         PRICES = prices;
         RULESETS = rulesets;
-        MESSENGER = messenger;
-        BRIDGE = bridge;
         DIRECTORY = directory;
         TOKENS = tokens;
     }
@@ -69,7 +71,7 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
         sucker = IBPSucker(
             address(
                 new BPOptimismSucker{salt: salt}(
-                    PRICES, RULESETS, MESSENGER, BRIDGE, DIRECTORY, TOKENS, PERMISSIONS, address(0), localProjectId
+                    PRICES, RULESETS, DIRECTORY, TOKENS, PERMISSIONS, address(0), localProjectId
                 )
             )
         );
@@ -107,5 +109,16 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
         return terminal.useAllowanceOf(
             projectId, token, amount, currency, minReceivedTokens, payable(address(msg.sender)), string("")
         );
+    }
+
+    function configureLayerSpecific(OPMessenger messenger, OPStandardBridge bridge) external {
+        if (address(MESSENGER) != address(0) || address(BRIDGE) != address(0)) {
+            revert ALREADY_CONFIGURED();
+        }
+
+        // Configure these layer specific properties.
+        // This is done in a seperate call to make the deployment code chain agnostic.
+        MESSENGER = messenger;
+        BRIDGE = bridge;
     }
 }
