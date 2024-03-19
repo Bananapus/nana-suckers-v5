@@ -6,7 +6,7 @@ import {BPTokenMapping} from "../structs/BPTokenMapping.sol";
 interface IBPSucker {
     function PEER() external view returns (address);
 
-    function peerChainID() external view returns(uint256 chainId);
+    function peerChainID() external view returns (uint256 chainId);
 
     function isMapped(address token) external view returns (bool);
 

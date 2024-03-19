@@ -10,7 +10,6 @@ import {IBPSuckerDeployer} from "./../../src/interfaces/IBPSuckerDeployer.sol";
 
 struct SuckerDeployment {
     IBPSuckerRegistry registry;
-
     /// @dev only those that are deployed on the requested chain contain an address.
     IBPSuckerDeployer optimismDeployer;
     IBPSuckerDeployer arbitrumDeployer;
@@ -47,13 +46,13 @@ library SuckerDeploymentLib {
         // Is deployed on all (supported) chains.
         deployment.registry =
             IBPSuckerRegistry(_getDeploymentAddress(path, "nana-suckers", network_name, "BPSuckerRegistry"));
-        
+
         bytes32 _network = keccak256(abi.encodePacked(network_name));
         bool _isMainnet = _network == keccak256("ethereum") || _network == keccak256("sepolia");
         bool _isOP = _network == keccak256("optimism") || _network == keccak256("optimism_sepolia");
 
-        if(_isMainnet || _isOP){
-            deployment.optimismDeployer = 
+        if (_isMainnet || _isOP) {
+            deployment.optimismDeployer =
                 IBPSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "BPOptimismSuckerDeployer"));
         }
     }

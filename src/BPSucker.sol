@@ -295,7 +295,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chain ID of the peer.
-    function peerChainID() external virtual view returns(uint256);
+    function peerChainID() external view virtual returns (uint256);
 
     //*********************************************************************//
     // --------------------- internal transactions ----------------------- //

@@ -45,20 +45,19 @@ contract DeployScript is Script, Sphinx {
 
         // If the registry is already deployed we don't have to deploy it
         // (and we can't add more pre_approved deployers etc.)
-        if(!_isDeployed(
-            REGISTRY_SALT,
-            type(BPSuckerRegistry).creationCode,
-            abi.encode(
-                core.projects,
-                core.permissions,
-                safeAddress()
+        if (
+            !_isDeployed(
+                REGISTRY_SALT,
+                type(BPSuckerRegistry).creationCode,
+                abi.encode(core.projects, core.permissions, safeAddress())
             )
-        )) {
+        ) {
             // Deploy the registry and pre-aprove the deployers we just deployed.
-            BPSuckerRegistry _registry = new BPSuckerRegistry{salt: REGISTRY_SALT}(core.projects, core.permissions, safeAddress());
+            BPSuckerRegistry _registry =
+                new BPSuckerRegistry{salt: REGISTRY_SALT}(core.projects, core.permissions, safeAddress());
 
             // Before transferring ownership to JBDAO we approve the deployers.
-            if(PRE_APPROVED_DEPLOYERS.length != 0) {
+            if (PRE_APPROVED_DEPLOYERS.length != 0) {
                 _registry.allowSuckerDeployers(PRE_APPROVED_DEPLOYERS);
             }
 
@@ -71,27 +70,19 @@ contract DeployScript is Script, Sphinx {
     function _optimismSucker() internal {
         // Check if this sucker is already deployed on this chain,
         // if that is the case we don't need to do anything else for this chain.
-        if(_isDeployed(
-            OP_SALT,
-            type(BPOptimismSuckerDeployer).creationCode,
-            abi.encode(
-                core.prices,
-                core.rulesets,
-                core.directory,
-                core.tokens,
-                core.permissions
+        if (
+            _isDeployed(
+                OP_SALT,
+                type(BPOptimismSuckerDeployer).creationCode,
+                abi.encode(core.prices, core.rulesets, core.directory, core.tokens, core.permissions)
             )
-        )) return;
+        ) return;
 
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
         if (block.chainid == 1 || block.chainid == 11155111) {
             BPOptimismSuckerDeployer _opDeployer = new BPOptimismSuckerDeployer{salt: OP_SALT}(
-                core.prices,
-                core.rulesets,
-                core.directory,
-                core.tokens,
-                core.permissions
+                core.prices, core.rulesets, core.directory, core.tokens, core.permissions
             );
 
             _opDeployer.configureLayerSpecific(
@@ -114,11 +105,7 @@ contract DeployScript is Script, Sphinx {
         // OP & OP Sepolia.
         if (block.chainid == 10 || block.chainid == 11155420) {
             BPOptimismSuckerDeployer _opDeployer = new BPOptimismSuckerDeployer{salt: OP_SALT}(
-                core.prices,
-                core.rulesets,
-                core.directory,
-                core.tokens,
-                core.permissions
+                core.prices, core.rulesets, core.directory, core.tokens, core.permissions
             );
 
             _opDeployer.configureLayerSpecific(
@@ -130,18 +117,19 @@ contract DeployScript is Script, Sphinx {
         }
     }
 
-    function _isDeployed(bytes32 salt, bytes memory creationCode, bytes memory arguments) internal view returns (bool) {
+    function _isDeployed(bytes32 salt, bytes memory creationCode, bytes memory arguments)
+        internal
+        view
+        returns (bool)
+    {
         address _deployedTo = vm.computeCreate2Address({
             salt: salt,
-            initCodeHash: keccak256(abi.encodePacked(
-                creationCode,
-                arguments
-            )),
+            initCodeHash: keccak256(abi.encodePacked(creationCode, arguments)),
             // Arachnid/deterministic-deployment-proxy address.
             deployer: address(0x4e59b44847b379578588920cA78FbF26c0B4956C)
         });
 
-        // Return if code is already present at this address. 
+        // Return if code is already present at this address.
         return address(_deployedTo).code.length != 0;
     }
 }

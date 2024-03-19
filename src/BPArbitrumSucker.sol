@@ -69,7 +69,7 @@ contract BPArbitrumSucker is BPSucker {
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
-    function peerChainID() external virtual override view returns(uint256 chainId) {
+    function peerChainID() external view virtual override returns (uint256 chainId) {
         // TODO: Implement.
     }
 

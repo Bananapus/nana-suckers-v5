@@ -111,11 +111,11 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
         );
     }
 
-
     function configureLayerSpecific(OPMessenger messenger, OPStandardBridge bridge) external {
-        if(address(MESSENGER) != address(0) || address(BRIDGE) != address(0))
+        if (address(MESSENGER) != address(0) || address(BRIDGE) != address(0)) {
             revert ALREADY_CONFIGURED();
-        
+        }
+
         // Configure these layer specific properties.
         // This is done in a seperate call to make the deployment code chain agnostic.
         MESSENGER = messenger;
