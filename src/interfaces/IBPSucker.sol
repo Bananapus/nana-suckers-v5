@@ -4,6 +4,10 @@ pragma solidity ^0.8.0;
 import {BPTokenMapping} from "../structs/BPTokenMapping.sol";
 
 interface IBPSucker {
+    function PEER() external view returns (address);
+
+    function peerChainID() external view returns(uint256 chainId);
+
     function isMapped(address token) external view returns (bool);
 
     function prepare(uint256 projectTokenAmount, address beneficiary, uint256 minTokensReclaimed, address token)
