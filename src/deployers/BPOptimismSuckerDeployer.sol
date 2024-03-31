@@ -13,7 +13,7 @@ import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/terminal/IJBPayo
 
 import {OPStandardBridge} from "../interfaces/OPStandardBridge.sol";
 import {OPMessenger} from "../interfaces/OPMessenger.sol";
-import {BPOptimismSucker} from "../BPOptimismSucker.sol";
+import {BPOptimismSucker, BPAddToBalanceMode} from "../BPOptimismSucker.sol";
 import {IBPSucker} from "./../interfaces/IBPSucker.sol";
 import {IBPSuckerDeployerFeeless} from "./../interfaces/IBPSuckerDeployerFeeless.sol";
 
@@ -71,7 +71,7 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
         sucker = IBPSucker(
             address(
                 new BPOptimismSucker{salt: salt}(
-                    PRICES, RULESETS, DIRECTORY, TOKENS, PERMISSIONS, address(0), localProjectId
+                    PRICES, RULESETS, DIRECTORY, TOKENS, PERMISSIONS, address(0), localProjectId, BPAddToBalanceMode.MANUAL
                 )
             )
         );

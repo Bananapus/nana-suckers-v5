@@ -25,7 +25,8 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
             IJBTokens(address(700)),
             IJBPermissions(address(800)),
             address(0),
-            0
+            0,
+            BPAddToBalanceMode.MANUAL
         )
     {}
 

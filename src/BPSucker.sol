@@ -7,7 +7,6 @@ import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IJBTerminal} from "@bananapus/core/src/interfaces/terminal/IJBTerminal.sol";
 import {IJBRedeemTerminal} from "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
-import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 import {JBPermissioned} from "@bananapus/core/src/abstract/JBPermissioned.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
@@ -20,7 +19,6 @@ import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
 import {BPOutboxTree} from "./structs/BPOutboxTree.sol";
 import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
 import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
-import {BPLeaf} from "./structs/BPLeaf.sol";
 import {BPClaim} from "./structs/BPClaim.sol";
 import {BPAddToBalanceMode} from "./enums/BPAddToBalanceMode.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
@@ -28,6 +26,7 @@ import {MerkleLib} from "./utils/MerkleLib.sol";
 /// @notice An abstract contract for bridging a Juicebox project's tokens and the corresponding funds to and from a remote chain.
 /// @dev Beneficiaries and balances are tracked on two merkle trees: the outbox tree is used to send from the local chain to the remote chain, and the inbox tree is used to receive from the remote chain to the local chain.
 /// @dev Throughout this contract, "terminal token" refers to any token accepted by a project's terminal.
+/// @dev This contract does *NOT* support tokens that have a fee on regular transfers and rebasing tokens.
 abstract contract BPSucker is JBPermissioned, IBPSucker {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
@@ -50,7 +49,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     error LEAF_ALREADY_EXECUTED(uint256 index);
     error QUEUE_INSUFFECIENT_SIZE(uint256 minSize, uint256 currentSize);
     error INSUFFICIENT_BALANCE();
-    error TOKEN_NOT_MAPPED(address token); // TODO: This needs to be broken out into a few errors.
+    error TOKEN_NOT_MAPPED(address token);
     error MANUAL_NOT_ALLOWED();
     error UNEXPECTED_MSG_VALUE();
 
@@ -92,11 +91,10 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
     uint256 public immutable PROJECT_ID;
 
-    // TODO: These two constants should be more clearly explained.
-    /// @notice A reasonable minimum gas limit for a basic cross-chain call.
+    /// @notice A reasonable minimum gas limit for a basic cross-chain call. The minimum amount of gas required to call the `fromRemote` (succesfully/safely) on the remote chain.
     uint32 constant MESSENGER_BASE_GAS_LIMIT = 300_000;
 
-    /// @notice A reasonable minimum gas limit used when bridging ERC-20s.
+    /// @notice A reasonable minimum gas limit used when bridging ERC-20s. The minimum amount of gas required to (succesfully/safely) perform a transfer on the remote chain.
     uint32 constant MESSENGER_ERC20_MIN_GAS_LIMIT = 200_000;
 
     //*********************************************************************//
@@ -110,7 +108,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
-    constructor(IJBDirectory directory, IJBTokens tokens, IJBPermissions permissions, address peer, uint256 projectId)
+    constructor(IJBDirectory directory, IJBTokens tokens, IJBPermissions permissions, address peer, uint256 projectId, BPAddToBalanceMode atbMode)
         JBPermissioned(permissions)
     {
         DIRECTORY = directory;
@@ -118,8 +116,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         PEER = peer == address(0) ? address(this) : peer;
         PROJECT_ID = projectId;
         DEPLOYER = msg.sender;
-
-        // TODO: ADB mode.
+        ADD_TO_BALANCE_MODE = atbMode;
 
         // Sanity check: make sure the merkle lib uses the same tree depth.
         assert(MerkleLib.TREE_DEPTH == TREE_DEPTH);
@@ -168,7 +165,6 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     /// @dev This sends the outbox root for the specified `token` to the remote chain.
     /// @param token The terminal token being bridged.
     function toRemote(address token) external payable {
-        // TODO: Add some way to prevent spam.
         BPRemoteToken memory remoteToken = remoteTokenFor[token];
 
         // Ensure that the amount being bridged exceeds the minimum bridge amount.
@@ -392,8 +388,10 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         }
 
         // Update the outstanding amount of tokens which can be added to the project's balance.
-        amountToAddToBalance[token] = addableAmount - amount;
-
+        unchecked {
+            amountToAddToBalance[token] = addableAmount - amount;
+        }
+        
         // Get the project's primary terminal for the token.
         IJBTerminal terminal = DIRECTORY.primaryTerminalOf(PROJECT_ID, token);
         if (address(terminal) == address(0)) revert NO_TERMINAL_FOR(PROJECT_ID, token);
@@ -429,7 +427,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
 
         // If the project doesn't have a primary terminal for `token`, revert.
         if (address(terminal) == address(0)) {
-            revert TOKEN_NOT_MAPPED(token);
+            revert NO_TERMINAL_FOR(PROJECT_ID, token);
         }
 
         // Redeem the tokens.
