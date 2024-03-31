@@ -8,17 +8,14 @@ import {IJBPrices} from "@bananapus/core/src/interfaces/IJBPrices.sol";
 import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBRulesets} from "@bananapus/core/src/interfaces/IJBRulesets.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
-import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
-import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/terminal/IJBPayoutTerminal.sol";
-
 import {OPStandardBridge} from "../interfaces/OPStandardBridge.sol";
 import {OPMessenger} from "../interfaces/OPMessenger.sol";
 import {BPOptimismSucker, BPAddToBalanceMode} from "../BPOptimismSucker.sol";
 import {IBPSucker} from "./../interfaces/IBPSucker.sol";
-import {IBPSuckerDeployerFeeless} from "./../interfaces/IBPSuckerDeployerFeeless.sol";
+import {IBPSuckerDeployer} from "./../interfaces/IBPSuckerDeployer.sol";
 
 /// @notice An `IBPSuckerDeployerFeeless` implementation to deploy `BPOptimismSucker` contracts.
-contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
+contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
     error ONLY_SUCKERS();
     error ALREADY_CONFIGURED();
 
@@ -51,10 +48,10 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
         IJBRulesets rulesets,
         IJBDirectory directory,
         IJBTokens tokens,
-        IJBPermissions permissions
+        IJBPermissions permissions,
+        address _configurator
     ) JBPermissioned(permissions) {
-        LAYER_SPECIFIC_CONFIGURATOR = msg.sender;
-
+        LAYER_SPECIFIC_CONFIGURATOR = _configurator;
         PRICES = prices;
         RULESETS = rulesets;
         DIRECTORY = directory;
@@ -78,44 +75,13 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployerFeeless {
         isSucker[address(sucker)] = true;
     }
 
-    /// @notice Use a project's surplus allowance without paying exit fees.
-    /// @dev This function can only be called by suckers deployed by this contract.
-    /// @dev This function can only be called by suckers with `JBPermissionIds.USE_ALLOWANCE` permission from the project's owner.
-    /// @dev This function is not necessarily feeless, as it still requires JuiceboxDAO to set the address as feeless.
-    /// @param projectId The project's ID.
-    /// @param terminal The terminal to use the surplus allowance from.
-    /// @param token The token that the surplus is in.
-    /// @param currency The currency that the `amount` is denominated in.
-    /// @param amount The amount to use from the terminal, denominated in the `currency`.
-    /// @param minReceivedTokens The minimum amount of terminal tokens to receive. If the terminal returns less than this amount, the transaction will revert.
-    /// @return The amount of tokens received.
-    function useAllowanceFeeless(
-        uint256 projectId,
-        IJBPayoutTerminal terminal,
-        address token,
-        uint32 currency,
-        uint256 amount,
-        uint256 minReceivedTokens
-    ) external returns (uint256) {
-        // Make sure the caller is a sucker.
-        if (!isSucker[msg.sender]) {
-            revert ONLY_SUCKERS();
-        }
-
-        // Access control: only suckers with `JBPermissionIds.USE_ALLOWANCE` permission from the project's owner can use the allowance.
-        _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(projectId), projectId, JBPermissionIds.USE_ALLOWANCE);
-
-        // Use the allowance.
-        return terminal.useAllowanceOf(
-            projectId, token, amount, currency, minReceivedTokens, payable(address(msg.sender)), string("")
-        );
-    }
-
+    /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment addresses would change.
+    /// @notice messenger the OPMesssenger on this layer.
+    /// @notice bridge the OPStandardBridge on this layer.
     function configureLayerSpecific(OPMessenger messenger, OPStandardBridge bridge) external {
         if (address(MESSENGER) != address(0) || address(BRIDGE) != address(0)) {
             revert ALREADY_CONFIGURED();
         }
-
         // Configure these layer specific properties.
         // This is done in a seperate call to make the deployment code chain agnostic.
         MESSENGER = messenger;
