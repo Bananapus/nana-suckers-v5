@@ -74,7 +74,7 @@ contract DeployScript is Script, Sphinx {
             _isDeployed(
                 OP_SALT,
                 type(BPOptimismSuckerDeployer).creationCode,
-                abi.encode(core.prices, core.rulesets, core.directory, core.tokens, core.permissions)
+                abi.encode(core.prices, core.rulesets, core.directory, core.tokens, core.permissions, safeAddress())
             )
         ) return;
 
@@ -82,7 +82,7 @@ contract DeployScript is Script, Sphinx {
         // ETH Mainnet and ETH Sepolia.
         if (block.chainid == 1 || block.chainid == 11155111) {
             BPOptimismSuckerDeployer _opDeployer = new BPOptimismSuckerDeployer{salt: OP_SALT}(
-                core.prices, core.rulesets, core.directory, core.tokens, core.permissions
+                core.prices, core.rulesets, core.directory, core.tokens, core.permissions, safeAddress()
             );
 
             _opDeployer.configureLayerSpecific(
@@ -105,7 +105,7 @@ contract DeployScript is Script, Sphinx {
         // OP & OP Sepolia.
         if (block.chainid == 10 || block.chainid == 11155420) {
             BPOptimismSuckerDeployer _opDeployer = new BPOptimismSuckerDeployer{salt: OP_SALT}(
-                core.prices, core.rulesets, core.directory, core.tokens, core.permissions
+                core.prices, core.rulesets, core.directory, core.tokens, core.permissions, safeAddress()
             );
 
             _opDeployer.configureLayerSpecific(

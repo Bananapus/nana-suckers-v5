@@ -21,10 +21,11 @@ import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
 import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
 import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
 import {BPLayer} from "./enums/BPLayer.sol";
-import {BPSucker} from "./BPSucker.sol";
+import {BPSucker, BPAddToBalanceMode} from "./BPSucker.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 /// @notice A `BPSucker` implementation to suck tokens between two chains connected by an Arbitrum bridge.
+// NOTICE: UNFINISHED!
 contract BPArbitrumSucker is BPSucker {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
@@ -53,8 +54,9 @@ contract BPArbitrumSucker is BPSucker {
         IJBPermissions permissions,
         address peer,
         uint256 projectId,
-        address gatewayRouter
-    ) BPSucker(directory, tokens, permissions, peer, projectId) {
+        address gatewayRouter,
+        BPAddToBalanceMode atbMode
+    ) BPSucker(directory, tokens, permissions, peer, projectId, atbMode) {
         LAYER = layer;
         INBOX = IInbox(inbox);
 

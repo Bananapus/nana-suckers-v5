@@ -25,11 +25,8 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     mapping(address deployer => bool) public suckerDeployerIsAllowed;
 
     constructor(IJBProjects projects, IJBPermissions permissions, address _initialOwner)
-        JBOwnable(projects, permissions)
-    {
-        // Transfer ownership to the deployer, will soon after be transfered back to JBDAO.
-        _transferOwnership(address(_initialOwner), uint88(0));
-    }
+        JBOwnable(projects, permissions, address(_initialOwner), 0)
+    {}
 
     /// @notice Returns true if the specified sucker belongs to the specified project, and was deployed through this registry.
     /// @param projectId The ID of the project to check for.
@@ -104,23 +101,14 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
             sucker.mapTokens(configurations[i].mappings);
         }
     }
-
-    // /// @notice returns the address that should become the owner on deployment.
-    // /// @return _owner the address that will become the owner when this contract is deployed.
-    // // TODO: have this return both _owner and _projectId, so we can set the initial project ID.
-    // function _initialOwner() internal view virtual override returns (address _owner) {
-    //     return address(0);
-    // }
-
+    
     function _emitTransferEvent(address previousOwner, address newOwner, uint88 newProjectId)
         internal
         virtual
         override
     {
         // Only emit after the initial transfer.
-        // TODO: improve this.
-        if (previousOwner != address(0) && newProjectId != 1) {
+        if(address(this).code.length != 0)
             emit OwnershipTransferred(previousOwner, newProjectId == 0 ? newOwner : PROJECTS.ownerOf(newProjectId));
-        }
     }
 }
