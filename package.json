@@ -6,18 +6,21 @@
     "type": "git",
     "url": "git+https://github.com/Bananapus/nana-suckers"
   },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "test": "forge test",
     "coverage": "forge coverage --match-path \"./src/*.sol\" --report lcov --report summary",
     "deploy:mainnets": "source ./.env && npx sphinx propose ./script/Deploy.s.sol --networks mainnets",
     "deploy:testnets": "source ./.env && npx sphinx propose ./script/Deploy.s.sol --networks testnets",
-    "artifacts":  "source ./.env && npx sphinx artifacts --org-id 'cltepuu9u0003j58rjtbd0hvu' --project-name 'nana-suckers'"
+    "artifacts": "source ./.env && npx sphinx artifacts --org-id 'cltepuu9u0003j58rjtbd0hvu' --project-name 'nana-suckers'"
   },
   "dependencies": {
     "@arbitrum/nitro-contracts": "github:OffchainLabs/nitro-contracts",
-    "@bananapus/core": "^0.0.7",
+    "@bananapus/core": "^0.0.8",
     "@bananapus/ownable": "^0.0.5",
-    "@bananapus/permission-ids": "^0.0.4",
+    "@bananapus/permission-ids": "^0.0.5",
     "@openzeppelin/contracts": "^5.0.1",
     "@prb/math": "^4.0.2"
   },
