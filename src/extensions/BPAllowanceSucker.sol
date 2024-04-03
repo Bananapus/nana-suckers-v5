@@ -3,7 +3,7 @@ pragma solidity ^0.8.21;
 
 import "./../BPSucker.sol";
 
-import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/terminal/IJBPayoutTerminal.sol";
+import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/IJBPayoutTerminal.sol";
 import {IBPSuckerDeployerFeeless} from "../interfaces/IBPSuckerDeployerFeeless.sol";
 import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
 

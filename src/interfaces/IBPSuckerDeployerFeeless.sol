@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {IBPSuckerDeployer} from "./IBPSuckerDeployer.sol";
-import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/terminal/IJBPayoutTerminal.sol";
+import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/IJBPayoutTerminal.sol";
 
 interface IBPSuckerDeployerFeeless is IBPSuckerDeployer {
     function useAllowanceFeeless(
