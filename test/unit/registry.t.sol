@@ -17,14 +17,14 @@ import {BPSuckerRegistry} from "./../../src/BPSuckerRegistry.sol";
 
 contract RegistryUnitTest is Test {
     function testDeployNoProjectCheck() public {
-        JBProjects _projecs = new JBProjects(msg.sender);
+        JBProjects _projecs = new JBProjects(msg.sender, address(0));
         JBPermissions _permissions = new JBPermissions();
         new BPSuckerRegistry(_projecs, _permissions, address(100));
     }
 
 
     function testTransferWithProjectCheck() public {
-        JBProjects _projecs = new JBProjects(msg.sender);
+        JBProjects _projecs = new JBProjects(msg.sender, address(0));
         JBPermissions _permissions = new JBPermissions();
 
         BPSuckerRegistry _registry = new BPSuckerRegistry(_projecs, _permissions, address(100));
