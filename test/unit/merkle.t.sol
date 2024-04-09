@@ -17,8 +17,6 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
 
     constructor()
         BPOptimismSucker(
-            IJBPrices(address(500)),
-            IJBRulesets(address(500)),
             // OPMessenger(address(500)),
             // OPStandardBridge(address(550)),
             IJBDirectory(address(600)),
@@ -164,8 +162,6 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
 contract DeployerUnitTest is Test {
     function testDoesntRevert() public {
         BPOptimismSuckerDeployer _deployer = new BPOptimismSuckerDeployer(
-            IJBPrices(address(0)),
-            IJBRulesets(address(0)),
             IJBDirectory(address(0)),
             IJBTokens(address(0)),
             IJBPermissions(address(0)),

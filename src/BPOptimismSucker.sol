@@ -12,7 +12,6 @@ import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol"
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 
 import {BPSucker, BPAddToBalanceMode} from "./BPSucker.sol";
-import {BPSuckerHook} from "./BPSuckerHook.sol";
 import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
 import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
 import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
@@ -22,7 +21,7 @@ import {OPStandardBridge} from "./interfaces/OPStandardBridge.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 /// @notice A `BPSucker` implementation to suck tokens between two chains connected by an OP Bridge.
-contract BPOptimismSucker is BPSucker, BPSuckerHook {
+contract BPOptimismSucker is BPSucker {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
@@ -43,15 +42,13 @@ contract BPOptimismSucker is BPSucker, BPSuckerHook {
     //*********************************************************************//
 
     constructor(
-        IJBPrices prices,
-        IJBRulesets rulesets,
         IJBDirectory directory,
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
         uint256 projectId,
         BPAddToBalanceMode atbMode
-    ) BPSucker(directory, tokens, permissions, peer, projectId, atbMode) BPSuckerHook(prices, rulesets) {
+    ) BPSucker(directory, tokens, permissions, peer, projectId, atbMode) {
         // Fetch the messenger and bridge by doing a callback to the deployer contract.
         OPMESSENGER = BPOptimismSuckerDeployer(msg.sender).MESSENGER();
         OPBRIDGE = BPOptimismSuckerDeployer(msg.sender).BRIDGE();
