@@ -10,7 +10,8 @@ import {IJBRulesets} from "@bananapus/core/src/interfaces/IJBRulesets.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {OPStandardBridge} from "../interfaces/OPStandardBridge.sol";
 import {OPMessenger} from "../interfaces/OPMessenger.sol";
-import {BPOptimismSucker, BPAddToBalanceMode} from "../BPOptimismSucker.sol";
+import {BPOptimismSucker} from "../BPOptimismSucker.sol";
+import {BPAddToBalanceMode} from "../enums/BPAddToBalanceMode.sol";
 import {IBPSucker} from "./../interfaces/IBPSucker.sol";
 import {IBPSuckerDeployer} from "./../interfaces/IBPSuckerDeployer.sol";
 
