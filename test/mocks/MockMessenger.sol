@@ -24,8 +24,8 @@ contract MockMessenger is OPMessenger {
         address remoteToken,
         address to,
         uint256 amount,
-        uint32 minGasLimit,
-        bytes calldata extraData
+        uint32,
+        bytes calldata
     ) external {
         // TODO: implement mock.
         assert(tokens[localToken] == remoteToken);

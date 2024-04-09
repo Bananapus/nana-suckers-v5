@@ -19,12 +19,6 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
     error ONLY_SUCKERS();
     error ALREADY_CONFIGURED();
 
-    /// @notice The contract that exposes price feeds.
-    IJBPrices immutable PRICES;
-
-    /// @notice The contract storing and managing project rulesets.
-    IJBRulesets immutable RULESETS;
-
     /// @notice The directory of terminals and controllers for projects.
     IJBDirectory immutable DIRECTORY;
 
@@ -44,16 +38,12 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
     mapping(address => bool) public isSucker;
 
     constructor(
-        IJBPrices prices,
-        IJBRulesets rulesets,
         IJBDirectory directory,
         IJBTokens tokens,
         IJBPermissions permissions,
         address _configurator
     ) JBPermissioned(permissions) {
         LAYER_SPECIFIC_CONFIGURATOR = _configurator;
-        PRICES = prices;
-        RULESETS = rulesets;
         DIRECTORY = directory;
         TOKENS = tokens;
     }
@@ -68,7 +58,7 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
         sucker = IBPSucker(
             address(
                 new BPOptimismSucker{salt: salt}(
-                    PRICES, RULESETS, DIRECTORY, TOKENS, PERMISSIONS, address(0), localProjectId, BPAddToBalanceMode.MANUAL
+                    DIRECTORY, TOKENS, PERMISSIONS, address(0), localProjectId, BPAddToBalanceMode.MANUAL
                 )
             )
         );
