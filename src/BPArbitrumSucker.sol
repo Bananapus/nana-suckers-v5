@@ -3,12 +3,12 @@ pragma solidity 0.8.23;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
-import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import {IBridge} from "@arbitrum/nitro-contracts/src/bridge/IBridge.sol";
 import {IOutbox} from "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
 import {ArbSys} from "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
@@ -27,6 +27,8 @@ import {MerkleLib} from "./utils/MerkleLib.sol";
 /// @notice A `BPSucker` implementation to suck tokens between two chains connected by an Arbitrum bridge.
 // NOTICE: UNFINISHED!
 contract BPArbitrumSucker is BPSucker {
+    error L1GatewayUnsupported();
+
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
@@ -57,10 +59,16 @@ contract BPArbitrumSucker is BPSucker {
         address gatewayRouter,
         BPAddToBalanceMode atbMode
     ) BPSucker(directory, tokens, permissions, peer, projectId, atbMode) {
+        // Check if gateway supports `outboundTransferCustomRefund` if LAYER is L1.
+        if (
+            LAYER == BPLayer.L1
+                && !IERC165(gatewayRouter).supportsInterface(L1GatewayRouter.outboundTransferCustomRefund.selector)
+        ) {
+            revert L1GatewayUnsupported();
+        }
+
         LAYER = layer;
         INBOX = IInbox(inbox);
-
-        // TODO: Check if gateway supports `outboundTransferCustomRefund` if LAYER is L1.
 
         GATEWAY_ROUTER = gatewayRouter;
     }
