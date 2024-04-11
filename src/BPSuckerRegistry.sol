@@ -101,14 +101,15 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
             sucker.mapTokens(configurations[i].mappings);
         }
     }
-    
+
     function _emitTransferEvent(address previousOwner, address newOwner, uint88 newProjectId)
         internal
         virtual
         override
     {
         // Only emit after the initial transfer.
-        if(address(this).code.length != 0)
+        if (address(this).code.length != 0) {
             emit OwnershipTransferred(previousOwner, newProjectId == 0 ? newOwner : PROJECTS.ownerOf(newProjectId));
+        }
     }
 }

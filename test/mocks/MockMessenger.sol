@@ -19,14 +19,9 @@ contract MockMessenger is OPMessenger {
         require(_success);
     }
 
-    function bridgeERC20To(
-        address localToken,
-        address remoteToken,
-        address to,
-        uint256 amount,
-        uint32,
-        bytes calldata
-    ) external {
+    function bridgeERC20To(address localToken, address remoteToken, address to, uint256 amount, uint32, bytes calldata)
+        external
+    {
         // TODO: implement mock.
         assert(tokens[localToken] == remoteToken);
         // Mint the 'L1' tokens to the recipient.
