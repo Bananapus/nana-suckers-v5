@@ -10,8 +10,8 @@ import "../../src/deployers/BPOptimismSuckerDeployer.sol";
 import {BPLeaf} from "../../src/structs/BPLeaf.sol";
 import {BPClaim} from "../../src/structs/BPClaim.sol";
 
-import {JBProjects} from "@bananapus/core/src/JBProjects.sol"; 
-import {JBPermissions} from "@bananapus/core/src/JBPermissions.sol"; 
+import {JBProjects} from "@bananapus/core/src/JBProjects.sol";
+import {JBPermissions} from "@bananapus/core/src/JBPermissions.sol";
 
 import {BPSuckerRegistry} from "./../../src/BPSuckerRegistry.sol";
 
@@ -22,7 +22,6 @@ contract RegistryUnitTest is Test {
         new BPSuckerRegistry(_projecs, _permissions, address(100));
     }
 
-
     function testTransferWithProjectCheck() public {
         JBProjects _projecs = new JBProjects(msg.sender, address(0));
         JBPermissions _permissions = new JBPermissions();
@@ -32,6 +31,5 @@ contract RegistryUnitTest is Test {
         vm.expectRevert();
         vm.prank(address(100));
         _registry.transferOwnershipToProject(1);
-    
-    } 
+    }
 }

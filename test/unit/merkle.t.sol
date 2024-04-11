@@ -16,9 +16,9 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
     bytes32[32] _proof;
 
     constructor()
+        // OPMessenger(address(500)),
+        // OPStandardBridge(address(550)),
         BPOptimismSucker(
-            // OPMessenger(address(500)),
-            // OPStandardBridge(address(550)),
             IJBDirectory(address(600)),
             IJBTokens(address(700)),
             IJBPermissions(address(800)),
@@ -162,10 +162,7 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
 contract DeployerUnitTest is Test {
     function testDoesntRevert() public {
         BPOptimismSuckerDeployer _deployer = new BPOptimismSuckerDeployer(
-            IJBDirectory(address(0)),
-            IJBTokens(address(0)),
-            IJBPermissions(address(0)),
-            msg.sender
+            IJBDirectory(address(0)), IJBTokens(address(0)), IJBPermissions(address(0)), msg.sender
         );
         _deployer.createForSender(1, bytes32(0));
     }

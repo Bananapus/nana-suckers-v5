@@ -37,12 +37,9 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
     /// @notice A mapping of suckers deployed by this contract.
     mapping(address => bool) public isSucker;
 
-    constructor(
-        IJBDirectory directory,
-        IJBTokens tokens,
-        IJBPermissions permissions,
-        address _configurator
-    ) JBPermissioned(permissions) {
+    constructor(IJBDirectory directory, IJBTokens tokens, IJBPermissions permissions, address _configurator)
+        JBPermissioned(permissions)
+    {
         LAYER_SPECIFIC_CONFIGURATOR = _configurator;
         DIRECTORY = directory;
         TOKENS = tokens;

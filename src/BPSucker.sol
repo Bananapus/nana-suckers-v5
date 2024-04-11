@@ -108,9 +108,14 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
-    constructor(IJBDirectory directory, IJBTokens tokens, IJBPermissions permissions, address peer, uint256 projectId, BPAddToBalanceMode atbMode)
-        JBPermissioned(permissions)
-    {
+    constructor(
+        IJBDirectory directory,
+        IJBTokens tokens,
+        IJBPermissions permissions,
+        address peer,
+        uint256 projectId,
+        BPAddToBalanceMode atbMode
+    ) JBPermissioned(permissions) {
         DIRECTORY = directory;
         TOKENS = tokens;
         PEER = peer == address(0) ? address(this) : peer;
@@ -391,7 +396,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         unchecked {
             amountToAddToBalance[token] = addableAmount - amount;
         }
-        
+
         // Get the project's primary terminal for the token.
         IJBTerminal terminal = DIRECTORY.primaryTerminalOf(PROJECT_ID, token);
         if (address(terminal) == address(0)) revert NO_TERMINAL_FOR(PROJECT_ID, token);
