@@ -210,17 +210,23 @@ contract BPArbitrumSucker is BPSucker {
             // Approve the tokens to be bridged.
             SafeERC20.forceApprove(IERC20(token), _router.getGateway(token), amount);
 
+            /// TODO: maybe we have to bridge some native funds for submission on L2?
             // Perform the ERC-20 bridge transfer.
             L1GatewayRouter(address(_router)).outboundTransferCustomRefund({
                 _token: token,
-                // TODO: Something about these 2 address with needing to be aliased.
-                _refundTo: address(PEER),
+                _refundTo: msg.sender,
                 _to: address(PEER),
                 _amount: amount,
-                _maxGas: remoteToken.minGas,
-                // TODO: Is this a sane default?
-                _gasPriceBid: 1 gwei,
-                _data: bytes((""))
+                _maxGas: remoteToken.minGas, // minimum appears to be 275000 per their sdk
+                // https://github.com/OffchainLabs/arbitrum-sdk/blob/c8aa61ee10c7bb2f622c2603f3d2a81287390d4b/src/lib/assetBridger/erc20Bridger.ts#L176
+                _gasPriceBid: 0.2 gwei, // sane enough for now - covers moderate congestion, maybe decide client side in the future
+                /// bytes _data: 2 pieces of data encoded:
+                // uint256 maxSubmissionCost: Max gas deducted from user's L2 balance to cover base submission fee
+                // bytes extraData: “0x”
+                // https://docs.arbitrum.io/build-decentralized-apps/token-bridging/bridge-tokens-programmatically/how-to-bridge-tokens-standard#step-4-start-the-bridging-process-through-the-router-contract
+
+                // @note: maybe this is zero if we pay with msg.value? we'll see in testing
+                _data: bytes(abi.encode(INBOX.calculateRetryableSubmissionFee(data.length, block.basefee), data))
             });
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
@@ -238,8 +244,7 @@ contract BPArbitrumSucker is BPSucker {
             // Question: is this the right refund address? If so do these suckers need recovery methods?
             callValueRefundAddress: PEER,
             gasLimit: MESSENGER_BASE_GAS_LIMIT,
-            // TODO: Is this a sane default?
-            maxFeePerGas: 1 gwei,
+            maxFeePerGas: 0.2 gwei,
             data: data
         });
     }
