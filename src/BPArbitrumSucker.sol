@@ -28,6 +28,7 @@ import {MerkleLib} from "./utils/MerkleLib.sol";
 // NOTICE: UNFINISHED!
 contract BPArbitrumSucker is BPSucker {
     error L1GatewayUnsupported();
+    error ChainUnsupported();
 
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
@@ -55,11 +56,14 @@ contract BPArbitrumSucker is BPSucker {
     address public immutable L1_SEP_ERC20_GATEWAY = 0x902b3E5f8F19571859F4AB1003B960a5dF693aFF;
     address public immutable L2_SEP_ERC20_GATEWAY = 0x6e244cD02BBB8a6dbd7F626f05B2ef82151Ab502;
 
-    /// @notice To be set and used by the contract conditionally.
-    bool public IS_TESTNET_SUCKER;
-
     /// @notice The chain id where this contract is deployed.
     uint256 public immutable CHAIN_ID;
+
+    /// @notice Chains and their respective ids.
+    uint256 public immutable ETH_CHAINID = 1;
+    uint256 public immutable ETH_SEP_CHAINID = 11155111;
+    uint256 public immutable ARB_CHAINID = 42161;
+    uint256 public immutable ARB_SEP_CHAINID = 421614;
 
     /// @notice The inbox used to send messages between the local and remote sucker.
     IInbox public immutable INBOX;
@@ -68,7 +72,6 @@ contract BPArbitrumSucker is BPSucker {
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
     constructor(
-        BPLayer layer,
         address inbox,
         IJBDirectory directory,
         IJBTokens tokens,
@@ -86,9 +89,16 @@ contract BPArbitrumSucker is BPSucker {
             revert L1GatewayUnsupported();
         } */
 
-        LAYER = layer;
+        uint256 _chainId = block.chainid;
         INBOX = IInbox(inbox);
-        CHAIN_ID = block.chainid;
+        CHAIN_ID = _chainId;
+
+        // Set LAYER based on the chain ID.
+        if (_chainId == ETH_CHAINID || _chainId == ETH_SEP_CHAINID) LAYER = BPLayer.L1;
+        if (_chainId == ARB_CHAINID || _chainId == ARB_SEP_CHAINID) LAYER = BPLayer.L2;
+
+        // If LAYER is left uninitialized, the chain is not currently supported.
+        if (uint256(LAYER) == 0) revert ChainUnsupported();
     }
 
     //*********************************************************************//
@@ -98,10 +108,10 @@ contract BPArbitrumSucker is BPSucker {
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
     function peerChainID() external view virtual override returns (uint256 chainId) {
-        if (CHAIN_ID == 1) return 42161;
-        if (CHAIN_ID == 42161) return 1;
-        if (CHAIN_ID == 11155111) return 421614;
-        if (CHAIN_ID == 421614) return 11155111;
+        if (CHAIN_ID == ETH_CHAINID) return ARB_CHAINID;
+        if (CHAIN_ID == ARB_CHAINID) return ETH_CHAINID;
+        if (CHAIN_ID == ETH_SEP_CHAINID) return ARB_SEP_CHAINID;
+        if (CHAIN_ID == ARB_SEP_CHAINID) return ETH_SEP_CHAINID;
     }
 
     //*********************************************************************//
@@ -111,19 +121,19 @@ contract BPArbitrumSucker is BPSucker {
     /// @notice Returns the gateway router address for the current chain
     /// @return gateway for the current chain.
     function gatewayRouter() internal view returns (address gateway) {
-        if (CHAIN_ID == 1) return L1_GATEWAY_ROUTER;
-        if (CHAIN_ID == 42161) return L2_GATEWAY_ROUTER;
-        if (CHAIN_ID == 11155111) return L1_SEP_GATEWAY_ROUTER;
-        if (CHAIN_ID == 421614) return L2_SEP_GATEWAY_ROUTER;
+        if (CHAIN_ID == ETH_CHAINID) return L1_GATEWAY_ROUTER;
+        if (CHAIN_ID == ARB_CHAINID) return L2_GATEWAY_ROUTER;
+        if (CHAIN_ID == ETH_SEP_CHAINID) return L1_SEP_GATEWAY_ROUTER;
+        if (CHAIN_ID == ARB_SEP_CHAINID) return L2_SEP_GATEWAY_ROUTER;
     }
 
     /// @notice Returns the token gateway address for the current chain, used for token approvals
     /// @return _erc20Gateway for the current chain.
     function erc20Gateway() internal view returns (address _erc20Gateway) {
-        if (CHAIN_ID == 1) return L1_ERC20_GATEWAY;
-        if (CHAIN_ID == 42161) return L2_ERC20_GATEWAY;
-        if (CHAIN_ID == 11155111) return L1_SEP_ERC20_GATEWAY;
-        if (CHAIN_ID == 421614) return L2_SEP_ERC20_GATEWAY;
+        if (CHAIN_ID == ETH_CHAINID) return L1_ERC20_GATEWAY;
+        if (CHAIN_ID == ARB_CHAINID) return L2_ERC20_GATEWAY;
+        if (CHAIN_ID == ETH_SEP_CHAINID) return L1_SEP_ERC20_GATEWAY;
+        if (CHAIN_ID == ARB_SEP_CHAINID) return L2_SEP_ERC20_GATEWAY;
     }
 
     //*********************************************************************//
@@ -186,8 +196,6 @@ contract BPArbitrumSucker is BPSucker {
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
-            // TODO: Approve the tokens to be bridged?
-            // TODO: ERC20 Gateway contract on L2 for address
             SafeERC20.forceApprove(IERC20(token), address(erc20Gateway()), amount);
 
             L2GatewayRouter(address(gatewayRouter())).outboundTransfer(
