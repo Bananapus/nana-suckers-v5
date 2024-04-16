@@ -159,7 +159,7 @@ contract BPArbitrumSucker is BPSucker {
 
         // Depending on which layer we are on, send the call to the other layer.
         if (LAYER == BPLayer.L1) {
-            _toL2(token, amount, data, remoteToken);
+            _toL2(token, transportPayment, amount, data, remoteToken);
         } else {
             _toL1(token, amount, data, remoteToken);
         }
@@ -200,19 +200,21 @@ contract BPArbitrumSucker is BPSucker {
     /// @param amount The amount of tokens to bridge.
     /// @param data The calldata to send to the remote chain. This calls `BPSucker.fromRemote` on the remote peer.
     /// @param remoteToken Information about the remote token to bridged to.
-    function _toL2(address token, uint256 amount, bytes memory data, BPRemoteToken memory remoteToken) internal {
+    function _toL2(address token, uint256 transportPayment, uint256 amount, bytes memory data, BPRemoteToken memory remoteToken) internal {
         uint256 nativeValue;
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
             IGatewayRouter _router = gatewayRouter();
 
+            // maxSubmission cost & l2 gas price * gas
+
             // Approve the tokens to be bridged.
             SafeERC20.forceApprove(IERC20(token), _router.getGateway(token), amount);
 
             /// TODO: maybe we have to bridge some native funds for submission on L2?
             // Perform the ERC-20 bridge transfer.
-            L1GatewayRouter(address(_router)).outboundTransferCustomRefund({
+            L1GatewayRouter(address(_router)).outboundTransferCustomRefund{value: transportPayment}({
                 _token: token,
                 _refundTo: msg.sender,
                 _to: address(PEER),
@@ -235,14 +237,14 @@ contract BPArbitrumSucker is BPSucker {
 
         // Create the retryable ticket containing the merkleRoot.
         // TODO: We could even make this unsafe.
-        INBOX.createRetryableTicket{value: nativeValue + msg.value}({
+        INBOX.createRetryableTicket{value: nativeValue + transportPayment}({
             to: address(PEER),
             l2CallValue: nativeValue,
             // TODO: Check, We get the cost... is this right? this seems odd.
             maxSubmissionCost: INBOX.calculateRetryableSubmissionFee(data.length, block.basefee),
             excessFeeRefundAddress: msg.sender,
             // Question: is this the right refund address? If so do these suckers need recovery methods?
-            callValueRefundAddress: PEER,
+            callValueRefundAddress: msg.sender,
             gasLimit: MESSENGER_BASE_GAS_LIMIT,
             maxFeePerGas: 0.2 gwei,
             data: data
