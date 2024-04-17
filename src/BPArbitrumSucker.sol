@@ -164,6 +164,9 @@ contract BPArbitrumSucker is BPSucker {
         } else {
             _toL1(token, amount, data, remoteToken);
         }
+
+        // Emit an event for the relayers to watch for.
+        emit RootToRemote(outbox[token].tree.root(), token, outbox[token].tree.count - 1, nonce);
     }
 
     /// @notice Bridge the `token` and data to the remote L1 chain.
