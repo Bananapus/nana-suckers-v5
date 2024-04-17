@@ -30,6 +30,7 @@ import {MerkleLib} from "./utils/MerkleLib.sol";
 contract BPArbitrumSucker is BPSucker {
     error L1GatewayUnsupported();
     error ChainNotSupported();
+    error NotEnoughGas();
 
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
@@ -199,51 +200,47 @@ contract BPArbitrumSucker is BPSucker {
     /// @param token The token to bridge.
     /// @param amount The amount of tokens to bridge.
     /// @param data The calldata to send to the remote chain. This calls `BPSucker.fromRemote` on the remote peer.
-    /// @param remoteToken Information about the remote token to bridged to.
-    function _toL2(address token, uint256 transportPayment, uint256 amount, bytes memory data, BPRemoteToken memory remoteToken) internal {
+    function _toL2(address token, uint256 transportPayment, uint256 amount, bytes memory data, BPRemoteToken memory /* remoteToken */) internal {
         uint256 nativeValue;
+        uint256 _maxSubmissionCost = INBOX.calculateRetryableSubmissionFee(data.length, 0.2 gwei);
+        uint256 _feeTotal = _maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * 0.2 gwei);
+
+        // Ensure we bridge enough for gas costs on L2 side
+        if (transportPayment < _feeTotal) revert NotEnoughGas();
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
             IGatewayRouter _router = gatewayRouter();
 
-            // maxSubmission cost & l2 gas price * gas
-
             // Approve the tokens to be bridged.
             SafeERC20.forceApprove(IERC20(token), _router.getGateway(token), amount);
 
-            /// TODO: maybe we have to bridge some native funds for submission on L2?
             // Perform the ERC-20 bridge transfer.
             L1GatewayRouter(address(_router)).outboundTransferCustomRefund{value: transportPayment}({
                 _token: token,
                 _refundTo: msg.sender,
                 _to: address(PEER),
                 _amount: amount,
-                _maxGas: remoteToken.minGas, // minimum appears to be 275000 per their sdk
-                // https://github.com/OffchainLabs/arbitrum-sdk/blob/c8aa61ee10c7bb2f622c2603f3d2a81287390d4b/src/lib/assetBridger/erc20Bridger.ts#L176
+                _maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk - MESSENGER_BASE_GAS_LIMIT = 300k here
                 _gasPriceBid: 0.2 gwei, // sane enough for now - covers moderate congestion, maybe decide client side in the future
-                /// bytes _data: 2 pieces of data encoded:
-                // uint256 maxSubmissionCost: Max gas deducted from user's L2 balance to cover base submission fee
-                // bytes extraData: “0x”
-                // https://docs.arbitrum.io/build-decentralized-apps/token-bridging/bridge-tokens-programmatically/how-to-bridge-tokens-standard#step-4-start-the-bridging-process-through-the-router-contract
-
-                // @note: maybe this is zero if we pay with msg.value? we'll see in testing
-                _data: bytes(abi.encode(INBOX.calculateRetryableSubmissionFee(data.length, block.basefee), data))
+                _data: bytes(abi.encode(_maxSubmissionCost, data)) // @note: maybe this is zero if we pay with msg.value? we'll see in testing
             });
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
         }
 
+        // Ensure we bridge enough for gas costs on L2 side
+        // transportPayment is ref of msg.value
+        if (nativeValue + _feeTotal > transportPayment) revert NotEnoughGas();
+
         // Create the retryable ticket containing the merkleRoot.
         // TODO: We could even make this unsafe.
-        INBOX.createRetryableTicket{value: nativeValue + transportPayment}({
+        INBOX.createRetryableTicket{value: transportPayment}({
             to: address(PEER),
             l2CallValue: nativeValue,
-            // TODO: Check, We get the cost... is this right? this seems odd.
-            maxSubmissionCost: INBOX.calculateRetryableSubmissionFee(data.length, block.basefee),
+            maxSubmissionCost: _maxSubmissionCost,
             excessFeeRefundAddress: msg.sender,
-            // Question: is this the right refund address? If so do these suckers need recovery methods?
             callValueRefundAddress: msg.sender,
             gasLimit: MESSENGER_BASE_GAS_LIMIT,
             maxFeePerGas: 0.2 gwei,
