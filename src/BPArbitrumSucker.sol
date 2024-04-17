@@ -203,7 +203,13 @@ contract BPArbitrumSucker is BPSucker {
     /// @param token The token to bridge.
     /// @param amount The amount of tokens to bridge.
     /// @param data The calldata to send to the remote chain. This calls `BPSucker.fromRemote` on the remote peer.
-    function _toL2(address token, uint256 transportPayment, uint256 amount, bytes memory data, BPRemoteToken memory /* remoteToken */) internal {
+    function _toL2(
+        address token,
+        uint256 transportPayment,
+        uint256 amount,
+        bytes memory data,
+        BPRemoteToken memory /* remoteToken */
+    ) internal {
         uint256 nativeValue;
         uint256 _maxSubmissionCost = INBOX.calculateRetryableSubmissionFee(data.length, 0.2 gwei);
         uint256 _feeTotal = _maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * 0.2 gwei);
