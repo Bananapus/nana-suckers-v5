@@ -4,6 +4,11 @@ pragma solidity ^0.8.21;
 import {BPSuckerDeployerConfig} from "../structs/BPSuckerDeployerConfig.sol";
 
 interface IBPSuckerRegistry {
+    error INVALID_DEPLOYER(address deployer);
+
+    event SuckerDeployerAllowed(address deployer);
+    event SuckersDeployedFor(uint256 projectId, address[] suckers);
+
     function isSuckerOf(uint256 projectId, address suckerAddress) external view returns (bool);
     function suckersOf(uint256 projectId) external view returns (address[] memory);
     function suckerDeployerIsAllowed(address deployer) external view returns (bool);
