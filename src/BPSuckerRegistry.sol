@@ -11,10 +11,6 @@ import {BPSuckerDeployerConfig} from "./structs/BPSuckerDeployerConfig.sol";
 contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
-    error INVALID_DEPLOYER(address deployer);
-
-    event SuckerDeployerAllowed(address deployer);
-
     /// @notice A constant indicating that this sucker exists and belongs to a specific project.
     uint256 constant SUCKER_EXISTS = 1;
 
@@ -100,6 +96,8 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
             // Map the tokens for the sucker.
             sucker.mapTokens(configurations[i].mappings);
         }
+
+        emit SuckersDeployedFor(projectId, suckers);
     }
 
     function _emitTransferEvent(address previousOwner, address newOwner, uint88 newProjectId)
