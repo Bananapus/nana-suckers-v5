@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface L1GatewayRouter {
+interface ArbL1GatewayRouter {
     function outboundTransferCustomRefund(
         address _token,
         address _refundTo,

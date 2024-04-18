@@ -15,9 +15,9 @@ import {ArbSys} from "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import {AddressAliasHelper} from "@arbitrum/nitro-contracts/src/libraries/AddressAliasHelper.sol";
 import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 
-import {L1GatewayRouter} from "./interfaces/L1GatewayRouter.sol";
-import {L2GatewayRouter} from "./interfaces/L2GatewayRouter.sol";
-import {IGatewayRouter} from "./interfaces/IGatewayRouter.sol";
+import {ArbL1GatewayRouter} from "./interfaces/ArbL1GatewayRouter.sol";
+import {ArbL2GatewayRouter} from "./interfaces/ArbL2GatewayRouter.sol";
+import {IArbGatewayRouter} from "./interfaces/IArbGatewayRouter.sol";
 import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
 import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
 import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
@@ -114,11 +114,11 @@ contract BPArbitrumSucker is BPSucker {
 
     /// @notice Returns the gateway router address for the current chain
     /// @return gateway for the current chain.
-    function gatewayRouter() internal view returns (IGatewayRouter gateway) {
-        if (CHAIN_ID == ETH_CHAINID) return IGatewayRouter(L1_GATEWAY_ROUTER);
-        if (CHAIN_ID == ARB_CHAINID) return IGatewayRouter(L2_GATEWAY_ROUTER);
-        if (CHAIN_ID == ETH_SEP_CHAINID) return IGatewayRouter(L1_SEP_GATEWAY_ROUTER);
-        if (CHAIN_ID == ARB_SEP_CHAINID) return IGatewayRouter(L2_SEP_GATEWAY_ROUTER);
+    function gatewayRouter() internal view returns (IArbGatewayRouter gateway) {
+        if (CHAIN_ID == ETH_CHAINID) return IArbGatewayRouter(L1_GATEWAY_ROUTER);
+        if (CHAIN_ID == ARB_CHAINID) return IArbGatewayRouter(L2_GATEWAY_ROUTER);
+        if (CHAIN_ID == ETH_SEP_CHAINID) return IArbGatewayRouter(L1_SEP_GATEWAY_ROUTER);
+        if (CHAIN_ID == ARB_SEP_CHAINID) return IArbGatewayRouter(L2_SEP_GATEWAY_ROUTER);
     }
 
     //*********************************************************************//
@@ -184,11 +184,11 @@ contract BPArbitrumSucker is BPSucker {
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
-            IGatewayRouter _router = gatewayRouter();
+            IArbGatewayRouter _router = gatewayRouter();
 
             SafeERC20.forceApprove(IERC20(token), _router.getGateway(token), amount);
 
-            L2GatewayRouter(address(_router)).outboundTransfer(remoteToken.addr, address(PEER), amount, bytes(""));
+            ArbL2GatewayRouter(address(_router)).outboundTransfer(remoteToken.addr, address(PEER), amount, bytes(""));
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
@@ -219,13 +219,13 @@ contract BPArbitrumSucker is BPSucker {
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
-            IGatewayRouter _router = gatewayRouter();
+            IArbGatewayRouter _router = gatewayRouter();
 
             // Approve the tokens to be bridged.
             SafeERC20.forceApprove(IERC20(token), _router.getGateway(token), amount);
 
             // Perform the ERC-20 bridge transfer.
-            L1GatewayRouter(address(_router)).outboundTransferCustomRefund{value: transportPayment}({
+            ArbL1GatewayRouter(address(_router)).outboundTransferCustomRefund{value: transportPayment}({
                 _token: token,
                 _refundTo: msg.sender,
                 _to: address(PEER),
