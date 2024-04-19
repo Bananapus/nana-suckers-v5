@@ -21,6 +21,15 @@ interface IBPSucker {
 
     event RootToRemote(bytes32 indexed root, address indexed terminalToken, uint256 index, uint64 nonce);
 
+    event Claimed(
+        address beneficiary,
+        address token,
+        uint256 projectTokenAmount,
+        uint256 terminalTokenAmount,
+        uint256 index,
+        bool autoAddedToBalance
+    );
+
     event InsertToOutboxTree(
         address indexed beneficiary,
         address indexed terminalToken,

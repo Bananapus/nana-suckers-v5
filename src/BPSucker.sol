@@ -223,6 +223,15 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).mintTokensOf(
             PROJECT_ID, claimData.leaf.projectTokenAmount, claimData.leaf.beneficiary, "", false
         );
+
+        emit Claimed(
+            claimData.leaf.beneficiary,
+            claimData.token,
+            claimData.leaf.projectTokenAmount,
+            claimData.leaf.terminalTokenAmount,
+            claimData.leaf.index,
+            ADD_TO_BALANCE_MODE == BPAddToBalanceMode.ON_CLAIM ? true : false
+        );
     }
 
     /// @notice Performs multiple claims.
