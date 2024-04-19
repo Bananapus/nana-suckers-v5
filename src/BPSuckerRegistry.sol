@@ -11,6 +11,8 @@ import {BPSuckerDeployerConfig} from "./structs/BPSuckerDeployerConfig.sol";
 contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
+    error INVALID_DEPLOYER(address deployer);
+
     /// @notice A constant indicating that this sucker exists and belongs to a specific project.
     uint256 constant SUCKER_EXISTS = 1;
 
