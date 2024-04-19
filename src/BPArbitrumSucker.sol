@@ -42,6 +42,10 @@ contract BPArbitrumSucker is BPSucker {
     /// @notice The layer that this contract is on.
     BPLayer public immutable LAYER;
 
+    /// @notice The respective Inbox used by L1 or Testnet L1
+    address public immutable L1_ETH_INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f;
+    address public immutable L1_SEP_INBOX = 0xaAe29B0366299461418F5324a79Afc425BE5ae21;
+
     /// @notice The gateway router used to bridge tokens between the local and remote chain.
     address public immutable L1_GATEWAY_ROUTER = 0x72Ce9c846789fdB6fC1f34aC4AD25Dd9ef7031ef;
     address public immutable L2_GATEWAY_ROUTER = 0x5288c571Fd7aD117beA99bF60FE0846C4E84F933;
@@ -60,13 +64,12 @@ contract BPArbitrumSucker is BPSucker {
     uint256 public immutable ARB_SEP_CHAINID = 421614;
 
     /// @notice The inbox used to send messages between the local and remote sucker.
-    IInbox public immutable INBOX;
+    IInbox public immutable ARBINBOX;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
     constructor(
-        address inbox,
         IJBDirectory directory,
         IJBTokens tokens,
         IJBPermissions permissions,
@@ -74,21 +77,14 @@ contract BPArbitrumSucker is BPSucker {
         uint256 projectId,
         BPAddToBalanceMode atbMode
     ) BPSucker(directory, tokens, permissions, peer, projectId, atbMode) {
-        // Check if gateway supports `outboundTransferCustomRefund` if LAYER is L1.
-        /// @note not sure if this is needed but leaving it commented for now.
-        /* if (
-            LAYER == BPLayer.L1
-                && !IERC165(gatewayRouter).supportsInterface(L1GatewayRouter.outboundTransferCustomRefund.selector)
-        ) {
-            revert L1GatewayUnsupported();
-        } */
-
         uint256 _chainId = block.chainid;
-        INBOX = IInbox(inbox);
         CHAIN_ID = _chainId;
 
         // Set LAYER based on the chain ID.
-        if (_chainId == ETH_CHAINID || _chainId == ETH_SEP_CHAINID) LAYER = BPLayer.L1;
+        if (_chainId == ETH_CHAINID || _chainId == ETH_SEP_CHAINID) {
+            LAYER = BPLayer.L1;
+            _chainId == ETH_CHAINID ? ARBINBOX = IInbox(L1_ETH_INBOX) : ARBINBOX = IInbox(L1_SEP_INBOX);
+        }
         if (_chainId == ARB_CHAINID || _chainId == ARB_SEP_CHAINID) LAYER = BPLayer.L2;
 
         // If LAYER is left uninitialized, the chain is not currently supported.
@@ -211,7 +207,7 @@ contract BPArbitrumSucker is BPSucker {
         BPRemoteToken memory /* remoteToken */
     ) internal {
         uint256 nativeValue;
-        uint256 _maxSubmissionCost = INBOX.calculateRetryableSubmissionFee(data.length, 0.2 gwei);
+        uint256 _maxSubmissionCost = ARBINBOX.calculateRetryableSubmissionFee(data.length, 0.2 gwei);
         uint256 _feeTotal = _maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * 0.2 gwei);
 
         // Ensure we bridge enough for gas costs on L2 side
@@ -245,7 +241,7 @@ contract BPArbitrumSucker is BPSucker {
 
         // Create the retryable ticket containing the merkleRoot.
         // TODO: We could even make this unsafe.
-        INBOX.createRetryableTicket{value: transportPayment}({
+        ARBINBOX.createRetryableTicket{value: transportPayment}({
             to: address(PEER),
             l2CallValue: nativeValue,
             maxSubmissionCost: _maxSubmissionCost,
@@ -262,7 +258,7 @@ contract BPArbitrumSucker is BPSucker {
     function _isRemotePeer(address sender) internal view override returns (bool _valid) {
         // If we are the L1 peer,
         if (LAYER == BPLayer.L1) {
-            IBridge bridge = INBOX.bridge();
+            IBridge bridge = ARBINBOX.bridge();
             // Check that the sender is the bridge and that the outbox has our peer as the sender.
             return sender == address(bridge) && address(PEER) == IOutbox(bridge.activeOutbox()).l2ToL1Sender();
         }
