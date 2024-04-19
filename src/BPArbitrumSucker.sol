@@ -68,7 +68,10 @@ contract BPArbitrumSucker is BPSucker {
 
         // Set LAYER based on the chain ID.
         if (_chainId == ARBChains.ETH_CHAINID || _chainId == ARBChains.ETH_SEP_CHAINID) {
+            // Set the layer
             LAYER = BPLayer.L1;
+
+            // Set the inbox depending on the chain
             _chainId == ARBChains.ETH_CHAINID
                 ? ARBINBOX = IInbox(ARBAddresses.L1_ETH_INBOX)
                 : ARBINBOX = IInbox(ARBAddresses.L1_SEP_INBOX);
