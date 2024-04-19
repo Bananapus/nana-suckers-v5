@@ -13,6 +13,11 @@ import {BPAddToBalanceMode} from "../enums/BPAddToBalanceMode.sol";
 import {IBPSucker} from "./../interfaces/IBPSucker.sol";
 import {IBPSuckerDeployer} from "./../interfaces/IBPSuckerDeployer.sol";
 
+import {ARBAddresses} from "../libraries/ARBAddresses.sol";
+import {ARBChains} from "../libraries/ARBChains.sol";
+import {BPLayer} from "../enums/BPLayer.sol";
+import {IArbGatewayRouter} from "../interfaces/IArbGatewayRouter.sol";
+
 /// @notice An `IBPSuckerDeployerFeeless` implementation to deploy `BPOptimismSucker` contracts.
 contract BPArbitrumSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
     error ONLY_SUCKERS();
@@ -24,14 +29,18 @@ contract BPArbitrumSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
     /// @notice The contract that manages token minting and burning.
     IJBTokens immutable TOKENS;
 
-    /// @notice Only this address can configure this deployer, can only be used once.
-    address immutable LAYER_SPECIFIC_CONFIGURATOR;
-
-    /* /// @notice The messenger used to send messages between the local and remote sucker.
-    IInbox public INBOX; */
-
     /// @notice A mapping of suckers deployed by this contract.
     mapping(address => bool) public isSucker;
+
+    //*********************************************************************//
+    // ---------------- layer specific stored properties ----------------- //
+    //*********************************************************************//
+
+    /// @notice The layer that this contract is on.
+    BPLayer public immutable LAYER;
+
+    /// @notice Only this address can configure this deployer, can only be used once.
+    address immutable LAYER_SPECIFIC_CONFIGURATOR;
 
     constructor(IJBDirectory directory, IJBTokens tokens, IJBPermissions permissions, address _configurator)
         JBPermissioned(permissions)
@@ -56,6 +65,20 @@ contract BPArbitrumSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
             )
         );
         isSucker[address(sucker)] = true;
+    }
+
+    //*********************************************************************//
+    // ------------------------ external views --------------------------- //
+    //*********************************************************************//
+
+    /// @notice Returns the gateway router address for the current chain
+    /// @return gateway for the current chain.
+    function gatewayRouter() external view returns (IArbGatewayRouter gateway) {
+        uint256 _chainId = block.chainid;
+        if (_chainId == ARBChains.ETH_CHAINID) return IArbGatewayRouter(ARBAddresses.L1_GATEWAY_ROUTER);
+        if (_chainId == ARBChains.ARB_CHAINID) return IArbGatewayRouter(ARBAddresses.L2_GATEWAY_ROUTER);
+        if (_chainId == ARBChains.ETH_SEP_CHAINID) return IArbGatewayRouter(ARBAddresses.L1_SEP_GATEWAY_ROUTER);
+        if (_chainId == ARBChains.ARB_SEP_CHAINID) return IArbGatewayRouter(ARBAddresses.L2_SEP_GATEWAY_ROUTER);
     }
 
     /* /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment addresses would change.

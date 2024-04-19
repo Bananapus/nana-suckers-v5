@@ -23,7 +23,11 @@ import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
 import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
 import {BPLayer} from "./enums/BPLayer.sol";
 import {BPSucker, BPAddToBalanceMode} from "./BPSucker.sol";
+import {BPArbitrumSuckerDeployer} from "./deployers/BPArbitrumSuckerDeployer.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
+
+import {ARBAddresses} from "./libraries/ARBAddresses.sol";
+import {ARBChains} from "./libraries/ARBChains.sol";
 
 /// @notice A `BPSucker` implementation to suck tokens between two chains connected by an Arbitrum bridge.
 // NOTICE: UNFINISHED!
@@ -42,26 +46,8 @@ contract BPArbitrumSucker is BPSucker {
     /// @notice The layer that this contract is on.
     BPLayer public immutable LAYER;
 
-    /// @notice The respective Inbox used by L1 or Testnet L1
-    address public immutable L1_ETH_INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f;
-    address public immutable L1_SEP_INBOX = 0xaAe29B0366299461418F5324a79Afc425BE5ae21;
-
-    /// @notice The gateway router used to bridge tokens between the local and remote chain.
-    address public immutable L1_GATEWAY_ROUTER = 0x72Ce9c846789fdB6fC1f34aC4AD25Dd9ef7031ef;
-    address public immutable L2_GATEWAY_ROUTER = 0x5288c571Fd7aD117beA99bF60FE0846C4E84F933;
-
-    /// @notice The testnet gateway routers used for briding tokens.
-    address public immutable L1_SEP_GATEWAY_ROUTER = 0xcE18836b233C83325Cc8848CA4487e94C6288264;
-    address public immutable L2_SEP_GATEWAY_ROUTER = 0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7;
-
-    /// @notice The chain id where this contract is deployed.
-    uint256 public immutable CHAIN_ID;
-
-    /// @notice Chains and their respective ids.
-    uint256 public immutable ETH_CHAINID = 1;
-    uint256 public immutable ETH_SEP_CHAINID = 11155111;
-    uint256 public immutable ARB_CHAINID = 42161;
-    uint256 public immutable ARB_SEP_CHAINID = 421614;
+    /// @notice The gateway router for the specific chain
+    IArbGatewayRouter public immutable GATEWAYROUTER;
 
     /// @notice The inbox used to send messages between the local and remote sucker.
     IInbox public immutable ARBINBOX;
@@ -77,18 +63,22 @@ contract BPArbitrumSucker is BPSucker {
         uint256 projectId,
         BPAddToBalanceMode atbMode
     ) BPSucker(directory, tokens, permissions, peer, projectId, atbMode) {
+        // Layer specific properties
         uint256 _chainId = block.chainid;
-        CHAIN_ID = _chainId;
 
         // Set LAYER based on the chain ID.
-        if (_chainId == ETH_CHAINID || _chainId == ETH_SEP_CHAINID) {
+        if (_chainId == ARBChains.ETH_CHAINID || _chainId == ARBChains.ETH_SEP_CHAINID) {
             LAYER = BPLayer.L1;
-            _chainId == ETH_CHAINID ? ARBINBOX = IInbox(L1_ETH_INBOX) : ARBINBOX = IInbox(L1_SEP_INBOX);
+            _chainId == ARBChains.ETH_CHAINID
+                ? ARBINBOX = IInbox(ARBAddresses.L1_ETH_INBOX)
+                : ARBINBOX = IInbox(ARBAddresses.L1_SEP_INBOX);
         }
-        if (_chainId == ARB_CHAINID || _chainId == ARB_SEP_CHAINID) LAYER = BPLayer.L2;
+        if (_chainId == ARBChains.ARB_CHAINID || _chainId == ARBChains.ARB_SEP_CHAINID) LAYER = BPLayer.L2;
 
         // If LAYER is left uninitialized, the chain is not currently supported.
         if (uint256(LAYER) == 0) revert ChainNotSupported();
+
+        GATEWAYROUTER = BPArbitrumSuckerDeployer(msg.sender).gatewayRouter();
     }
 
     //*********************************************************************//
@@ -98,23 +88,11 @@ contract BPArbitrumSucker is BPSucker {
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
     function peerChainID() external view virtual override returns (uint256 chainId) {
-        if (CHAIN_ID == ETH_CHAINID) return ARB_CHAINID;
-        if (CHAIN_ID == ARB_CHAINID) return ETH_CHAINID;
-        if (CHAIN_ID == ETH_SEP_CHAINID) return ARB_SEP_CHAINID;
-        if (CHAIN_ID == ARB_SEP_CHAINID) return ETH_SEP_CHAINID;
-    }
-
-    //*********************************************************************//
-    // ------------------------ internal views --------------------------- //
-    //*********************************************************************//
-
-    /// @notice Returns the gateway router address for the current chain
-    /// @return gateway for the current chain.
-    function gatewayRouter() internal view returns (IArbGatewayRouter gateway) {
-        if (CHAIN_ID == ETH_CHAINID) return IArbGatewayRouter(L1_GATEWAY_ROUTER);
-        if (CHAIN_ID == ARB_CHAINID) return IArbGatewayRouter(L2_GATEWAY_ROUTER);
-        if (CHAIN_ID == ETH_SEP_CHAINID) return IArbGatewayRouter(L1_SEP_GATEWAY_ROUTER);
-        if (CHAIN_ID == ARB_SEP_CHAINID) return IArbGatewayRouter(L2_SEP_GATEWAY_ROUTER);
+        uint256 _chainId = block.chainid;
+        if (_chainId == ARBChains.ETH_CHAINID) return ARBChains.ARB_CHAINID;
+        if (_chainId == ARBChains.ARB_CHAINID) return ARBChains.ETH_CHAINID;
+        if (_chainId == ARBChains.ETH_SEP_CHAINID) return ARBChains.ARB_SEP_CHAINID;
+        if (_chainId == ARBChains.ARB_SEP_CHAINID) return ARBChains.ETH_SEP_CHAINID;
     }
 
     //*********************************************************************//
@@ -180,11 +158,11 @@ contract BPArbitrumSucker is BPSucker {
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
-            IArbGatewayRouter _router = gatewayRouter();
+            SafeERC20.forceApprove(IERC20(token), GATEWAYROUTER.getGateway(token), amount);
 
-            SafeERC20.forceApprove(IERC20(token), _router.getGateway(token), amount);
-
-            ArbL2GatewayRouter(address(_router)).outboundTransfer(remoteToken.addr, address(PEER), amount, bytes(""));
+            ArbL2GatewayRouter(address(GATEWAYROUTER)).outboundTransfer(
+                remoteToken.addr, address(PEER), amount, bytes("")
+            );
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
@@ -215,13 +193,11 @@ contract BPArbitrumSucker is BPSucker {
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
-            IArbGatewayRouter _router = gatewayRouter();
-
             // Approve the tokens to be bridged.
-            SafeERC20.forceApprove(IERC20(token), _router.getGateway(token), amount);
+            SafeERC20.forceApprove(IERC20(token), GATEWAYROUTER.getGateway(token), amount);
 
             // Perform the ERC-20 bridge transfer.
-            ArbL1GatewayRouter(address(_router)).outboundTransferCustomRefund{value: transportPayment}({
+            ArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: transportPayment}({
                 _token: token,
                 _refundTo: msg.sender,
                 _to: address(PEER),
