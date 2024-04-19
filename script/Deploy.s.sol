@@ -141,6 +141,30 @@ contract DeployScript is Script, Sphinx {
             );
 
             PRE_APPROVED_DEPLOYERS.push(address(_arbDeployer));
+
+            // If the registry is already deployed we add our new deployers
+            if (
+                _isDeployed(
+                    REGISTRY_SALT,
+                    type(BPSuckerRegistry).creationCode,
+                    abi.encode(core.projects, core.permissions, safeAddress())
+                )
+            ) {
+                // Find where the registry should be deployed
+                address _registry = vm.computeCreate2Address({
+                    salt: REGISTRY_SALT,
+                    initCodeHash: keccak256(
+                        abi.encodePacked(
+                            type(BPSuckerRegistry).creationCode, abi.encode(core.projects, core.permissions, safeAddress())
+                        )
+                    ),
+                    // Arachnid/deterministic-deployment-proxy address.
+                    deployer: address(0x4e59b44847b379578588920cA78FbF26c0B4956C)
+                });
+
+                // Allow the deployers we deployed with the registry
+                BPSuckerRegistry(_registry).allowSuckerDeployer(address(_arbDeployer));
+            }
         }
 
         // Check if we should do the L2 portion.
@@ -151,6 +175,30 @@ contract DeployScript is Script, Sphinx {
             );
 
             PRE_APPROVED_DEPLOYERS.push(address(_arbDeployer));
+
+            // If the registry is already deployed we add our new deployers
+            if (
+                _isDeployed(
+                    REGISTRY_SALT,
+                    type(BPSuckerRegistry).creationCode,
+                    abi.encode(core.projects, core.permissions, safeAddress())
+                )
+            ) {
+                // Find where the registry should be deployed
+                address _registry = vm.computeCreate2Address({
+                    salt: REGISTRY_SALT,
+                    initCodeHash: keccak256(
+                        abi.encodePacked(
+                            type(BPSuckerRegistry).creationCode, abi.encode(core.projects, core.permissions, safeAddress())
+                        )
+                    ),
+                    // Arachnid/deterministic-deployment-proxy address.
+                    deployer: address(0x4e59b44847b379578588920cA78FbF26c0B4956C)
+                });
+
+                // Allow the deployers we deployed with the registry
+                BPSuckerRegistry(_registry).allowSuckerDeployer(address(_arbDeployer));
+            }
         }
     }
 
