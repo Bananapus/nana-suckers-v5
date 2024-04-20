@@ -25,6 +25,6 @@
     "@prb/math": "^4.0.2"
   },
   "devDependencies": {
-    "@sphinx-labs/plugins": "^0.31.6"
+    "@sphinx-labs/plugins": "^0.31.10"
   }
 }
