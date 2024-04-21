@@ -108,9 +108,9 @@ contract BPArbitrumSucker is BPSucker {
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken) internal override {
         // TODO: Handle the `transportPayment`
-        if (transportPayment == 0) {
-            revert UNEXPECTED_MSG_VALUE();
-        }
+        // if (transportPayment == 0) {
+        //     revert UNEXPECTED_MSG_VALUE();
+        // }
 
         // Get the amount to send and then clear it.
         uint256 amount = outbox[token].balance;
