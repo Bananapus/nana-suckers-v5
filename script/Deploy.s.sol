@@ -2,11 +2,13 @@
 pragma solidity 0.8.23;
 
 import "../src/deployers/BPOptimismSuckerDeployer.sol";
+import "../src/deployers/BPArbitrumSuckerDeployer.sol";
 import "@bananapus/core/script/helpers/CoreDeploymentLib.sol";
 
 import {Sphinx} from "@sphinx-labs/contracts/SphinxPlugin.sol";
 import {Script} from "forge-std/Script.sol";
 import {BPSuckerRegistry} from "./../src/BPSuckerRegistry.sol";
+import {ARBChains} from "../src/libraries/ARBChains.sol";
 
 contract DeployScript is Script, Sphinx {
     /// @notice tracks the deployment of the core contracts for the chain we are deploying to.
@@ -16,6 +18,7 @@ contract DeployScript is Script, Sphinx {
 
     /// @notice the nonces that are used to deploy the contracts.
     bytes32 OP_SALT = "SUCKER_ETH_OP";
+    bytes32 ARB_SALT = "SUCKER_ETH_ARB";
     bytes32 REGISTRY_SALT = "REGISTRY";
 
     function configureSphinx() public override {
@@ -42,6 +45,7 @@ contract DeployScript is Script, Sphinx {
     function deploy() public sphinx {
         // Perform the deployments for this chain, then deploy the registry and pre-approve the deployers.
         _optimismSucker();
+        _arbitrumSucker();
 
         // If the registry is already deployed we don't have to deploy it
         // (and we can't add more pre_approved deployers etc.)
@@ -101,7 +105,7 @@ contract DeployScript is Script, Sphinx {
             PRE_APPROVED_DEPLOYERS.push(address(_opDeployer));
         }
 
-        // Check if we should do the L1 portion.
+        // Check if we should do the L2 portion.
         // OP & OP Sepolia.
         if (block.chainid == 10 || block.chainid == 11155420) {
             BPOptimismSuckerDeployer _opDeployer = new BPOptimismSuckerDeployer{salt: OP_SALT}(
@@ -114,6 +118,39 @@ contract DeployScript is Script, Sphinx {
             );
 
             PRE_APPROVED_DEPLOYERS.push(address(_opDeployer));
+        }
+    }
+
+    /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet configuration).
+    function _arbitrumSucker() internal {
+        // Check if this sucker is already deployed on this chain,
+        // if that is the case we don't need to do anything else for this chain.
+        if (
+            _isDeployed(
+                ARB_SALT,
+                type(BPArbitrumSuckerDeployer).creationCode,
+                abi.encode(core.directory, core.tokens, core.permissions, safeAddress())
+            )
+        ) return;
+
+        // Check if we should do the L1 portion.
+        // ETH Mainnet and ETH Sepolia.
+        if (block.chainid == 1 || block.chainid == 11155111) {
+            BPArbitrumSuckerDeployer _arbDeployer = new BPArbitrumSuckerDeployer{salt: ARB_SALT}(
+                core.directory, core.tokens, core.permissions, safeAddress()
+            );
+
+            PRE_APPROVED_DEPLOYERS.push(address(_arbDeployer));
+        }
+
+        // Check if we should do the L2 portion.
+        // ARB & ARB Sepolia.
+        if (block.chainid == 10 || block.chainid == 421614) {
+            BPArbitrumSuckerDeployer _arbDeployer = new BPArbitrumSuckerDeployer{salt: ARB_SALT}(
+                core.directory, core.tokens, core.permissions, safeAddress()
+            );
+
+            PRE_APPROVED_DEPLOYERS.push(address(_arbDeployer));
         }
     }
 

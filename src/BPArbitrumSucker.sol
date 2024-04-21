@@ -3,30 +3,39 @@ pragma solidity 0.8.23;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
-import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import {IBridge} from "@arbitrum/nitro-contracts/src/bridge/IBridge.sol";
 import {IOutbox} from "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
 import {ArbSys} from "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import {AddressAliasHelper} from "@arbitrum/nitro-contracts/src/libraries/AddressAliasHelper.sol";
 import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 
-import {L1GatewayRouter} from "./interfaces/L1GatewayRouter.sol";
-import {L2GatewayRouter} from "./interfaces/L2GatewayRouter.sol";
+import {ArbL1GatewayRouter} from "./interfaces/ArbL1GatewayRouter.sol";
+import {ArbL2GatewayRouter} from "./interfaces/ArbL2GatewayRouter.sol";
+import {IArbGatewayRouter} from "./interfaces/IArbGatewayRouter.sol";
 import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
 import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
 import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
 import {BPLayer} from "./enums/BPLayer.sol";
 import {BPSucker, BPAddToBalanceMode} from "./BPSucker.sol";
+import {BPArbitrumSuckerDeployer} from "./deployers/BPArbitrumSuckerDeployer.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
+
+import {ARBAddresses} from "./libraries/ARBAddresses.sol";
+import {ARBChains} from "./libraries/ARBChains.sol";
 
 /// @notice A `BPSucker` implementation to suck tokens between two chains connected by an Arbitrum bridge.
 // NOTICE: UNFINISHED!
 contract BPArbitrumSucker is BPSucker {
+    error L1GatewayUnsupported();
+    error ChainNotSupported();
+    error NotEnoughGas();
+
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
@@ -37,32 +46,42 @@ contract BPArbitrumSucker is BPSucker {
     /// @notice The layer that this contract is on.
     BPLayer public immutable LAYER;
 
-    /// @notice The gateway router used to bridge tokens between the local and remote chain.
-    address public immutable GATEWAY_ROUTER;
+    /// @notice The gateway router for the specific chain
+    IArbGatewayRouter public immutable GATEWAYROUTER;
 
     /// @notice The inbox used to send messages between the local and remote sucker.
-    IInbox public immutable INBOX;
+    IInbox public immutable ARBINBOX;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
     constructor(
-        BPLayer layer,
-        address inbox,
         IJBDirectory directory,
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
         uint256 projectId,
-        address gatewayRouter,
         BPAddToBalanceMode atbMode
     ) BPSucker(directory, tokens, permissions, peer, projectId, atbMode) {
-        LAYER = layer;
-        INBOX = IInbox(inbox);
+        // Layer specific properties
+        uint256 _chainId = block.chainid;
 
-        // TODO: Check if gateway supports `outboundTransferCustomRefund` if LAYER is L1.
+        // Set LAYER based on the chain ID.
+        if (_chainId == ARBChains.ETH_CHAINID || _chainId == ARBChains.ETH_SEP_CHAINID) {
+            // Set the layer
+            LAYER = BPLayer.L1;
 
-        GATEWAY_ROUTER = gatewayRouter;
+            // Set the inbox depending on the chain
+            _chainId == ARBChains.ETH_CHAINID
+                ? ARBINBOX = IInbox(ARBAddresses.L1_ETH_INBOX)
+                : ARBINBOX = IInbox(ARBAddresses.L1_SEP_INBOX);
+        }
+        if (_chainId == ARBChains.ARB_CHAINID || _chainId == ARBChains.ARB_SEP_CHAINID) LAYER = BPLayer.L2;
+
+        // If LAYER is left uninitialized, the chain is not currently supported.
+        if (uint256(LAYER) == 0) revert ChainNotSupported();
+
+        GATEWAYROUTER = BPArbitrumSuckerDeployer(msg.sender).gatewayRouter();
     }
 
     //*********************************************************************//
@@ -72,7 +91,11 @@ contract BPArbitrumSucker is BPSucker {
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
     function peerChainID() external view virtual override returns (uint256 chainId) {
-        // TODO: Implement.
+        uint256 _chainId = block.chainid;
+        if (_chainId == ARBChains.ETH_CHAINID) return ARBChains.ARB_CHAINID;
+        if (_chainId == ARBChains.ARB_CHAINID) return ARBChains.ETH_CHAINID;
+        if (_chainId == ARBChains.ETH_SEP_CHAINID) return ARBChains.ARB_SEP_CHAINID;
+        if (_chainId == ARBChains.ARB_SEP_CHAINID) return ARBChains.ETH_SEP_CHAINID;
     }
 
     //*********************************************************************//
@@ -84,14 +107,14 @@ contract BPArbitrumSucker is BPSucker {
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken) internal override {
+        // TODO: Handle the `transportPayment`
+        // if (transportPayment == 0) {
+        //     revert UNEXPECTED_MSG_VALUE();
+        // }
+
         // Get the amount to send and then clear it.
         uint256 amount = outbox[token].balance;
         delete outbox[token].balance;
-
-        // TODO: Handle the `transportPayment`
-        if (transportPayment == 0) {
-            revert();
-        }
 
         // Increment the outbox tree's nonce.
         uint64 nonce = ++outbox[token].nonce;
@@ -114,10 +137,13 @@ contract BPArbitrumSucker is BPSucker {
 
         // Depending on which layer we are on, send the call to the other layer.
         if (LAYER == BPLayer.L1) {
-            _toL2(token, amount, data, remoteToken);
+            _toL2(token, transportPayment, amount, data, remoteToken);
         } else {
             _toL1(token, amount, data, remoteToken);
         }
+
+        // Emit an event for the relayers to watch for.
+        emit RootToRemote(outbox[token].tree.root(), token, outbox[token].tree.count - 1, nonce);
     }
 
     /// @notice Bridge the `token` and data to the remote L1 chain.
@@ -135,10 +161,11 @@ contract BPArbitrumSucker is BPSucker {
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
-            // TODO: Approve the tokens to be bridged?
-            // SafeERC20.forceApprove(IERC20(token), address(OPMESSENGER), amount);
+            SafeERC20.forceApprove(IERC20(token), GATEWAYROUTER.getGateway(token), amount);
 
-            L2GatewayRouter(GATEWAY_ROUTER).outboundTransfer(remoteToken.addr, address(PEER), amount, bytes(""));
+            ArbL2GatewayRouter(address(GATEWAYROUTER)).outboundTransfer(
+                remoteToken.addr, address(PEER), amount, bytes("")
+            );
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
@@ -153,44 +180,54 @@ contract BPArbitrumSucker is BPSucker {
     /// @param token The token to bridge.
     /// @param amount The amount of tokens to bridge.
     /// @param data The calldata to send to the remote chain. This calls `BPSucker.fromRemote` on the remote peer.
-    /// @param remoteToken Information about the remote token to bridged to.
-    function _toL2(address token, uint256 amount, bytes memory data, BPRemoteToken memory remoteToken) internal {
+    function _toL2(
+        address token,
+        uint256 transportPayment,
+        uint256 amount,
+        bytes memory data,
+        BPRemoteToken memory /* remoteToken */
+    ) internal {
         uint256 nativeValue;
+        uint256 _maxSubmissionCost = ARBINBOX.calculateRetryableSubmissionFee(data.length, 0.2 gwei);
+        uint256 _feeTotal = _maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * 0.2 gwei);
+
+        // Ensure we bridge enough for gas costs on L2 side
+        if (transportPayment < _feeTotal) revert NotEnoughGas();
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
             // Approve the tokens to be bridged.
-            SafeERC20.forceApprove(IERC20(token), address(GATEWAY_ROUTER), amount);
+            SafeERC20.forceApprove(IERC20(token), GATEWAYROUTER.getGateway(token), amount);
 
             // Perform the ERC-20 bridge transfer.
-            L1GatewayRouter(GATEWAY_ROUTER).outboundTransferCustomRefund({
+            ArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: transportPayment}({
                 _token: token,
-                // TODO: Something about these 2 address with needing to be aliased.
-                _refundTo: address(PEER),
+                _refundTo: msg.sender,
                 _to: address(PEER),
                 _amount: amount,
-                _maxGas: remoteToken.minGas,
-                // TODO: Is this a sane default?
-                _gasPriceBid: 1 gwei,
-                _data: bytes((""))
+                _maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk - MESSENGER_BASE_GAS_LIMIT = 300k here
+                _gasPriceBid: 0.2 gwei, // sane enough for now - covers moderate congestion, maybe decide client side in the future
+                _data: bytes(abi.encode(_maxSubmissionCost, data)) // @note: maybe this is zero if we pay with msg.value? we'll see in testing
             });
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
         }
 
+        // Ensure we bridge enough for gas costs on L2 side
+        // transportPayment is ref of msg.value
+        if (nativeValue + _feeTotal > transportPayment) revert NotEnoughGas();
+
         // Create the retryable ticket containing the merkleRoot.
         // TODO: We could even make this unsafe.
-        INBOX.createRetryableTicket{value: nativeValue + msg.value}({
+        ARBINBOX.createRetryableTicket{value: transportPayment}({
             to: address(PEER),
             l2CallValue: nativeValue,
-            // TODO: Check, We get the cost... is this right? this seems odd.
-            maxSubmissionCost: INBOX.calculateRetryableSubmissionFee(data.length, block.basefee),
+            maxSubmissionCost: _maxSubmissionCost,
             excessFeeRefundAddress: msg.sender,
-            callValueRefundAddress: PEER,
+            callValueRefundAddress: msg.sender,
             gasLimit: MESSENGER_BASE_GAS_LIMIT,
-            // TODO: Is this a sane default?
-            maxFeePerGas: 1 gwei,
+            maxFeePerGas: 0.2 gwei,
             data: data
         });
     }
@@ -200,7 +237,7 @@ contract BPArbitrumSucker is BPSucker {
     function _isRemotePeer(address sender) internal view override returns (bool _valid) {
         // If we are the L1 peer,
         if (LAYER == BPLayer.L1) {
-            IBridge bridge = INBOX.bridge();
+            IBridge bridge = ARBINBOX.bridge();
             // Check that the sender is the bridge and that the outbox has our peer as the sender.
             return sender == address(bridge) && address(PEER) == IOutbox(bridge.activeOutbox()).l2ToL1Sender();
         }
