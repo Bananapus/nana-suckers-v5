@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 import "../src/deployers/BPOptimismSuckerDeployer.sol";
+import "../src/deployers/BPBaseSuckerDeployer.sol";
 import "../src/deployers/BPArbitrumSuckerDeployer.sol";
 import "@bananapus/core/script/helpers/CoreDeploymentLib.sol";
 
@@ -18,6 +19,7 @@ contract DeployScript is Script, Sphinx {
 
     /// @notice the nonces that are used to deploy the contracts.
     bytes32 OP_SALT = "SUCKER_ETH_OP";
+    bytes32 BASE_SALT = "SUCKER_ETH_BASE";
     bytes32 ARB_SALT = "SUCKER_ETH_ARB";
     bytes32 REGISTRY_SALT = "REGISTRY";
 
@@ -27,8 +29,8 @@ contract DeployScript is Script, Sphinx {
         sphinxConfig.orgId = "cltepuu9u0003j58rjtbd0hvu";
         sphinxConfig.projectName = "nana-suckers";
         sphinxConfig.threshold = 1;
-        sphinxConfig.mainnets = ["ethereum", "optimism"];
-        sphinxConfig.testnets = ["ethereum_sepolia", "optimism_sepolia"];
+        sphinxConfig.mainnets = ["ethereum", "optimism", "base", "arbitrum"];
+        sphinxConfig.testnets = ["ethereum_sepolia", "optimism_sepolia", "base_sepolia", "arbitrum_sepolia"];
         sphinxConfig.saltNonce = 2;
     }
 
@@ -45,6 +47,7 @@ contract DeployScript is Script, Sphinx {
     function deploy() public sphinx {
         // Perform the deployments for this chain, then deploy the registry and pre-approve the deployers.
         _optimismSucker();
+        _baseSucker();
         _arbitrumSucker();
 
         // If the registry is already deployed we don't have to deploy it
@@ -121,6 +124,59 @@ contract DeployScript is Script, Sphinx {
         }
     }
 
+    /// @notice handles the deployment and configuration regarding base (this also includes the mainnet configuration).
+    function _baseSucker() internal {
+        // Check if this sucker is already deployed on this chain,
+        // if that is the case we don't need to do anything else for this chain.
+        if (
+            _isDeployed(
+                BASE_SALT,
+                type(BPBaseSuckerDeployer).creationCode,
+                abi.encode(core.directory, core.tokens, core.permissions, safeAddress())
+            )
+        ) return;
+
+        // Check if we should do the L1 portion.
+        // ETH Mainnet and ETH Sepolia.
+        if (block.chainid == 1 || block.chainid == 11155111) {
+            BPBaseSuckerDeployer _baseDeployer = new BPBaseSuckerDeployer{salt: BASE_SALT}(
+                core.directory, core.tokens, core.permissions, safeAddress()
+            );
+
+            _baseDeployer.configureLayerSpecific(
+                OPMessenger(
+                    block.chainid == 1
+                        ? address(0x866E82a600A1414e583f7F13623F1aC5d58b0Afa)
+                        : address(0xC34855F4De64F1840e5686e64278da901e261f20)
+                ),
+                OPStandardBridge(
+                    block.chainid == 1
+                        ? address(0x3154Cf16ccdb4C6d922629664174b904d80F2C35)
+                        : address(0xfd0Bf71F60660E2f608ed56e1659C450eB113120)
+                )
+            );
+
+            PRE_APPROVED_DEPLOYERS.push(address(_baseDeployer));
+        }
+
+        // Check if we should do the L2 portion.
+        // BASE & BASE Sepolia.
+        if (block.chainid == 8453 || block.chainid == 84532) {
+            BPBaseSuckerDeployer _baseDeployer = new BPBaseSuckerDeployer{salt: BASE_SALT}(
+                core.directory, core.tokens, core.permissions, safeAddress()
+            );
+
+            _baseDeployer.configureLayerSpecific(
+                OPMessenger(0x4200000000000000000000000000000000000007),
+                OPStandardBridge(0x4200000000000000000000000000000000000010)
+            );
+
+            PRE_APPROVED_DEPLOYERS.push(address(_baseDeployer));
+        }
+    }
+
+
+    
     /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet configuration).
     function _arbitrumSucker() internal {
         // Check if this sucker is already deployed on this chain,
