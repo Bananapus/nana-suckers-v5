@@ -139,9 +139,8 @@ contract DeployScript is Script, Sphinx {
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
         if (block.chainid == 1 || block.chainid == 11155111) {
-            BPBaseSuckerDeployer _baseDeployer = new BPBaseSuckerDeployer{salt: BASE_SALT}(
-                core.directory, core.tokens, core.permissions, safeAddress()
-            );
+            BPBaseSuckerDeployer _baseDeployer =
+                new BPBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.tokens, core.permissions, safeAddress());
 
             _baseDeployer.configureLayerSpecific(
                 OPMessenger(
@@ -162,9 +161,8 @@ contract DeployScript is Script, Sphinx {
         // Check if we should do the L2 portion.
         // BASE & BASE Sepolia.
         if (block.chainid == 8453 || block.chainid == 84532) {
-            BPBaseSuckerDeployer _baseDeployer = new BPBaseSuckerDeployer{salt: BASE_SALT}(
-                core.directory, core.tokens, core.permissions, safeAddress()
-            );
+            BPBaseSuckerDeployer _baseDeployer =
+                new BPBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.tokens, core.permissions, safeAddress());
 
             _baseDeployer.configureLayerSpecific(
                 OPMessenger(0x4200000000000000000000000000000000000007),
@@ -175,8 +173,6 @@ contract DeployScript is Script, Sphinx {
         }
     }
 
-
-    
     /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet configuration).
     function _arbitrumSucker() internal {
         // Check if this sucker is already deployed on this chain,
