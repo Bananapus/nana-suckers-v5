@@ -12,6 +12,7 @@ struct SuckerDeployment {
     IBPSuckerRegistry registry;
     /// @dev only those that are deployed on the requested chain contain an address.
     IBPSuckerDeployer optimismDeployer;
+    IBPSuckerDeployer baseDeployer;
     IBPSuckerDeployer arbitrumDeployer;
 }
 
@@ -50,10 +51,22 @@ library SuckerDeploymentLib {
         bytes32 _network = keccak256(abi.encodePacked(network_name));
         bool _isMainnet = _network == keccak256("ethereum") || _network == keccak256("sepolia");
         bool _isOP = _network == keccak256("optimism") || _network == keccak256("optimism_sepolia");
+        bool _isBase = _network == keccak256("base") || _network == keccak256("base_sepolia");
+        bool _isArb = _network == keccak256("arbitrum") || _network == keccak256("arbitrum_sepolia");
 
         if (_isMainnet || _isOP) {
             deployment.optimismDeployer =
                 IBPSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "BPOptimismSuckerDeployer"));
+        }
+
+        if (_isMainnet || _isBase) {
+            deployment.baseDeployer =
+                IBPSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "BPBaseSuckerDeployer"));
+        }
+
+        if (_isMainnet || _isArb) {
+            deployment.baseDeployer =
+                IBPSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "BPArbitrumSuckerDeployer"));
         }
     }
 
