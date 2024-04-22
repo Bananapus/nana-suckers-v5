@@ -65,7 +65,7 @@ library SuckerDeploymentLib {
         }
 
         if (_isMainnet || _isArb) {
-            deployment.baseDeployer =
+            deployment.arbitrumDeployer =
                 IBPSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "BPArbitrumSuckerDeployer"));
         }
     }
