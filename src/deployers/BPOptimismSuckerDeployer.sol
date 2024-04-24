@@ -61,15 +61,13 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
 
         sucker = IBPSucker(
             address(
-                new BPOptimismSucker{salt: salt}(
-                    DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL
-                )
+                new BPOptimismSucker{salt: salt}(DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL)
             )
         );
 
         // Delete after callback should complete.
         delete TEMP_ID_STORE;
-        
+
         isSucker[address(sucker)] = true;
     }
 

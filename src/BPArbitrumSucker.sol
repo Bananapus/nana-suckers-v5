@@ -104,10 +104,8 @@ contract BPArbitrumSucker is BPSucker {
     /// @notice Returns true if the chainId is supported.
     /// @return supported false/true if this is deployed on a supported chain.
     function isSupportedChain(uint256 chainId) private pure returns (bool supported) {
-        return chainId == ARBChains.ETH_CHAINID ||
-               chainId == ARBChains.ETH_SEP_CHAINID ||
-               chainId == ARBChains.ARB_CHAINID ||
-               chainId == ARBChains.ARB_SEP_CHAINID;
+        return chainId == ARBChains.ETH_CHAINID || chainId == ARBChains.ETH_SEP_CHAINID
+            || chainId == ARBChains.ARB_CHAINID || chainId == ARBChains.ARB_SEP_CHAINID;
     }
 
     //*********************************************************************//

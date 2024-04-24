@@ -66,9 +66,7 @@ contract BPArbitrumSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
 
         sucker = IBPSucker(
             address(
-                new BPArbitrumSucker{salt: salt}(
-                    DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL
-                )
+                new BPArbitrumSucker{salt: salt}(DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL)
             )
         );
 

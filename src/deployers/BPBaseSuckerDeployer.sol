@@ -59,11 +59,7 @@ contract BPBaseSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
         TEMP_ID_STORE = localProjectId;
 
         sucker = IBPSucker(
-            address(
-                new BPBaseSucker{salt: salt}(
-                    DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL
-                )
-            )
+            address(new BPBaseSucker{salt: salt}(DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL))
         );
 
         // Delete after callback should complete.
