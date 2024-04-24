@@ -60,9 +60,8 @@ contract BPArbitrumSucker is BPSucker {
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
-        uint256 projectId,
         BPAddToBalanceMode atbMode
-    ) BPSucker(directory, tokens, permissions, peer, projectId, atbMode) {
+    ) BPSucker(directory, tokens, permissions, peer, atbMode) {
         // Layer specific properties
         uint256 _chainId = block.chainid;
 

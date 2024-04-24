@@ -46,9 +46,8 @@ contract BPOptimismSucker is BPSucker {
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
-        uint256 projectId,
         BPAddToBalanceMode atbMode
-    ) BPSucker(directory, tokens, permissions, peer, projectId, atbMode) {
+    ) BPSucker(directory, tokens, permissions, peer, atbMode) {
         // Fetch the messenger and bridge by doing a callback to the deployer contract.
         OPMESSENGER = BPOptimismSuckerDeployer(msg.sender).MESSENGER();
         OPBRIDGE = BPOptimismSuckerDeployer(msg.sender).BRIDGE();
