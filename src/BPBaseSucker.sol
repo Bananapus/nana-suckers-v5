@@ -13,9 +13,8 @@ contract BPBaseSucker is BPOptimismSucker {
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
-        uint256 projectId,
         BPAddToBalanceMode atbMode
-    ) BPOptimismSucker(directory, tokens, permissions, peer, projectId, atbMode) {}
+    ) BPOptimismSucker(directory, tokens, permissions, peer, atbMode) {}
 
     //*********************************************************************//
     // ------------------------ external views --------------------------- //

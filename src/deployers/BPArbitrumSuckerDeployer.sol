@@ -42,6 +42,9 @@ contract BPArbitrumSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
     /// @notice Only this address can configure this deployer, can only be used once.
     address immutable LAYER_SPECIFIC_CONFIGURATOR;
 
+    /// @notice A temporary storage slot used by suckers to maintain deterministic deploys.
+    uint256 public TEMP_ID_STORE;
+
     constructor(IJBDirectory directory, IJBTokens tokens, IJBPermissions permissions, address _configurator)
         JBPermissioned(permissions)
     {
@@ -57,13 +60,20 @@ contract BPArbitrumSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
     /// @return sucker The address of the new sucker.
     function createForSender(uint256 localProjectId, bytes32 salt) external returns (IBPSucker sucker) {
         salt = keccak256(abi.encodePacked(msg.sender, salt));
+
+        // Set for a callback to this contract.
+        TEMP_ID_STORE = localProjectId;
+
         sucker = IBPSucker(
             address(
-                new BPArbitrumSucker{salt: salt}(
-                    DIRECTORY, TOKENS, PERMISSIONS, address(0), localProjectId, BPAddToBalanceMode.MANUAL
-                )
+                new BPArbitrumSucker{salt: salt}(DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL)
             )
         );
+
+        // TODO: See if resetting this value is cheaper than deletion
+        // Delete after callback should complete.
+        /* delete TEMP_ID_STORE; */
+
         isSucker[address(sucker)] = true;
     }
 

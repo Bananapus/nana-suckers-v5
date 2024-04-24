@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 import {IBPSucker} from "./interfaces/IBPSucker.sol";
+import {IBPSuckerDeployer} from "./interfaces/IBPSuckerDeployer.sol";
 import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
@@ -113,13 +114,12 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
-        uint256 projectId,
         BPAddToBalanceMode atbMode
     ) JBPermissioned(permissions) {
         DIRECTORY = directory;
         TOKENS = tokens;
         PEER = peer == address(0) ? address(this) : peer;
-        PROJECT_ID = projectId;
+        PROJECT_ID = IBPSuckerDeployer(msg.sender).TEMP_ID_STORE();
         DEPLOYER = msg.sender;
         ADD_TO_BALANCE_MODE = atbMode;
 

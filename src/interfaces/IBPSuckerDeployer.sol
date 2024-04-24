@@ -5,4 +5,6 @@ import {IBPSucker} from "./IBPSucker.sol";
 
 interface IBPSuckerDeployer {
     function createForSender(uint256 localProjectId, bytes32 salt) external returns (IBPSucker sucker);
+
+    function TEMP_ID_STORE() external view returns (uint256);
 }
