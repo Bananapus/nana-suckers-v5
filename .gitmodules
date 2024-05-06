@@ -4,3 +4,6 @@
 [submodule "lib/sphinx"]
 	path = lib/sphinx
 	url = https://github.com/sphinx-labs/sphinx
+[submodule "lib/chainlink-local"]
+	path = lib/chainlink-local
+	url = https://github.com/smartcontractkit/chainlink-local
