@@ -20,7 +20,7 @@ import {OPMessenger} from "./interfaces/OPMessenger.sol";
 import {OPStandardBridge} from "./interfaces/OPStandardBridge.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
-import {ProgrammableDefensiveTokenTransfers} from "@chainlink/local/test/ccip/ProgrammableDefensiveTokenTransfers.sol";
+import {ProgrammableDefensiveTokenTransfers} from "@chainlink/local/src/test/ccip/ProgrammableDefensiveTokenTransfers.sol";
 
 /// @notice A `BPSucker` implementation to suck tokens between two chains connected by an OP Bridge.
 contract BPOptimismSucker is BPSucker {
