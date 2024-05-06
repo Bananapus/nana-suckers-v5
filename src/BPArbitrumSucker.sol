@@ -77,8 +77,9 @@ contract BPArbitrumSucker is BPSucker {
             _chainId == ARBChains.ETH_CHAINID
                 ? ARBINBOX = IInbox(ARBAddresses.L1_ETH_INBOX)
                 : ARBINBOX = IInbox(ARBAddresses.L1_SEP_INBOX);
+        } else if (_chainId == ARBChains.ARB_CHAINID || _chainId == ARBChains.ARB_SEP_CHAINID) {
+            LAYER = BPLayer.L2;
         }
-        if (_chainId == ARBChains.ARB_CHAINID || _chainId == ARBChains.ARB_SEP_CHAINID) LAYER = BPLayer.L2;
 
         GATEWAYROUTER = BPArbitrumSuckerDeployer(msg.sender).gatewayRouter();
     }
@@ -117,11 +118,6 @@ contract BPArbitrumSucker is BPSucker {
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken) internal override {
-        // TODO: Handle the `transportPayment`
-        // if (transportPayment == 0) {
-        //     revert UNEXPECTED_MSG_VALUE();
-        // }
-
         // Get the amount to send and then clear it.
         uint256 amount = outbox[token].balance;
         delete outbox[token].balance;
@@ -180,6 +176,8 @@ contract BPArbitrumSucker is BPSucker {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
         }
+
+        // TODO: transportPayment necessary here?
 
         // Send the message to the peer with the redeemed ETH.
         // Address `100` is the ArbSys precompile address.
