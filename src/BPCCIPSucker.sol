@@ -20,10 +20,11 @@ import {OPMessenger} from "./interfaces/OPMessenger.sol";
 import {OPStandardBridge} from "./interfaces/OPStandardBridge.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
-import {ProgrammableDefensiveTokenTransfers} from "@chainlink/local/src/test/ccip/ProgrammableDefensiveTokenTransfers.sol";
+import {ProgrammableDefensiveTokenTransfers} from "./ProgrammableDefensiveTokenTransfers.sol";
+import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 
 /// @notice A `BPSucker` implementation to suck tokens between two chains connected by an OP Bridge.
-contract BPOptimismSucker is BPSucker {
+contract BPCCIPSucker is BPSucker {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
@@ -33,11 +34,7 @@ contract BPOptimismSucker is BPSucker {
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
 
-    /// @notice The messenger used to send messages between the local and remote sucker.
-    OPMessenger public immutable OPMESSENGER;
-
-    /// @notice The bridge used to bridge tokens between the local and remote chain.
-    OPStandardBridge public immutable OPBRIDGE;
+    IRouterClient public immutable ROUTER;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -50,9 +47,7 @@ contract BPOptimismSucker is BPSucker {
         address peer,
         BPAddToBalanceMode atbMode
     ) BPSucker(directory, tokens, permissions, peer, atbMode) {
-        // Fetch the messenger and bridge by doing a callback to the deployer contract.
-        OPMESSENGER = BPOptimismSuckerDeployer(msg.sender).MESSENGER();
-        OPBRIDGE = BPOptimismSuckerDeployer(msg.sender).BRIDGE();
+        ROUTER = IRouterClient(this.getRouter());
     }
 
     //*********************************************************************//
