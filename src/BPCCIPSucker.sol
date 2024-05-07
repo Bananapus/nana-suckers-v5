@@ -16,12 +16,12 @@ import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
 import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
 import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
 import {BPCCIPSuckerDeployer} from "./deployers/BPCCIPSuckerDeployer.sol";
-import {OPMessenger} from "./interfaces/OPMessenger.sol";
-import {OPStandardBridge} from "./interfaces/OPStandardBridge.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
-import {ProgrammableDefensiveTokenTransfers} from "./ProgrammableDefensiveTokenTransfers.sol";
+import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
+
+import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
 
 /// @notice A `BPSucker` implementation to suck tokens between two chains connected by an OP Bridge.
 contract BPCCIPSucker is BPSucker {
@@ -29,6 +29,8 @@ contract BPCCIPSucker is BPSucker {
     using BitMaps for BitMaps.BitMap;
 
     event SuckingToRemote(address token, uint64 nonce);
+
+    error NotEnoughBalance(uint256 balance, uint256 fees);
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -41,7 +43,6 @@ contract BPCCIPSucker is BPSucker {
         address peer,
         BPAddToBalanceMode atbMode
     ) BPSucker(directory, tokens, permissions, peer, atbMode) {
-        /* ROUTER = IRouterClient(this.getRouter()); */
     }
 
     //*********************************************************************//
@@ -51,11 +52,11 @@ contract BPCCIPSucker is BPSucker {
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
     function peerChainID() external view virtual override returns (uint256 chainId) {
-        uint256 _localChainId = block.chainid;
+        /* uint256 _localChainId = block.chainid;
         if (_localChainId == 1) return 10;
         if (_localChainId == 10) return 1;
         if (_localChainId == 11155111) return 11155420;
-        if (_localChainId == 11155420) return 11155111;
+        if (_localChainId == 11155420) return 11155111; */
     }
 
     //*********************************************************************//
@@ -69,7 +70,7 @@ contract BPCCIPSucker is BPSucker {
     function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken, uint64 remoteSelector) internal override {
         uint256 nativeValue;
 
-        // Revert if there's a `msg.value`. The OP bridge does not expect to be paid.
+        // TODO: Require transportPayment, CCIP expects to be paid
         if (transportPayment != 0) {
             revert UNEXPECTED_MSG_VALUE();
         }
@@ -86,47 +87,96 @@ contract BPCCIPSucker is BPSucker {
             revert TOKEN_NOT_MAPPED(token);
         }
 
-        /* // If the token is an ERC20, bridge it to the peer.
-        if (token != JBConstants.NATIVE_TOKEN) {
-            // Approve the tokens bing bridged.
-            SafeERC20.forceApprove(IERC20(token), address(OPBRIDGE), amount);
-
-            // Bridge the tokens to the peer sucker.
-            OPBRIDGE.bridgeERC20To({
-                localToken: token,
-                remoteToken: remoteToken.addr,
-                to: PEER,
-                amount: amount,
-                minGasLimit: remoteToken.minGas,
-                extraData: bytes("")
-            });
-        } else {
-            // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
-            nativeValue = amount;
-        } */
-
         bytes32 _root = outbox[token][remoteSelector].tree.root();
         uint256 _index = outbox[token][remoteSelector].tree.count - 1;
 
-        /* // Send the message to the peer with the redeemed ETH.
-        // slither-disable-next-line arbitrary-send-eth
-        OPMESSENGER.sendMessage{value: nativeValue}(
-            PEER,
-            abi.encodeCall(
-                BPSucker.fromRemote,
-                (
-                    BPMessageRoot({
+        // TODO: Handle ETH wrapping
+        // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
+        // address(0) means fees are paid in native gas
+        Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
+            address(this),
+            BPMessageRoot({
                         token: remoteToken.addr,
                         amount: amount,
+                        remoteSelector: CCIPHelper.selectorOfChain(block.chainid),
                         remoteRoot: BPInboxTreeRoot({nonce: nonce, root: _root})
-                    })
-                )
-            ),
-            MESSENGER_BASE_GAS_LIMIT
+                    }),
+            token,
+            amount,
+            address(0)
+        );
+
+        // Initialize a router client instance to interact with cross-chain router
+        IRouterClient router = IRouterClient(this.getRouter());
+
+        // Get the fee required to send the CCIP message
+        uint256 fees = router.getFee(remoteSelector, evm2AnyMessage);
+
+        if (fees > address(this).balance)
+            revert NotEnoughBalance(address(this).balance, fees);
+
+        // approve the Router to spend tokens on contract's behalf. It will spend the amount of the given token
+        IERC20(token).approve(address(router), amount);
+
+        // TODO: Handle this messageId, maybe necessary
+        // Send the message through the router and store the returned message ID
+        /* messageId =  */
+        router.ccipSend{value: fees}(
+            remoteSelector,
+            evm2AnyMessage
+        );
+
+        /* // Emit an event with message details
+        emit MessageSent(
+            messageId,
+            _destinationChainSelector,
+            _receiver,
+            _text,
+            _token,
+            _amount,
+            address(0),
+            fees
         ); */
 
         // Emit an event for the relayers to watch for.
         emit RootToRemote(_root, token, _index, nonce);
+    }
+
+    /// @notice Construct a CCIP message.
+    /// @dev This function will create an EVM2AnyMessage struct with all the necessary information for programmable tokens transfer.
+    /// @param _receiver The address of the receiver.
+    /// @param _root The root to be sent.
+    /// @param _token The token to be transferred.
+    /// @param _amount The amount of the token to be transferred.
+    /// @param _feeTokenAddress The address of the token used for fees. Set address(0) for native gas.
+    /// @return Client.EVM2AnyMessage Returns an EVM2AnyMessage struct which contains information for sending a CCIP message.
+    function _buildCCIPMessage(
+        address _receiver,
+        BPMessageRoot memory _root,
+        address _token,
+        uint256 _amount,
+        address _feeTokenAddress
+    ) private pure returns (Client.EVM2AnyMessage memory) {
+        // Set the token amounts
+        Client.EVMTokenAmount[]
+            memory tokenAmounts = new Client.EVMTokenAmount[](1);
+        tokenAmounts[0] = Client.EVMTokenAmount({
+            token: _token,
+            amount: _amount
+        });
+        // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
+        return
+            Client.EVM2AnyMessage({
+                receiver: abi.encode(_receiver), // ABI-encoded receiver address
+                data: abi.encode(_root), // ABI-encoded string
+                tokenAmounts: tokenAmounts, // The amount and type of token being transferred
+                extraArgs: Client._argsToBytes(
+                    // Additional arguments, setting gas limit
+                    Client.EVMExtraArgsV1({gasLimit: 200_000})
+                ),
+                // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees
+                feeToken: _feeTokenAddress
+            });
     }
 
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.

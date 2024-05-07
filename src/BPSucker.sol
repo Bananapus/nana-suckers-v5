@@ -24,6 +24,8 @@ import {BPClaim} from "./structs/BPClaim.sol";
 import {BPAddToBalanceMode} from "./enums/BPAddToBalanceMode.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
+import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
+import {ModifiedReceiver} from "./CCIP/ModifiedReceiver.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
 
@@ -31,7 +33,7 @@ import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
 /// @dev Beneficiaries and balances are tracked on two merkle trees: the outbox tree is used to send from the local chain to the remote chain, and the inbox tree is used to receive from the remote chain to the local chain.
 /// @dev Throughout this contract, "terminal token" refers to any token accepted by a project's terminal.
 /// @dev This contract does *NOT* support tokens that have a fee on regular transfers and rebasing tokens.
-abstract contract BPSucker is JBPermissioned, IBPSucker {
+abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
     using SafeERC20 for IERC20;
@@ -516,5 +518,22 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         }
 
         return IERC20(token).balanceOf(addr);
+    }
+
+    function _ccipReceive(Client.Any2EVMMessage memory any2EvmMessage) internal override {
+        /// placeholder
+        /* s_lastReceivedMessageId = any2EvmMessage.messageId; // fetch the messageId
+        s_lastReceivedText = abi.decode(any2EvmMessage.data, (string)); // abi-decoding of the sent text
+        // Expect one token to be transferred at once, but you can transfer several tokens.
+        s_lastReceivedTokenAddress = any2EvmMessage.destTokenAmounts[0].token;
+        s_lastReceivedTokenAmount = any2EvmMessage.destTokenAmounts[0].amount;
+        emit MessageReceived(
+            any2EvmMessage.messageId,
+            any2EvmMessage.sourceChainSelector, // fetch the source chain identifier (aka selector)
+            abi.decode(any2EvmMessage.sender, (address)), // abi-decoding of the sender address,
+            abi.decode(any2EvmMessage.data, (string)),
+            any2EvmMessage.destTokenAmounts[0].token,
+            any2EvmMessage.destTokenAmounts[0].amount
+        ); */
     }
 }
