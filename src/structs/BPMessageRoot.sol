@@ -10,5 +10,6 @@ import {BPInboxTreeRoot} from "./BPInboxTreeRoot.sol";
 struct BPMessageRoot {
     address token;
     uint256 amount;
+    uint64 remoteSelector;
     BPInboxTreeRoot remoteRoot;
 }

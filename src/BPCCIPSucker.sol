@@ -31,12 +31,6 @@ contract BPCCIPSucker is BPSucker {
     event SuckingToRemote(address token, uint64 nonce);
 
     //*********************************************************************//
-    // --------------- public immutable stored properties ---------------- //
-    //*********************************************************************//
-
-    IRouterClient public immutable ROUTER;
-
-    //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
 
@@ -47,7 +41,7 @@ contract BPCCIPSucker is BPSucker {
         address peer,
         BPAddToBalanceMode atbMode
     ) BPSucker(directory, tokens, permissions, peer, atbMode) {
-        ROUTER = IRouterClient(this.getRouter());
+        /* ROUTER = IRouterClient(this.getRouter()); */
     }
 
     //*********************************************************************//
@@ -92,7 +86,7 @@ contract BPCCIPSucker is BPSucker {
             revert TOKEN_NOT_MAPPED(token);
         }
 
-        // If the token is an ERC20, bridge it to the peer.
+        /* // If the token is an ERC20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
             // Approve the tokens bing bridged.
             SafeERC20.forceApprove(IERC20(token), address(OPBRIDGE), amount);
@@ -109,12 +103,12 @@ contract BPCCIPSucker is BPSucker {
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
-        }
+        } */
 
         bytes32 _root = outbox[token].tree.root();
         uint256 _index = outbox[token].tree.count - 1;
 
-        // Send the message to the peer with the redeemed ETH.
+        /* // Send the message to the peer with the redeemed ETH.
         // slither-disable-next-line arbitrary-send-eth
         OPMESSENGER.sendMessage{value: nativeValue}(
             PEER,
@@ -129,7 +123,7 @@ contract BPCCIPSucker is BPSucker {
                 )
             ),
             MESSENGER_BASE_GAS_LIMIT
-        );
+        ); */
 
         // Emit an event for the relayers to watch for.
         emit RootToRemote(_root, token, _index, nonce);
@@ -138,6 +132,6 @@ contract BPCCIPSucker is BPSucker {
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
     function _isRemotePeer(address sender) internal override returns (bool valid) {
-        return sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == PEER;
+        /* return sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == PEER; */
     }
 }

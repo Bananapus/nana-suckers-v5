@@ -24,6 +24,9 @@ import {BPClaim} from "./structs/BPClaim.sol";
 import {BPAddToBalanceMode} from "./enums/BPAddToBalanceMode.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
+import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
+import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
+
 /// @notice An abstract contract for bridging a Juicebox project's tokens and the corresponding funds to and from a remote chain.
 /// @dev Beneficiaries and balances are tracked on two merkle trees: the outbox tree is used to send from the local chain to the remote chain, and the inbox tree is used to receive from the remote chain to the local chain.
 /// @dev Throughout this contract, "terminal token" refers to any token accepted by a project's terminal.
@@ -45,6 +48,8 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     error ERC20_TOKEN_REQUIRED();
     error BENEFICIARY_NOT_ALLOWED();
     error NO_TERMINAL_FOR(uint256 projectId, address token);
+    error INVALID_DESTINATION_CHAIN();
+    error INVALID_TOKEN_TO_DESTINATION();
     error INVALID_PROOF(bytes32 expectedRoot, bytes32 proofRoot);
     error INVALID_NATIVE_REMOTE_ADDRESS(address addr);
     error LEAF_ALREADY_EXECUTED(uint256 index);
@@ -58,11 +63,13 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
 
+    IRouterClient public immutable ROUTER;
+
     /// @notice The outbox merkle tree for a given token.
-    mapping(address token => BPOutboxTree) public outbox;
+    mapping(address token => mapping(uint64 remoteSelector => BPOutboxTree)) public outbox;
 
     /// @notice The inbox merkle tree root for a given token.
-    mapping(address token => BPInboxTreeRoot root) public inbox;
+    mapping(address token => mapping(uint64 remoteSelector => BPInboxTreeRoot root)) public inbox;
 
     /// @notice The outstanding amount of tokens to be added to the project's balance by `claim` or `addOutstandingAmountToBalance`.
     mapping(address token => uint256 amount) public amountToAddToBalance;
@@ -122,6 +129,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         PROJECT_ID = IBPSuckerDeployer(msg.sender).TEMP_ID_STORE();
         DEPLOYER = msg.sender;
         ADD_TO_BALANCE_MODE = atbMode;
+        ROUTER = IRouterClient(CCIPHelper.routerOfChain(block.chainid));
 
         // Sanity check: make sure the merkle lib uses the same tree depth.
         assert(MerkleLib.TREE_DEPTH == TREE_DEPTH);
@@ -137,7 +145,8 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     /// @param beneficiary The address of the recipient of the tokens on the remote chain.
     /// @param minTokensReclaimed The minimum amount of terminal tokens to redeem for. If the amount reclaimed is less than this, the transaction will revert.
     /// @param token The address of the terminal token to redeem for.
-    function prepare(uint256 projectTokenAmount, address beneficiary, uint256 minTokensReclaimed, address token)
+    /// @param chainSelector the uint64 representation of the targetted chain as specified by Chainlink/CCIP
+    function prepare(uint256 projectTokenAmount, address beneficiary, uint256 minTokensReclaimed, address token, uint64 chainSelector)
         external
     {
         // Make sure the beneficiary is not the zero address, as this would revert when minting on the remote chain.
@@ -163,18 +172,22 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         uint256 terminalTokenAmount = _getBackingAssets(projectToken, projectTokenAmount, token, minTokensReclaimed);
 
         // Insert the item into the outbox tree for the terminal `token`.
-        _insertIntoTree(projectTokenAmount, token, terminalTokenAmount, beneficiary);
+        _insertIntoTree(projectTokenAmount, token, terminalTokenAmount, beneficiary, chainSelector);
     }
 
     /// @notice Bridge the project tokens, redeemed funds, and beneficiary information for a given `token` to the remote chain.
     /// @dev This sends the outbox root for the specified `token` to the remote chain.
     /// @param token The terminal token being bridged.
-    function toRemote(address token) external payable {
+    function toRemote(address token, uint64 chainSelector) external payable {
         BPRemoteToken memory remoteToken = remoteTokenFor[token];
 
+        /* if (!ROUTER.isChainSupported(chainSelector)) {
+            revert INVALID_DESTINATION_CHAIN();
+        } */
+
         // Ensure that the amount being bridged exceeds the minimum bridge amount.
-        if (outbox[token].balance < remoteToken.minBridgeAmount) {
-            revert QUEUE_INSUFFECIENT_SIZE(remoteToken.minBridgeAmount, outbox[token].balance);
+        if (outbox[token][chainSelector].balance < remoteToken.minBridgeAmount) {
+            revert QUEUE_INSUFFECIENT_SIZE(remoteToken.minBridgeAmount, outbox[token][chainSelector].balance);
         }
 
         // Send the merkle root to the remote chain.
@@ -183,7 +196,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
 
     /// @notice Receive a merkle root for a terminal token from the remote project.
     /// @dev This can only be called by the messenger contract on the local chain, with a message from the remote peer.
-    /// @param root The merkle root, token, and amount being received.
+    /// @param root The merkle root, token, and amount being received, and the chain selector of its origin.
     function fromRemote(BPMessageRoot calldata root) external payable {
         // Make sure that the message came from our peer.
         if (!_isRemotePeer(msg.sender)) {
@@ -195,8 +208,8 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
 
         // If the received tree's nonce is greater than the current inbox tree's nonce, update the inbox tree.
         // We can't revert because this could be a native token transfer. If we reverted, we would lose the native tokens.
-        if (root.remoteRoot.nonce > inbox[root.token].nonce) {
-            inbox[root.token] = root.remoteRoot;
+        if (root.remoteRoot.nonce > inbox[root.token][root.remoteSelector].nonce) {
+            inbox[root.token][root.remoteSelector] = root.remoteRoot;
             emit NewInboxTreeRoot(root.token, root.remoteRoot.nonce, root.remoteRoot.root);
         }
     }
@@ -209,6 +222,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
             projectTokenAmount: claimData.leaf.projectTokenAmount,
             terminalToken: claimData.token,
             terminalTokenAmount: claimData.leaf.terminalTokenAmount,
+            remoteSelector: claimData.remoteSelector,
             beneficiary: claimData.leaf.beneficiary,
             index: claimData.leaf.index,
             leaves: claimData.proof
@@ -258,6 +272,17 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     function mapToken(BPTokenMapping calldata map) public {
         address token = map.localToken;
         bool isNative = map.localToken == JBConstants.NATIVE_TOKEN;
+        uint64 remoteSelector = map.remoteSelector;
+
+        if (!ROUTER.isChainSupported(remoteSelector)) {
+            revert INVALID_DESTINATION_CHAIN();
+        }
+
+        address[] memory supportedForTransfer = ROUTER.getSupportedTokens(remoteSelector);
+
+        if (!_isTokenInList(supportedForTransfer, token)) {
+            revert INVALID_TOKEN_TO_DESTINATION();
+        }
 
         // If the token being mapped is the native token, the `remoteToken` must also be the native token.
         // The native token can also be mapped to the 0 address, which is used to disable native token bridging.
@@ -274,7 +299,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, JBPermissionIds.MAP_SUCKER_TOKEN);
 
         // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds to the remote chain.
-        if (map.remoteToken == address(0) && outbox[token].balance != 0) _sendRoot(0, token, remoteTokenFor[token]);
+        if (map.remoteToken == address(0) && outbox[token][remoteSelector].balance != 0) _sendRoot(0, token, remoteTokenFor[token]);
 
         // Update the token mapping.
         remoteTokenFor[token] =
@@ -320,24 +345,25 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         uint256 projectTokenAmount,
         address token,
         uint256 terminalTokenAmount,
-        address beneficiary
+        address beneficiary,
+        uint64 chainSelector
     ) internal {
         // Build a hash based on the token amounts and the beneficiary.
         bytes32 hash = _buildTreeHash(projectTokenAmount, terminalTokenAmount, beneficiary);
 
         // Create a new tree based on the outbox tree for the terminal token with the hash inserted.
-        MerkleLib.Tree memory tree = outbox[token].tree.insert(hash);
+        MerkleLib.Tree memory tree = outbox[token][chainSelector].tree.insert(hash);
 
         // Update the outbox tree and balance for the terminal token.
-        outbox[token].tree = tree;
-        outbox[token].balance += terminalTokenAmount;
+        outbox[token][chainSelector].tree = tree;
+        outbox[token][chainSelector].balance += terminalTokenAmount;
 
         emit InsertToOutboxTree(
             beneficiary,
             token,
             hash,
             tree.count - 1, // Subtract 1 since we want the 0-based index.
-            outbox[token].tree.root(),
+            outbox[token][chainSelector].tree.root(),
             projectTokenAmount,
             terminalTokenAmount
         );
@@ -366,6 +392,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         uint256 projectTokenAmount,
         address terminalToken,
         uint256 terminalTokenAmount,
+        uint64 remoteSelector,
         address beneficiary,
         uint256 index,
         bytes32[TREE_DEPTH] calldata leaves
@@ -386,8 +413,8 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         });
 
         // Compare the calculated root to the terminal token's inbox root. Revert if they do not match.
-        if (root != inbox[terminalToken].root) {
-            revert INVALID_PROOF(inbox[terminalToken].root, root);
+        if (root != inbox[terminalToken][remoteSelector].root) {
+            revert INVALID_PROOF(inbox[terminalToken][remoteSelector].root, root);
         }
     }
 
@@ -465,6 +492,18 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         returns (bytes32)
     {
         return keccak256(abi.encode(projectTokenAmount, terminalTokenAmount, beneficiary));
+    }
+
+    function _isTokenInList(address[] memory tokenList, address targetToken) internal pure returns (bool) {
+        // Iterate through the tokenList
+        for (uint256 i = 0; i < tokenList.length; i++) {
+            if (tokenList[i] == targetToken) {
+                return true; // Target token found in the list
+            }
+        }
+
+        // Target token not found in the list
+        return false;
     }
 
     /// @notice Helper to get the `addr`'s balance for a given `token`.

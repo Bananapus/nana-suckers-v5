@@ -10,7 +10,7 @@ interface IBPSucker {
 
     function isMapped(address token) external view returns (bool);
 
-    function prepare(uint256 projectTokenAmount, address beneficiary, uint256 minTokensReclaimed, address token)
+    function prepare(uint256 projectTokenAmount, address beneficiary, uint256 minTokensReclaimed, address token, uint64 chainSelector)
         external;
 
     function mapToken(BPTokenMapping calldata map) external;
