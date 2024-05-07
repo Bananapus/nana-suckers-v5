@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+/* // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
 import "../src/deployers/BPOptimismSuckerDeployer.sol";
@@ -222,3 +222,4 @@ contract DeployScript is Script, Sphinx {
         return address(_deployedTo).code.length != 0;
     }
 }
+ */

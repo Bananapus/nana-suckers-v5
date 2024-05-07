@@ -15,7 +15,7 @@ import {BPSucker, BPAddToBalanceMode} from "./BPSucker.sol";
 import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
 import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
 import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
-import {BPOptimismSuckerDeployer} from "./deployers/BPOptimismSuckerDeployer.sol";
+import {BPCCIPSuckerDeployer} from "./deployers/BPCCIPSuckerDeployer.sol";
 import {OPMessenger} from "./interfaces/OPMessenger.sol";
 import {OPStandardBridge} from "./interfaces/OPStandardBridge.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
@@ -66,7 +66,7 @@ contract BPCCIPSucker is BPSucker {
     /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message.
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
-    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken) internal override {
+    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken, uint64 remoteSelector) internal override {
         uint256 nativeValue;
 
         // Revert if there's a `msg.value`. The OP bridge does not expect to be paid.
@@ -75,11 +75,11 @@ contract BPCCIPSucker is BPSucker {
         }
 
         // Get the amount to send and then clear it from the outbox tree.
-        uint256 amount = outbox[token].balance;
-        delete outbox[token].balance;
+        uint256 amount = outbox[token][remoteSelector].balance;
+        delete outbox[token][remoteSelector].balance;
 
         // Increment the outbox tree's nonce.
-        uint64 nonce = ++outbox[token].nonce;
+        uint64 nonce = ++outbox[token][remoteSelector].nonce;
 
         // Ensure the token is mapped to an address on the remote chain.
         if (remoteToken.addr == address(0)) {
@@ -105,8 +105,8 @@ contract BPCCIPSucker is BPSucker {
             nativeValue = amount;
         } */
 
-        bytes32 _root = outbox[token].tree.root();
-        uint256 _index = outbox[token].tree.count - 1;
+        bytes32 _root = outbox[token][remoteSelector].tree.root();
+        uint256 _index = outbox[token][remoteSelector].tree.count - 1;
 
         /* // Send the message to the peer with the redeemed ETH.
         // slither-disable-next-line arbitrary-send-eth

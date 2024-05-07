@@ -181,9 +181,9 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     function toRemote(address token, uint64 chainSelector) external payable {
         BPRemoteToken memory remoteToken = remoteTokenFor[token];
 
-        /* if (!ROUTER.isChainSupported(chainSelector)) {
+        if (!ROUTER.isChainSupported(chainSelector)) {
             revert INVALID_DESTINATION_CHAIN();
-        } */
+        }
 
         // Ensure that the amount being bridged exceeds the minimum bridge amount.
         if (outbox[token][chainSelector].balance < remoteToken.minBridgeAmount) {
@@ -191,7 +191,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         }
 
         // Send the merkle root to the remote chain.
-        _sendRoot(msg.value, token, remoteToken);
+        _sendRoot(msg.value, token, remoteToken, chainSelector);
     }
 
     /// @notice Receive a merkle root for a terminal token from the remote project.
@@ -299,7 +299,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, JBPermissionIds.MAP_SUCKER_TOKEN);
 
         // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds to the remote chain.
-        if (map.remoteToken == address(0) && outbox[token][remoteSelector].balance != 0) _sendRoot(0, token, remoteTokenFor[token]);
+        if (map.remoteToken == address(0) && outbox[token][remoteSelector].balance != 0) _sendRoot(0, token, remoteTokenFor[token], remoteSelector);
 
         // Update the token mapping.
         remoteTokenFor[token] =
@@ -374,7 +374,7 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
     /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message. (usually derived from `msg.value`)
     /// @param token The terminal token to bridge the merkle tree of.
     /// @param remoteToken The remote token which the `token` is mapped to.
-    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken) internal virtual;
+    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken, uint64 chainSelector) internal virtual;
 
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
     /// @param sender The message's sender.

@@ -9,12 +9,13 @@ import {IJBRulesets} from "@bananapus/core/src/interfaces/IJBRulesets.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {OPStandardBridge} from "../interfaces/OPStandardBridge.sol";
 import {OPMessenger} from "../interfaces/OPMessenger.sol";
-import {BPBaseSucker} from "../BPBaseSucker.sol";
+import {BPCCIPSucker} from "../BPCCIPSucker.sol";
 import {BPAddToBalanceMode} from "../enums/BPAddToBalanceMode.sol";
 import {IBPSucker} from "./../interfaces/IBPSucker.sol";
 import {IBPSuckerDeployer} from "./../interfaces/IBPSuckerDeployer.sol";
 
-contract BPBaseSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
+/// @notice An `IBPSuckerDeployerFeeless` implementation to deploy `BPOptimismSucker` contracts.
+contract BPCCIPSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
     error ONLY_SUCKERS();
     error ALREADY_CONFIGURED();
 
@@ -59,7 +60,9 @@ contract BPBaseSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
         TEMP_ID_STORE = localProjectId;
 
         sucker = IBPSucker(
-            address(new BPBaseSucker{salt: salt}(DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL))
+            address(
+                new BPCCIPSucker{salt: salt}(DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL)
+            )
         );
 
         // TODO: See if resetting this value is cheaper than deletion
