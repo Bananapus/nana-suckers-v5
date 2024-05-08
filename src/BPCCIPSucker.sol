@@ -68,10 +68,9 @@ contract BPCCIPSucker is BPSucker {
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken, uint64 remoteSelector) internal override {
-        uint256 nativeValue;
 
         // TODO: Require transportPayment, CCIP expects to be paid
-        if (transportPayment != 0) {
+        if (transportPayment == 0) {
             revert UNEXPECTED_MSG_VALUE();
         }
 
@@ -83,9 +82,10 @@ contract BPCCIPSucker is BPSucker {
         uint64 nonce = ++outbox[token][remoteSelector].nonce;
 
         // Ensure the token is mapped to an address on the remote chain.
-        if (remoteToken.addr == address(0)) {
+        // TODO: re-enable
+        /* if (remoteToken.addr == address(0)) {
             revert TOKEN_NOT_MAPPED(token);
-        }
+        } */
 
         bytes32 _root = outbox[token][remoteSelector].tree.root();
         uint256 _index = outbox[token][remoteSelector].tree.count - 1;
@@ -112,8 +112,8 @@ contract BPCCIPSucker is BPSucker {
         // Get the fee required to send the CCIP message
         uint256 fees = router.getFee(remoteSelector, evm2AnyMessage);
 
-        if (fees > address(this).balance)
-            revert NotEnoughBalance(address(this).balance, fees);
+        if (fees > transportPayment)
+            revert NotEnoughBalance(transportPayment, fees);
 
         // approve the Router to spend tokens on contract's behalf. It will spend the amount of the given token
         IERC20(token).approve(address(router), amount);
@@ -125,6 +125,8 @@ contract BPCCIPSucker is BPSucker {
             remoteSelector,
             evm2AnyMessage
         );
+
+        // TODO: Refund remaining balance.
 
         /* // Emit an event with message details
         emit MessageSent(
@@ -172,16 +174,25 @@ contract BPCCIPSucker is BPSucker {
                 tokenAmounts: tokenAmounts, // The amount and type of token being transferred
                 extraArgs: Client._argsToBytes(
                     // Additional arguments, setting gas limit
-                    Client.EVMExtraArgsV1({gasLimit: 200_000})
+                    Client.EVMExtraArgsV1({gasLimit: 300_000})
                 ),
                 // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees
                 feeToken: _feeTokenAddress
             });
     }
 
+    function getFeeForMessage(uint64 remoteSelector, Client.EVM2AnyMessage memory evm2AnyMessage) external view returns (uint256 feeAmount) {
+        // Initialize a router client instance to interact with cross-chain router
+        IRouterClient router = IRouterClient(this.getRouter());
+
+        // Get the fee required to send the CCIP message
+        return router.getFee(remoteSelector, evm2AnyMessage);
+    }
+
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
     function _isRemotePeer(address sender) internal override returns (bool valid) {
         /* return sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == PEER; */
+        return sender == address(this);
     }
 }

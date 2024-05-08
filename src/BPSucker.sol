@@ -128,7 +128,7 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
         DIRECTORY = directory;
         TOKENS = tokens;
         PEER = peer == address(0) ? address(this) : peer;
-        PROJECT_ID = IBPSuckerDeployer(msg.sender).TEMP_ID_STORE();
+        PROJECT_ID = 0; // TODO: fix this after we make a SuckerDeployer for CCIP /* IBPSuckerDeployer(msg.sender).TEMP_ID_STORE() */;
         DEPLOYER = msg.sender;
         ADD_TO_BALANCE_MODE = atbMode;
         ROUTER = IRouterClient(CCIPHelper.routerOfChain(block.chainid));
@@ -196,18 +196,33 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
         _sendRoot(msg.value, token, remoteToken, chainSelector);
     }
 
-    /// @notice Receive a merkle root for a terminal token from the remote project.
-    /// @dev This can only be called by the messenger contract on the local chain, with a message from the remote peer.
-    /// @param root The merkle root, token, and amount being received, and the chain selector of its origin.
-    function fromRemote(BPMessageRoot calldata root) external payable {
+    /// @notice The entrypoint for the CCIP router to call. This function should
+    /// never revert, all errors should be handled internally in this contract.
+    /// @param any2EvmMessage The message to process.
+    /// @dev Extremely important to ensure only router calls this.
+    function ccipReceive(Client.Any2EVMMessage calldata any2EvmMessage)
+        external
+        override
+        /// onlyRouter
+        /// onlyAllowlisted(any2EvmMessage.sourceChainSelector, abi.decode(any2EvmMessage.sender, (address))) // Make sure the source chain and sender are allowlisted
+    {
+        _ccipReceive(any2EvmMessage);
+    }
+
+    function _ccipReceive(Client.Any2EVMMessage memory any2EvmMessage) internal override {
+        // Decode the message root from the peer
+        BPMessageRoot memory root = abi.decode(any2EvmMessage.data, (BPMessageRoot));
+        address origin = abi.decode(any2EvmMessage.sender, (address));
+
         // Make sure that the message came from our peer.
-        if (!_isRemotePeer(msg.sender)) {
+        if (!_isRemotePeer(origin)) {
             revert NOT_PEER();
         }
 
         // Increase the outstanding amount to be added to the project's balance by the amount being received.
         amountToAddToBalance[root.token] += root.amount;
 
+        // TODO: Is this necessary anymore?
         // If the received tree's nonce is greater than the current inbox tree's nonce, update the inbox tree.
         // We can't revert because this could be a native token transfer. If we reverted, we would lose the native tokens.
         if (root.remoteRoot.nonce > inbox[root.token][root.remoteSelector].nonce) {
@@ -280,9 +295,9 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
             revert INVALID_DESTINATION_CHAIN();
         }
 
-        address[] memory supportedForTransfer = ROUTER.getSupportedTokens(remoteSelector);
+        address[] memory supportedForTransferList = ROUTER.getSupportedTokens(remoteSelector);
 
-        if (!_isTokenInList(supportedForTransfer, token)) {
+        if (!_isTokenInList(supportedForTransferList, token)) {
             revert INVALID_TOKEN_TO_DESTINATION();
         }
 
@@ -520,20 +535,78 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
         return IERC20(token).balanceOf(addr);
     }
 
-    function _ccipReceive(Client.Any2EVMMessage memory any2EvmMessage) internal override {
-        /// placeholder
-        /* s_lastReceivedMessageId = any2EvmMessage.messageId; // fetch the messageId
-        s_lastReceivedText = abi.decode(any2EvmMessage.data, (string)); // abi-decoding of the sent text
-        // Expect one token to be transferred at once, but you can transfer several tokens.
-        s_lastReceivedTokenAddress = any2EvmMessage.destTokenAmounts[0].token;
-        s_lastReceivedTokenAmount = any2EvmMessage.destTokenAmounts[0].amount;
-        emit MessageReceived(
-            any2EvmMessage.messageId,
-            any2EvmMessage.sourceChainSelector, // fetch the source chain identifier (aka selector)
-            abi.decode(any2EvmMessage.sender, (address)), // abi-decoding of the sender address,
-            abi.decode(any2EvmMessage.data, (string)),
-            any2EvmMessage.destTokenAmounts[0].token,
-            any2EvmMessage.destTokenAmounts[0].amount
-        ); */
+    // Test functions
+    // TODO: REMOVE!
+    /// @notice Inserts a new leaf into the outbox merkle tree for the specified `token`.
+    /// @param projectTokenAmount The amount of project tokens being redeemed.
+    /// @param token The terminal token being redeemed for.
+    /// @param terminalTokenAmount The amount of terminal tokens reclaimed by redeeming.
+    /// @param beneficiary The beneficiary of the project tokens on the remote chain.
+    function testInsertIntoTree(
+        uint256 projectTokenAmount,
+        address token,
+        uint256 terminalTokenAmount,
+        address beneficiary,
+        uint64 chainSelector
+    ) external {
+        // Build a hash based on the token amounts and the beneficiary.
+        bytes32 hash = _buildTreeHash(projectTokenAmount, terminalTokenAmount, beneficiary);
+
+        // Create a new tree based on the outbox tree for the terminal token with the hash inserted.
+        MerkleLib.Tree memory tree = outbox[token][chainSelector].tree.insert(hash);
+
+        // Update the outbox tree and balance for the terminal token.
+        outbox[token][chainSelector].tree = tree;
+        outbox[token][chainSelector].balance += terminalTokenAmount;
+
+        emit InsertToOutboxTree(
+            beneficiary,
+            token,
+            hash,
+            tree.count - 1, // Subtract 1 since we want the 0-based index.
+            outbox[token][chainSelector].tree.root(),
+            projectTokenAmount,
+            terminalTokenAmount
+        );
     }
+
+    /// TODO: REMOVE!
+    /// @notice BPClaim project tokens which have been bridged from the remote chain for their beneficiary.
+    /// @param claimData The terminal token, merkle tree leaf, and proof for the claim.
+    function testClaim(BPClaim calldata claimData) public {
+        // Attempt to validate the proof against the inbox tree for the terminal token.
+        _validate({
+            projectTokenAmount: claimData.leaf.projectTokenAmount,
+            terminalToken: claimData.token,
+            terminalTokenAmount: claimData.leaf.terminalTokenAmount,
+            remoteSelector: claimData.remoteSelector,
+            beneficiary: claimData.leaf.beneficiary,
+            index: claimData.leaf.index,
+            leaves: claimData.proof
+        });
+
+        /* // If this contract's add to balance mode is `ON_CLAIM`, add the redeemed funds to the project's balance.
+        if (ADD_TO_BALANCE_MODE == BPAddToBalanceMode.ON_CLAIM) {
+            _addToBalance(claimData.token, claimData.leaf.terminalTokenAmount);
+        }
+
+        // Mint the project tokens for the beneficiary.
+        IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).mintTokensOf(
+            PROJECT_ID, claimData.leaf.projectTokenAmount, claimData.leaf.beneficiary, "", false
+        ); */
+
+        emit Claimed(
+            claimData.leaf.beneficiary,
+            claimData.token,
+            claimData.leaf.projectTokenAmount,
+            claimData.leaf.terminalTokenAmount,
+            claimData.leaf.index,
+            ADD_TO_BALANCE_MODE == BPAddToBalanceMode.ON_CLAIM ? true : false
+        );
+    }
+
+    function getInbox(address token, uint64 chainSelector) external view returns (BPInboxTreeRoot memory) {
+        return inbox[token][chainSelector];
+    }
+
 }
