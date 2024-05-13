@@ -60,9 +60,7 @@ contract BPCCIPSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
         TEMP_ID_STORE = localProjectId;
 
         sucker = IBPSucker(
-            address(
-                new BPCCIPSucker{salt: salt}(DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL)
-            )
+            address(new BPCCIPSucker{salt: salt}(DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL))
         );
 
         // TODO: See if resetting this value is cheaper than deletion

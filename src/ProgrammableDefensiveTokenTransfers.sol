@@ -432,7 +432,7 @@ contract ProgrammableDefensiveTokenTransfers is ModifiedReceiver, OwnerIsCreator
             extraArgs: Client._argsToBytes(
                 // Additional arguments, setting gas limit
                 Client.EVMExtraArgsV1({gasLimit: 400_000})
-                ),
+            ),
             // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees
             feeToken: _feeTokenAddress
         });

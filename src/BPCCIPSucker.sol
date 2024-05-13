@@ -42,8 +42,7 @@ contract BPCCIPSucker is BPSucker {
         IJBPermissions permissions,
         address peer,
         BPAddToBalanceMode atbMode
-    ) BPSucker(directory, tokens, permissions, peer, atbMode) {
-    }
+    ) BPSucker(directory, tokens, permissions, peer, atbMode) {}
 
     //*********************************************************************//
     // ------------------------ external views --------------------------- //
@@ -67,8 +66,10 @@ contract BPCCIPSucker is BPSucker {
     /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message.
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
-    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken, uint64 remoteSelector) internal override {
-
+    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken, uint64 remoteSelector)
+        internal
+        override
+    {
         // TODO: Require transportPayment, CCIP expects to be paid
         if (transportPayment == 0) {
             revert UNEXPECTED_MSG_VALUE();
@@ -96,11 +97,11 @@ contract BPCCIPSucker is BPSucker {
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
             address(this),
             BPMessageRoot({
-                        token: remoteToken.addr,
-                        amount: amount,
-                        remoteSelector: CCIPHelper.selectorOfChain(block.chainid),
-                        remoteRoot: BPInboxTreeRoot({nonce: nonce, root: _root})
-                    }),
+                token: remoteToken.addr,
+                amount: amount,
+                remoteSelector: CCIPHelper.selectorOfChain(block.chainid),
+                remoteRoot: BPInboxTreeRoot({nonce: nonce, root: _root})
+            }),
             token,
             amount,
             address(0)
@@ -112,8 +113,9 @@ contract BPCCIPSucker is BPSucker {
         // Get the fee required to send the CCIP message
         uint256 fees = router.getFee(remoteSelector, evm2AnyMessage);
 
-        if (fees > transportPayment)
+        if (fees > transportPayment) {
             revert NotEnoughBalance(transportPayment, fees);
+        }
 
         // approve the Router to spend tokens on contract's behalf. It will spend the amount of the given token
         IERC20(token).approve(address(router), amount);
@@ -121,10 +123,7 @@ contract BPCCIPSucker is BPSucker {
         // TODO: Handle this messageId, maybe necessary
         // Send the message through the router and store the returned message ID
         /* messageId =  */
-        router.ccipSend{value: fees}(
-            remoteSelector,
-            evm2AnyMessage
-        );
+        router.ccipSend{value: fees}(remoteSelector, evm2AnyMessage);
 
         // TODO: Refund remaining balance.
 
@@ -160,28 +159,27 @@ contract BPCCIPSucker is BPSucker {
         address _feeTokenAddress
     ) private pure returns (Client.EVM2AnyMessage memory) {
         // Set the token amounts
-        Client.EVMTokenAmount[]
-            memory tokenAmounts = new Client.EVMTokenAmount[](1);
-        tokenAmounts[0] = Client.EVMTokenAmount({
-            token: _token,
-            amount: _amount
-        });
+        Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
+        tokenAmounts[0] = Client.EVMTokenAmount({token: _token, amount: _amount});
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
-        return
-            Client.EVM2AnyMessage({
-                receiver: abi.encode(_receiver), // ABI-encoded receiver address
-                data: abi.encode(_root), // ABI-encoded string
-                tokenAmounts: tokenAmounts, // The amount and type of token being transferred
-                extraArgs: Client._argsToBytes(
-                    // Additional arguments, setting gas limit
-                    Client.EVMExtraArgsV1({gasLimit: 300_000})
-                ),
-                // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees
-                feeToken: _feeTokenAddress
-            });
+        return Client.EVM2AnyMessage({
+            receiver: abi.encode(_receiver), // ABI-encoded receiver address
+            data: abi.encode(_root), // ABI-encoded string
+            tokenAmounts: tokenAmounts, // The amount and type of token being transferred
+            extraArgs: Client._argsToBytes(
+                // Additional arguments, setting gas limit
+                Client.EVMExtraArgsV1({gasLimit: 300_000})
+            ),
+            // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees
+            feeToken: _feeTokenAddress
+        });
     }
 
-    function getFeeForMessage(uint64 remoteSelector, Client.EVM2AnyMessage memory evm2AnyMessage) external view returns (uint256 feeAmount) {
+    function getFeeForMessage(uint64 remoteSelector, Client.EVM2AnyMessage memory evm2AnyMessage)
+        external
+        view
+        returns (uint256 feeAmount)
+    {
         // Initialize a router client instance to interact with cross-chain router
         IRouterClient router = IRouterClient(this.getRouter());
 

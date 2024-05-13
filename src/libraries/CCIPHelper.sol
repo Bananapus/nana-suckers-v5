@@ -3,7 +3,6 @@ pragma solidity 0.8.23;
 
 /// @notice Global constants used across Juicebox contracts.
 library CCIPHelper {
-
     /// @notice The respective CCIP router used by the chain
     address public constant ETH_ROUTER = 0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7D;
     address public constant ETH_SEP_ROUTER = 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59;
@@ -36,8 +35,8 @@ library CCIPHelper {
     uint64 public constant AVA_SEL = 6433500567565415381;
     uint64 public constant BNB_SEL = 11344663589394136015;
     uint64 public constant BASE_SEL = 15971525489660198786;
-    
-    function routerOfChain(uint256 _chainId) public pure returns(address router) {            
+
+    function routerOfChain(uint256 _chainId) public pure returns (address router) {
         if (_chainId == ETH_ID) {
             return ETH_ROUTER;
         } else if (_chainId == OP_ID) {
@@ -52,7 +51,7 @@ library CCIPHelper {
             return BNB_ROUTER;
         } else if (_chainId == BASE_ID) {
             return BASE_ROUTER;
-        } else if (_chainId == ETH_SEP_ID){
+        } else if (_chainId == ETH_SEP_ID) {
             return ETH_SEP_ROUTER;
         } else if (_chainId == ARB_SEP_ID) {
             return ARB_SEP_ROUTER;
@@ -61,7 +60,7 @@ library CCIPHelper {
         }
     }
 
-    function selectorOfChain(uint256 _chainId) public pure returns(uint64 selectorId) {            
+    function selectorOfChain(uint256 _chainId) public pure returns (uint64 selectorId) {
         if (_chainId == ETH_ID) {
             return ETH_SEL;
         } else if (_chainId == OP_ID) {
@@ -84,5 +83,4 @@ library CCIPHelper {
             revert("Unsupported chain");
         }
     }
-
 }
