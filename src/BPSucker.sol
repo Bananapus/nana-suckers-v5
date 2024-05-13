@@ -132,7 +132,7 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
         DIRECTORY = directory;
         TOKENS = tokens;
         PEER = peer == address(0) ? address(this) : peer;
-        PROJECT_ID = 0; // TODO: fix this after we make a SuckerDeployer for CCIP /* IBPSuckerDeployer(msg.sender).TEMP_ID_STORE() */;
+        PROJECT_ID = 1; // TODO: fix this after we make a SuckerDeployer for CCIP /* IBPSuckerDeployer(msg.sender).TEMP_ID_STORE() */;
         DEPLOYER = msg.sender;
         ADD_TO_BALANCE_MODE = atbMode;
         ROUTER = IRouterClient(CCIPHelper.routerOfChain(block.chainid));
@@ -222,8 +222,8 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
     /// @param any2EvmMessage The message to process.
     /// @dev Extremely important to ensure only router calls this.
     function ccipReceive(Client.Any2EVMMessage calldata any2EvmMessage) external override 
-    /// onlyRouter
-    /// onlyAllowlisted(any2EvmMessage.sourceChainSelector, abi.decode(any2EvmMessage.sender, (address))) // Make sure the source chain and sender are allowlisted
+    ensureChainSupportedAndAllowed(any2EvmMessage.sourceChainSelector)
+    onlyRouter
     {
         _ccipReceive(any2EvmMessage);
     }
@@ -327,7 +327,7 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
             revert BELOW_MIN_GAS(MESSENGER_ERC20_MIN_GAS_LIMIT, map.minGas);
         }
 
-        // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
+        // The caller must be the project owner or have the `MAP_SUCKER_TOKEN` permission from them.
         _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, JBPermissionIds.MAP_SUCKER_TOKEN);
 
         // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds to the remote chain.
@@ -349,7 +349,7 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
     }
 
     function setAllowedChain(uint64 chainSelector) public {
-        // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
+        // The caller must be the project owner or have the `MAP_SUCKER_TOKEN` permission from them.
         // TODO: New permission in nana-permissions for this
         _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, JBPermissionIds.MAP_SUCKER_TOKEN);
 
