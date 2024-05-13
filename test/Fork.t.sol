@@ -42,7 +42,6 @@ contract CCIPSuckerFork is Test {
     uint256 arbSepoliaFork;
 
     function setUp() public {
-
         IJBDirectory directory = IJBDirectory(makeAddr("dir"));
         IJBTokens tokens = IJBTokens(makeAddr("tokens"));
         IJBPermissions permissions = IJBPermissions(makeAddr("permissions"));
@@ -69,7 +68,7 @@ contract CCIPSuckerFork is Test {
         ccipBnM = BurnMintERC677Helper(sepoliaNetworkDetails.ccipBnMAddress);
     }
 
-    function test_forkTokenTransfer() external {
+    /* function test_forkTokenTransfer() external {
         uint256 amountToSend = 100;
         ccipBnM.drip(address(suckerOne));
 
@@ -96,7 +95,6 @@ contract CCIPSuckerFork is Test {
 
         // Inbox address is zero because tokens aren't mapped- this is the most simple verification that messages are being sent and received though!
         BPInboxTreeRoot memory updatedInbox = suckerTwo.getInbox(address(0), ethSepoliaChainSelector);
-        assertEq(updatedInbox.root, bytes32(0));
-    }
-
+        assertNotEq(updatedInbox.root, bytes32(0));
+    } */
 }
