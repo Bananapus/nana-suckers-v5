@@ -84,9 +84,9 @@ contract BPCCIPSucker is BPSucker {
 
         // Ensure the token is mapped to an address on the remote chain.
         // TODO: re-enable
-        /* if (remoteToken.addr == address(0)) {
+        if (remoteToken.addr == address(0)) {
             revert TOKEN_NOT_MAPPED(token);
-        } */
+        }
 
         bytes32 _root = outbox[token][remoteSelector].tree.root();
         uint256 _index = outbox[token][remoteSelector].tree.count - 1;
