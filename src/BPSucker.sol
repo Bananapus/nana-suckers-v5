@@ -221,9 +221,11 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
     /// never revert, all errors should be handled internally in this contract.
     /// @param any2EvmMessage The message to process.
     /// @dev Extremely important to ensure only router calls this.
-    function ccipReceive(Client.Any2EVMMessage calldata any2EvmMessage) external override 
-    ensureChainSupportedAndAllowed(any2EvmMessage.sourceChainSelector)
-    onlyRouter
+    function ccipReceive(Client.Any2EVMMessage calldata any2EvmMessage)
+        external
+        override
+        ensureChainSupportedAndAllowed(any2EvmMessage.sourceChainSelector)
+        onlyRouter
     {
         _ccipReceive(any2EvmMessage);
     }

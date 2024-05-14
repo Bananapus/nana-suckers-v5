@@ -54,7 +54,6 @@ contract CCIPSuckerFork is TestBaseWorkflow {
     IJBToken projectOneToken;
 
     function setUp() public override {
-
         address peer = address(0);
         BPAddToBalanceMode atbMode = BPAddToBalanceMode.MANUAL;
 
@@ -106,11 +105,8 @@ contract CCIPSuckerFork is TestBaseWorkflow {
         ids[0] = 9;
 
         // permissions to set
-        JBPermissionsData memory perms = JBPermissionsData({
-            operator: address(suckerOne),
-            projectId: 1,
-            permissionIds: ids
-        });
+        JBPermissionsData memory perms =
+            JBPermissionsData({operator: address(suckerOne), projectId: 1, permissionIds: ids});
 
         jbPermissions().setPermissionsFor(multisig(), perms);
 
@@ -155,7 +151,8 @@ contract CCIPSuckerFork is TestBaseWorkflow {
             address[] memory _tokensToAccept = new address[](2);
             _tokensToAccept[0] = JBConstants.NATIVE_TOKEN;
             _tokensToAccept[1] = address(ccipBnM);
-            _terminalConfigurations[0] = JBTerminalConfig({terminal: jbMultiTerminal(), tokensToAccept: _tokensToAccept});
+            _terminalConfigurations[0] =
+                JBTerminalConfig({terminal: jbMultiTerminal(), tokensToAccept: _tokensToAccept});
 
             // Create a first project to collect fees.
             jbController().launchProjectFor({
@@ -177,7 +174,6 @@ contract CCIPSuckerFork is TestBaseWorkflow {
                 unitCurrency: uint32(uint160(JBConstants.NATIVE_TOKEN)),
                 priceFeed: IJBPriceFeed(_priceFeedNativeUsd)
             });
-
         }
 
         suckerOne.setAllowedChains(allowedChains);
@@ -189,7 +185,11 @@ contract CCIPSuckerFork is TestBaseWorkflow {
         super.setUp();
 
         /* suckerTwo = new BPCCIPSucker{salt: SALT}(jbDirectory(), jbTokens(), jbPermissions(), peer, atbMode); */
-        deployCodeTo("BPCCIPSucker.sol", abi.encode(jbDirectory(), jbTokens(), jbPermissions(), peer, atbMode), address(suckerOne));
+        deployCodeTo(
+            "BPCCIPSucker.sol",
+            abi.encode(jbDirectory(), jbTokens(), jbPermissions(), peer, atbMode),
+            address(suckerOne)
+        );
 
         // set permissions
         vm.startPrank(multisig());
@@ -210,7 +210,8 @@ contract CCIPSuckerFork is TestBaseWorkflow {
             address[] memory _tokensToAccept = new address[](2);
             _tokensToAccept[0] = JBConstants.NATIVE_TOKEN;
             _tokensToAccept[1] = address(ccipBnM);
-            _terminalConfigurations[0] = JBTerminalConfig({terminal: jbMultiTerminal(), tokensToAccept: _tokensToAccept});
+            _terminalConfigurations[0] =
+                JBTerminalConfig({terminal: jbMultiTerminal(), tokensToAccept: _tokensToAccept});
 
             // Create a first project to collect fees.
             jbController().launchProjectFor({
