@@ -282,5 +282,7 @@ contract CCIPSuckerFork is TestBaseWorkflow {
         // Inbox address is zero because tokens aren't mapped- this is the most simple verification that messages are being sent and received though!
         BPInboxTreeRoot memory updatedInbox = suckerOne.getInbox(address(ccipBnM), ethSepoliaChainSelector);
         assertNotEq(updatedInbox.root, bytes32(0));
+
+        // TODO: claim and clean this up
     }
 }
