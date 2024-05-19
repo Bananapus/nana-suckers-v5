@@ -36,6 +36,17 @@ library CCIPHelper {
     uint64 public constant BNB_SEL = 11344663589394136015;
     uint64 public constant BASE_SEL = 15971525489660198786;
 
+    /// @notice The WETH address of each chain
+    address public constant ETH_WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant ETH_SEP_WETH = 0x097D90c9d3E0B50Ca60e1ae45F6A81010f9FB534;
+    address public constant OP_WETH = 0x4200000000000000000000000000000000000006;
+    address public constant ARB_WETH = 0x82aF49447D8a07e3bd95BD0d56f35241523fBab1;
+    address public constant ARB_SEP_WETH = 0xE591bf0A0CF924A0674d7792db046B23CEbF5f34;
+    address public constant POLY_WETH = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
+    address public constant AVA_WETH = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
+    address public constant BNB_WETH = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
+    address public constant BASE_WETH = 0x4200000000000000000000000000000000000006;
+
     function routerOfChain(uint256 _chainId) public pure returns (address router) {
         if (_chainId == ETH_ID) {
             return ETH_ROUTER;
@@ -79,6 +90,30 @@ library CCIPHelper {
             return ETH_SEP_SEL;
         } else if (_chainId == ARB_SEP_ID) {
             return ARB_SEP_SEL;
+        } else {
+            revert("Unsupported chain");
+        }
+    }
+
+    function wethOfChain(uint256 _chainId) public pure returns (address weth) {
+        if (_chainId == ETH_ID) {
+            return ETH_WETH;
+        } else if (_chainId == OP_ID) {
+            return OP_WETH;
+        } else if (_chainId == ARB_ID) {
+            return ARB_WETH;
+        } else if (_chainId == POLY_ID) {
+            return POLY_WETH;
+        } else if (_chainId == AVA_ID) {
+            return AVA_WETH;
+        } else if (_chainId == BNB_ID) {
+            return BNB_WETH;
+        } else if (_chainId == BASE_ID) {
+            return BASE_WETH;
+        } else if (_chainId == ETH_SEP_ID) {
+            return ETH_SEP_WETH;
+        } else if (_chainId == ARB_SEP_ID) {
+            return ARB_SEP_WETH;
         } else {
             revert("Unsupported chain");
         }
