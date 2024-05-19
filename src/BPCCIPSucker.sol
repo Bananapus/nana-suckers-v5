@@ -23,7 +23,7 @@ import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/
 
 import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
 
-/// @notice A `BPSucker` implementation to suck tokens between two chains connected by an OP Bridge.
+/// @notice A `BPSucker` implementation to suck tokens between chains with Chainlink CCIP
 contract BPCCIPSucker is BPSucker {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
@@ -31,6 +31,8 @@ contract BPCCIPSucker is BPSucker {
     event SuckingToRemote(address token, uint64 nonce);
 
     error NotEnoughBalance(uint256 balance, uint256 fees);
+
+    error FailedToRefundFee();
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -126,18 +128,8 @@ contract BPCCIPSucker is BPSucker {
         router.ccipSend{value: fees}(remoteSelector, evm2AnyMessage);
 
         // TODO: Refund remaining balance.
-
-        /* // Emit an event with message details
-        emit MessageSent(
-            messageId,
-            _destinationChainSelector,
-            _receiver,
-            _text,
-            _token,
-            _amount,
-            address(0),
-            fees
-        ); */
+        (bool sent, ) = msg.sender.call{value: msg.value - fees}("");
+        if (!sent) revert FailedToRefundFee();
 
         // Emit an event for the relayers to watch for.
         emit RootToRemote(_root, token, _index, nonce);
@@ -190,7 +182,6 @@ contract BPCCIPSucker is BPSucker {
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
     function _isRemotePeer(address sender) internal override returns (bool valid) {
-        /* return sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == PEER; */
         return sender == address(this);
     }
 }
