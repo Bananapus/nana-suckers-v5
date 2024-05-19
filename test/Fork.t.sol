@@ -291,7 +291,12 @@ contract CCIPSuckerFork is TestBaseWorkflow {
         vm.deal(sender, 1 ether);
 
         // Initiates the bridging
+        vm.prank(sender);
         suckerOne.toRemote{value: 1 ether}(address(ccipBnM), arbSepoliaChainSelector);
+
+        // Fees are paid but balance isn't zero (excess msg.value is returned)
+        assert(sender.balance < 1 ether);
+        assert(sender.balance > 0);
 
         // Use CCIP local to initiate the transfer on the L2
         ccipLocalSimulatorFork.switchChainAndRouteMessage(arbSepoliaFork);
