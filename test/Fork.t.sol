@@ -62,7 +62,6 @@ contract CCIPSuckerFork is TestBaseWorkflow {
     IJBToken projectOneToken;
 
     function setUp() public override {
-
         // address(0) == peer is the same as address(this) - this being the sucker itself
         address peer = address(0);
         BPAddToBalanceMode atbMode = BPAddToBalanceMode.ON_CLAIM;
@@ -200,8 +199,7 @@ contract CCIPSuckerFork is TestBaseWorkflow {
         arbSepoliaFork = vm.createSelectFork(ARBITRUM_SEPOLIA_RPC_URL);
 
         // Get the corresponding remote token and label it
-        Register.NetworkDetails memory arbSepoliaNetworkDetails =
-            ccipLocalSimulatorFork.getNetworkDetails(421614);
+        Register.NetworkDetails memory arbSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(421614);
         ccipBnMArbSepolia = BurnMintERC677Helper(arbSepoliaNetworkDetails.ccipBnMAddress);
         vm.label(address(ccipBnMArbSepolia), "bnmArbSep");
 
@@ -333,8 +331,12 @@ contract CCIPSuckerFork is TestBaseWorkflow {
 
         bytes32[32] memory _proof;
 
-        BPClaim memory _claimData =
-            BPClaim({token: address(ccipBnMArbSepolia), remoteSelector: ethSepoliaChainSelector, leaf: _leaf, proof: _proof});
+        BPClaim memory _claimData = BPClaim({
+            token: address(ccipBnMArbSepolia),
+            remoteSelector: ethSepoliaChainSelector,
+            leaf: _leaf,
+            proof: _proof
+        });
 
         suckerOne.testClaim(_claimData);
     }

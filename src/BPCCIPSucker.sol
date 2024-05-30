@@ -122,7 +122,7 @@ contract BPCCIPSucker is BPSucker {
         router.ccipSend{value: fees}(remoteSelector, evm2AnyMessage);
 
         // TODO: Refund remaining balance.
-        (bool sent, ) = msg.sender.call{value: msg.value - fees}("");
+        (bool sent,) = msg.sender.call{value: msg.value - fees}("");
         if (!sent) revert FailedToRefundFee();
 
         // Emit an event for the relayers to watch for.
