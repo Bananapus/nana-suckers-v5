@@ -505,7 +505,7 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
         if (address(terminal) == address(0)) revert NO_TERMINAL_FOR(PROJECT_ID, token);
 
         // Perform the `addToBalance`.
-        if (token != JBConstants.NATIVE_TOKEN) {
+        if (token != CCIPHelper.wethOfChain(block.chainid)) {
             uint256 balanceBefore = IERC20(token).balanceOf(address(this));
             SafeERC20.forceApprove(IERC20(token), address(terminal), amount);
 
@@ -514,9 +514,11 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
             // Sanity check: make sure we transfer the full amount.
             assert(IERC20(token).balanceOf(address(this)) == balanceBefore - amount);
         } else {
-            // If the token is the native token, use `msg.value`.
+            // If the token is wrapped native token, unwrap and add to balance.
+            IWETH9(token).withdraw(amount);
+
             // slither-disable-next-line arbitrary-send-eth
-            terminal.addToBalanceOf{value: amount}(PROJECT_ID, token, amount, false, string(""), bytes(""));
+            terminal.addToBalanceOf{value: amount}(PROJECT_ID, JBConstants.NATIVE_TOKEN, amount, false, string(""), bytes(""));
         }
     }
 
