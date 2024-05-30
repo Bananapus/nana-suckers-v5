@@ -52,13 +52,7 @@ contract BPCCIPSucker is BPSucker {
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
-    function peerChainID() external view virtual override returns (uint256 chainId) {
-        /* uint256 _localChainId = block.chainid;
-        if (_localChainId == 1) return 10;
-        if (_localChainId == 10) return 1;
-        if (_localChainId == 11155111) return 11155420;
-        if (_localChainId == 11155420) return 11155111; */
-    }
+    function peerChainID() external view virtual override returns (uint256 chainId) {}
 
     //*********************************************************************//
     // --------------------- internal transactions ----------------------- //
