@@ -208,7 +208,9 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
         if (isNative) IWETH9(localWETH).deposit{value: terminalTokenAmount}();
 
         // Insert the item into the outbox tree for the terminal `token`.
-        _insertIntoTree(projectTokenAmount, isNative ? localWETH : token, terminalTokenAmount, beneficiary, chainSelector);
+        _insertIntoTree(
+            projectTokenAmount, isNative ? localWETH : token, terminalTokenAmount, beneficiary, chainSelector
+        );
     }
 
     /// @notice Bridge the project tokens, redeemed funds, and beneficiary information for a given `token` to the remote chain.
@@ -278,6 +280,32 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
             index: claimData.leaf.index,
             leaves: claimData.proof
         });
+
+        // If this contract's add to balance mode is `ON_CLAIM`, add the redeemed funds to the project's balance.
+        if (ADD_TO_BALANCE_MODE == BPAddToBalanceMode.ON_CLAIM) {
+            _addToBalance(claimData.token, claimData.leaf.terminalTokenAmount);
+        }
+
+        // Mint the project tokens for the beneficiary.
+        IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).mintTokensOf(
+            PROJECT_ID, claimData.leaf.projectTokenAmount, claimData.leaf.beneficiary, "", false
+        );
+
+        emit Claimed(
+            claimData.leaf.beneficiary,
+            claimData.token,
+            claimData.leaf.projectTokenAmount,
+            claimData.leaf.terminalTokenAmount,
+            claimData.leaf.index,
+            ADD_TO_BALANCE_MODE == BPAddToBalanceMode.ON_CLAIM ? true : false
+        );
+    }
+
+    /// @notice BPClaim project tokens which have been bridged from the remote chain for their beneficiary.
+    /// @param claimData The terminal token, merkle tree leaf, and proof for the claim.
+    function testClaim(BPClaim calldata claimData) public {
+        /// TODO: REMOVE TEST FUNCTION BEFORE PROD
+        /// THIS FUNCTION SKIPS PROOF VALIDATION
 
         // If this contract's add to balance mode is `ON_CLAIM`, add the redeemed funds to the project's balance.
         if (ADD_TO_BALANCE_MODE == BPAddToBalanceMode.ON_CLAIM) {
@@ -518,7 +546,9 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
             IWETH9(token).withdraw(amount);
 
             // slither-disable-next-line arbitrary-send-eth
-            terminal.addToBalanceOf{value: amount}(PROJECT_ID, JBConstants.NATIVE_TOKEN, amount, false, string(""), bytes(""));
+            terminal.addToBalanceOf{value: amount}(
+                PROJECT_ID, JBConstants.NATIVE_TOKEN, amount, false, string(""), bytes("")
+            );
         }
     }
 

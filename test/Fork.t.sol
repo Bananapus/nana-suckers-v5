@@ -31,6 +31,10 @@ import {BPCCIPSucker} from "../src/BPCCIPSucker.sol";
 import {BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {CCIPLocalSimulatorFork, Register} from "@chainlink/local/src/ccip/CCIPLocalSimulatorFork.sol";
 
+import {BPClaim} from "../src/structs/BPClaim.sol";
+import {BPLeaf} from "../src/structs/BPClaim.sol";
+import {MerkleLib} from "../src/utils/MerkleLib.sol";
+
 contract CCIPSuckerFork is TestBaseWorkflow {
     uint8 private constant _WEIGHT_DECIMALS = 18; // FIXED
     uint8 private constant _NATIVE_DECIMALS = 18; // FIXED
@@ -43,6 +47,7 @@ contract CCIPSuckerFork is TestBaseWorkflow {
     BPCCIPSucker public suckerOne;
     BPCCIPSucker public suckerTwo;
     BurnMintERC677Helper public ccipBnM;
+    BurnMintERC677Helper public ccipBnMArbSepolia;
     IERC20 public linkToken;
     address alice = makeAddr("alice");
     address sender = makeAddr("rootSender");
@@ -57,9 +62,10 @@ contract CCIPSuckerFork is TestBaseWorkflow {
     IJBToken projectOneToken;
 
     function setUp() public override {
+
         // address(0) == peer is the same as address(this) - this being the sucker itself
         address peer = address(0);
-        BPAddToBalanceMode atbMode = BPAddToBalanceMode.MANUAL;
+        BPAddToBalanceMode atbMode = BPAddToBalanceMode.ON_CLAIM;
 
         string memory ETHEREUM_SEPOLIA_RPC_URL = vm.envString("RPC_ETHEREUM_SEPOLIA");
         string memory ARBITRUM_SEPOLIA_RPC_URL = vm.envString("RPC_ARBITRUM_SEPOLIA");
@@ -70,6 +76,7 @@ contract CCIPSuckerFork is TestBaseWorkflow {
         Register.NetworkDetails memory sepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
 
         ccipBnM = BurnMintERC677Helper(sepoliaNetworkDetails.ccipBnMAddress);
+        vm.label(address(ccipBnM), "bnmEthSep");
         vm.makePersistent(address(ccipBnM));
 
         _metadata = JBRulesetMetadata({
@@ -78,7 +85,7 @@ contract CCIPSuckerFork is TestBaseWorkflow {
             baseCurrency: uint32(uint160(address(JBConstants.NATIVE_TOKEN))),
             pausePay: false,
             pauseCreditTransfers: false,
-            allowOwnerMinting: false,
+            allowOwnerMinting: true,
             allowTerminalMigration: false,
             allowSetTerminals: false,
             allowControllerMigration: false,
@@ -192,6 +199,12 @@ contract CCIPSuckerFork is TestBaseWorkflow {
 
         arbSepoliaFork = vm.createSelectFork(ARBITRUM_SEPOLIA_RPC_URL);
 
+        // Get the corresponding remote token and label it
+        Register.NetworkDetails memory arbSepoliaNetworkDetails =
+            ccipLocalSimulatorFork.getNetworkDetails(421614);
+        ccipBnMArbSepolia = BurnMintERC677Helper(arbSepoliaNetworkDetails.ccipBnMAddress);
+        vm.label(address(ccipBnMArbSepolia), "bnmArbSep");
+
         // Setup JBV4 on our second fork (arb-sep)
         super.setUp();
 
@@ -222,7 +235,7 @@ contract CCIPSuckerFork is TestBaseWorkflow {
             JBTerminalConfig[] memory _terminalConfigurations = new JBTerminalConfig[](1);
             address[] memory _tokensToAccept = new address[](2);
             _tokensToAccept[0] = JBConstants.NATIVE_TOKEN;
-            _tokensToAccept[1] = address(ccipBnM);
+            _tokensToAccept[1] = address(ccipBnMArbSepolia);
             _terminalConfigurations[0] =
                 JBTerminalConfig({terminal: jbMultiTerminal(), tokensToAccept: _tokensToAccept});
 
@@ -259,12 +272,11 @@ contract CCIPSuckerFork is TestBaseWorkflow {
         // Give ourselves test tokens
         ccipBnM.drip(address(user));
 
-        // Map the token- token is available at the same address in this context
-        // That won't always be the case
+        // Map the token
         BPTokenMapping memory map = BPTokenMapping({
             localToken: address(ccipBnM),
             minGas: 200_000,
-            remoteToken: address(ccipBnM),
+            remoteToken: address(ccipBnMArbSepolia),
             remoteSelector: arbSepoliaChainSelector,
             minBridgeAmount: 1
         });
@@ -301,18 +313,29 @@ contract CCIPSuckerFork is TestBaseWorkflow {
         // Use CCIP local to initiate the transfer on the L2
         ccipLocalSimulatorFork.switchChainAndRouteMessage(arbSepoliaFork);
 
-        Register.NetworkDetails memory arbSepoliaNetworkDetails =
-            ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
-        BurnMintERC677Helper ccipBnMArbSepolia = BurnMintERC677Helper(arbSepoliaNetworkDetails.ccipBnMAddress);
-
         // Check that the tokens were transferred
         assertEq(ccipBnMArbSepolia.balanceOf(address(suckerOne)), maxRedeemed);
 
         // This is the most simple verification that messages are being sent and received though
         // Meaning CCIP transferred the data to our sucker on L2's inbox
-        BPInboxTreeRoot memory updatedInbox = suckerOne.getInbox(address(ccipBnM), ethSepoliaChainSelector);
+        BPInboxTreeRoot memory updatedInbox = suckerOne.getInbox(address(ccipBnMArbSepolia), ethSepoliaChainSelector);
         assertNotEq(updatedInbox.root, bytes32(0));
 
         // TODO: claim and clean this up
+
+        // Setup claim data
+        BPLeaf memory _leaf = BPLeaf({
+            index: 1,
+            beneficiary: user,
+            projectTokenAmount: projectTokenAmount,
+            terminalTokenAmount: maxRedeemed
+        });
+
+        bytes32[32] memory _proof;
+
+        BPClaim memory _claimData =
+            BPClaim({token: address(ccipBnMArbSepolia), remoteSelector: ethSepoliaChainSelector, leaf: _leaf, proof: _proof});
+
+        suckerOne.testClaim(_claimData);
     }
 }
