@@ -189,12 +189,8 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
             revert ERC20_TOKEN_REQUIRED();
         }
 
-        if (isNative && remoteTokenFor[localWETH].addr == address(0)) {
-            revert WETH_NOT_MAPPED();
-        }
-
         // Make sure that the token is mapped to a remote token.
-        if (remoteTokenFor[token].addr == address(0) && !isNative) {
+        if (remoteTokenFor[token].addr == address(0)) {
             revert TOKEN_NOT_MAPPED(token);
         }
 
@@ -350,22 +346,21 @@ abstract contract BPSucker is JBPermissioned, ModifiedReceiver, IBPSucker {
     /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging them.
     function mapToken(BPTokenMapping calldata map) public ensureChainSupportedAndAllowed(map.remoteSelector) {
         address token = map.localToken;
-
-        if (token == JBConstants.NATIVE_TOKEN) revert WRAPPED_NATIVE_ONLY();
+        bool isNative = token == JBConstants.NATIVE_TOKEN;
+        address localWETH = CCIPHelper.wethOfChain(block.chainid);
 
         uint64 remoteSelector = map.remoteSelector;
 
         address[] memory supportedForTransferList = ROUTER.getSupportedTokens(remoteSelector);
 
-        if (!_isTokenInList(supportedForTransferList, token)) {
+        if (!_isTokenInList(supportedForTransferList, isNative ? localWETH : token)) {
             revert INVALID_TOKEN_TO_DESTINATION();
         }
 
-        // If the token being mapped is the native token, the `remoteToken` must also be the native token.
-        // The native token can also be mapped to the 0 address, which is used to disable native token bridging.
-        /* if (isNative && map.remoteToken != JBConstants.NATIVE_TOKEN && map.remoteToken != address(0)) {
-            revert INVALID_NATIVE_REMOTE_ADDRESS(map.remoteToken);
-        } */
+        // Remote destinations don't support unwrapping WETH.
+        if (map.remoteToken == JBConstants.NATIVE_TOKEN) {
+            revert WRAPPED_NATIVE_ONLY();
+        }
 
         // Enforce a reasonable minimum gas limit for bridging. A minimum which is too low could lead to the loss of funds.
         if (map.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT) {
