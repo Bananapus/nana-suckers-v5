@@ -22,7 +22,7 @@ import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
 import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
 import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
 import {BPLayer} from "./enums/BPLayer.sol";
-import {BPSucker, BPAddToBalanceMode} from "./BPSucker.sol";
+import {BPSucker, IBPSuckerDeployer, BPAddToBalanceMode} from "./BPSucker.sol";
 import {BPArbitrumSuckerDeployer} from "./deployers/BPArbitrumSuckerDeployer.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
@@ -61,7 +61,7 @@ contract BPArbitrumSucker is BPSucker {
         IJBPermissions permissions,
         address peer,
         BPAddToBalanceMode atbMode
-    ) BPSucker(directory, tokens, permissions, peer, atbMode) {
+    ) BPSucker(directory, tokens, permissions, peer, atbMode, IBPSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
         // Layer specific properties
         uint256 _chainId = block.chainid;
 

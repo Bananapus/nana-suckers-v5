@@ -11,7 +11,7 @@ import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 
-import {BPSucker, BPAddToBalanceMode} from "./BPSucker.sol";
+import {BPSucker, IBPSuckerDeployer, BPAddToBalanceMode} from "./BPSucker.sol";
 import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
 import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
 import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
@@ -47,7 +47,7 @@ contract BPOptimismSucker is BPSucker {
         IJBPermissions permissions,
         address peer,
         BPAddToBalanceMode atbMode
-    ) BPSucker(directory, tokens, permissions, peer, atbMode) {
+    ) BPSucker(directory, tokens, permissions, peer, atbMode, IBPSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
         // Fetch the messenger and bridge by doing a callback to the deployer contract.
         OPMESSENGER = BPOptimismSuckerDeployer(msg.sender).MESSENGER();
         OPBRIDGE = BPOptimismSuckerDeployer(msg.sender).BRIDGE();

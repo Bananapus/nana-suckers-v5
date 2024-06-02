@@ -4,13 +4,13 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 
 import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
-import "../../src/BPOptimismSucker.sol";
+import "../../src/BPSucker.sol";
 import "../../src/deployers/BPOptimismSuckerDeployer.sol";
 
 import {BPLeaf} from "../../src/structs/BPLeaf.sol";
 import {BPClaim} from "../../src/structs/BPClaim.sol";
 
-contract MerkleUnitTest is BPOptimismSucker, Test {
+contract MerkleUnitTest is BPSucker, Test {
     using MerkleLib for MerkleLib.Tree;
 
     bytes32[32] _proof;
@@ -18,12 +18,13 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
     constructor()
         // OPMessenger(address(500)),
         // OPStandardBridge(address(550)),
-        BPOptimismSucker(
+        BPSucker(
             IJBDirectory(address(600)),
             IJBTokens(address(700)),
             IJBPermissions(address(800)),
             address(0),
-            BPAddToBalanceMode.MANUAL
+            BPAddToBalanceMode.MANUAL,
+            1
         )
     {}
 
@@ -95,7 +96,7 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
         );
 
         // Attempt to validate proof.
-        BPOptimismSucker(this).claim(
+        BPSucker(this).claim(
             BPClaim({
                 token: JBConstants.NATIVE_TOKEN,
                 leaf: BPLeaf({
@@ -128,7 +129,7 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
         );
 
         // Attempt to validate proof.
-        BPOptimismSucker(this).claim(
+        BPSucker(this).claim(
             BPClaim({
                 token: JBConstants.NATIVE_TOKEN,
                 leaf: BPLeaf({
@@ -143,7 +144,7 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
 
         // Attempt to do it again.
         vm.expectRevert();
-        BPOptimismSucker(this).claim(
+        BPSucker(this).claim(
             BPClaim({
                 token: JBConstants.NATIVE_TOKEN,
                 leaf: BPLeaf({
@@ -156,6 +157,17 @@ contract MerkleUnitTest is BPOptimismSucker, Test {
             })
         );
     }
+
+    function _isRemotePeer(address) internal virtual override returns (bool valid) {
+        return false;
+    }
+
+    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken)
+        internal
+        virtual
+        override
+    {}
+    function peerChainID() external view override returns (uint256 chainId) {}
 }
 
 contract DeployerUnitTest is Test {

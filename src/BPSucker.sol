@@ -114,12 +114,13 @@ abstract contract BPSucker is JBPermissioned, IBPSucker {
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
-        BPAddToBalanceMode atbMode
+        BPAddToBalanceMode atbMode,
+        uint256 project_id
     ) JBPermissioned(permissions) {
         DIRECTORY = directory;
         TOKENS = tokens;
         PEER = peer == address(0) ? address(this) : peer;
-        PROJECT_ID = IBPSuckerDeployer(msg.sender).TEMP_ID_STORE();
+        PROJECT_ID = project_id;
         DEPLOYER = msg.sender;
         ADD_TO_BALANCE_MODE = atbMode;
 
