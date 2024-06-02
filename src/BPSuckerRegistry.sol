@@ -7,6 +7,7 @@ import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap
 import {IBPSucker} from "./interfaces/IBPSucker.sol";
 import {IBPSuckerRegistry} from "./interfaces/IBPSuckerRegistry.sol";
 import {BPSuckerDeployerConfig} from "./structs/BPSuckerDeployerConfig.sol";
+import {BPSuckersPair} from "./structs/BPSuckersPair.sol";
 
 contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
@@ -37,6 +38,20 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     /// @param projectId The ID of the project to get the suckers of.
     function suckersOf(uint256 projectId) external view returns (address[] memory) {
         return _suckersOf[projectId].keys();
+    }
+
+    /// @notice Helper function for retrieving the projects suckers and their metadata.
+    /// @param projectId The ID of the project to get the suckers of.
+    function getSuckerPairs(uint256 projectId) external view returns (BPSuckersPair[] memory _pairs) {
+        address[] memory _suckers = _suckersOf[projectId].keys();
+        uint256 _n = _suckers.length;
+        _pairs = new BPSuckersPair[](_n);
+
+        for (uint256 _i = 0; _i < _n; _i++) {
+            IBPSucker _sucker = IBPSucker(_suckers[_i]);
+            _pairs[_i] =
+                BPSuckersPair({local: address(_sucker), remote: _sucker.PEER(), remoteChainId: _sucker.peerChainID()});
+        }
     }
 
     /// @notice Adds a suckers deployer to the allowlist.
