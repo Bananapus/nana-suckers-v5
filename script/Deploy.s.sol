@@ -25,13 +25,9 @@ contract DeployScript is Script, Sphinx {
 
     function configureSphinx() public override {
         // TODO: Update to contain JB Emergency Developers
-        sphinxConfig.owners = [0x26416423d530b1931A2a7a6b7D435Fac65eED27d];
-        sphinxConfig.orgId = "cltepuu9u0003j58rjtbd0hvu";
         sphinxConfig.projectName = "nana-suckers";
-        sphinxConfig.threshold = 1;
         sphinxConfig.mainnets = ["ethereum", "optimism", "base", "arbitrum"];
         sphinxConfig.testnets = ["ethereum_sepolia", "optimism_sepolia", "base_sepolia", "arbitrum_sepolia"];
-        sphinxConfig.saltNonce = 2;
     }
 
     function run() public {
