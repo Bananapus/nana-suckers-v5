@@ -55,18 +55,21 @@ library SuckerDeploymentLib {
         bool _isArb = _network == keccak256("arbitrum") || _network == keccak256("arbitrum_sepolia");
 
         if (_isMainnet || _isOP) {
-            deployment.optimismDeployer =
-                IBPSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "BPOptimismSuckerDeployer"));
+            deployment.optimismDeployer = IBPSuckerDeployer(
+                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "BPOptimismSuckerDeployer")
+            );
         }
 
         if (_isMainnet || _isBase) {
-            deployment.baseDeployer =
-                IBPSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "BPBaseSuckerDeployer"));
+            deployment.baseDeployer = IBPSuckerDeployer(
+                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "BPBaseSuckerDeployer")
+            );
         }
 
         if (_isMainnet || _isArb) {
-            deployment.arbitrumDeployer =
-                IBPSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "BPArbitrumSuckerDeployer"));
+            deployment.arbitrumDeployer = IBPSuckerDeployer(
+                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "BPArbitrumSuckerDeployer")
+            );
         }
     }
 
