@@ -5,7 +5,7 @@ src = "src"
 out = "out"
 libs = ["lib", "node_modules"]
 extra_output = ['storageLayout']
-fs_permissions = [{ access = "read-write", path = "./"}]
+fs_permissions = [{ access = "read-write", path = "../"}]
 
 [rpc_endpoints]
 ethereum ="${RPC_ETHEREUM_MAINNET}"
