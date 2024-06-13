@@ -48,7 +48,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     error INVALID_PROOF(bytes32 expectedRoot, bytes32 proofRoot);
     error INVALID_NATIVE_REMOTE_ADDRESS(address addr);
     error LEAF_ALREADY_EXECUTED(uint256 index);
-    error QUEUE_INSUFFECIENT_SIZE(uint256 minSize, uint256 currentSize);
+    error QUEUE_INSUFFICIENT_SIZE(uint256 minSize, uint256 currentSize);
     error INSUFFICIENT_BALANCE();
     error TOKEN_NOT_MAPPED(address token);
     error MANUAL_NOT_ALLOWED();
@@ -175,7 +175,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
         // Ensure that the amount being bridged exceeds the minimum bridge amount.
         if (outbox[token].balance < remoteToken.minBridgeAmount) {
-            revert QUEUE_INSUFFECIENT_SIZE(remoteToken.minBridgeAmount, outbox[token].balance);
+            revert QUEUE_INSUFFICIENT_SIZE(remoteToken.minBridgeAmount, outbox[token].balance);
         }
 
         // Send the merkle root to the remote chain.
