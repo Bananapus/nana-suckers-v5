@@ -150,15 +150,15 @@ nana-suckers/
 │   ├── Deploy.s.sol - Deployment script.
 │   └── helpers/ - Internal helpers for the deployment script.
 ├── src/
-│   ├── BPArbitrumSucker.sol - Arbitrum-specific BPSucker.
-│   ├── BPBaseSucker.sol - Base-specific BPSucker.
-│   ├── BPOptimismSucker.sol - Optimism-specific BPSucker.
-│   ├── BPSucker.sol - The basic sucker implementation.
-│   ├── BPSuckerRegistry.sol - Tracks suckers on each chain.
+│   ├── JBArbitrumSucker.sol - Arbitrum-specific JBSucker.
+│   ├── JBBaseSucker.sol - Base-specific JBSucker.
+│   ├── JBOptimismSucker.sol - Optimism-specific JBSucker.
+│   ├── JBSucker.sol - The basic sucker implementation.
+│   ├── JBSuckerRegistry.sol - Tracks suckers on each chain.
 │   ├── deployers/ - Deployers for each kind of sucker.
 │   ├── enums/ - Enums.
 │   ├── extensions/
-│   │   └── BPAllowanceSucker.sol - An extension which uses overflow allowance instead of redemptions.
+│   │   └── JBAllowanceSucker.sol - An extension which uses overflow allowance instead of redemptions.
 │   ├── interfaces/ - Contract interfaces.
 │   ├── libraries/ - Libraries.
 │   ├── structs/ - Structs.
@@ -187,22 +187,22 @@ On each network (Ethereum, Arbitrum, Optimism, and Base):
 
 ```mermaid
 graph TD;
-    A[BPSuckerRegistry] -->|exposes| B["deploySuckersFor(…)"]
-    B -->|calls| C[IBPSuckerDeployer]
-    C -->|deploys| D[BPSucker]
+    A[JBSuckerRegistry] -->|exposes| B["deploySuckersFor(…)"]
+    B -->|calls| C[IJBSuckerDeployer]
+    C -->|deploys| D[JBSucker]
     A -->|tracks| D
 ```
 
-For an example project deployed on mainnet and Optimism with a `BPOptimismSucker` on each network:
+For an example project deployed on mainnet and Optimism with a `JBOptimismSucker` on each network:
 
 ```mermaid
 graph TD;
     subgraph Mainnet
-    A[Project] -->|redeemed funds| B[BPOptimismSucker]
+    A[Project] -->|redeemed funds| B[JBOptimismSucker]
     B -->|burns/mints tokens| A
     end
     subgraph Optimism
-    C[Project] -->|redeemed funds| D[BPOptimismSucker]
+    C[Project] -->|redeemed funds| D[JBOptimismSucker]
     D -->|burns/mints tokens| C
     end
     B <-->|merkle roots/funds| D
@@ -212,17 +212,17 @@ graph TD;
 
 _This description is adapted from [Bridging in Juicebox v4](https://filip.world/post/suckers/)._
 
-Juicebox v4 introduces the [`BPSucker`](https://github.com/bananapus/nana-suckers) contracts for bridging project tokens and funds (terminal tokens) across EVM chains. Here's what you'll need to know if you're building a frontend or service which interacts with them.
+Juicebox v4 introduces the [`JBSucker`](https://github.com/bananapus/nana-suckers) contracts for bridging project tokens and funds (terminal tokens) across EVM chains. Here's what you'll need to know if you're building a frontend or service which interacts with them.
 
 ### Basics
 
-`BPSucker` contracts are deployed in pairs, with one on each network being bridged to or from – for now, suckers bridge between Ethereum mainnet and a specific L2. The [`BPSucker`](https://github.com/Bananapus/nana-suckers/blob/master/src/BPSucker.sol) contract implements core logic, and is extended by network-specific implementations adapted to each L2's bridging solution:
+`JBSucker` contracts are deployed in pairs, with one on each network being bridged to or from – for now, suckers bridge between Ethereum mainnet and a specific L2. The [`JBSucker`](https://github.com/Bananapus/nana-suckers/blob/master/src/JBSucker.sol) contract implements core logic, and is extended by network-specific implementations adapted to each L2's bridging solution:
 
 | Sucker                                                                                               | Networks                      | Description                                                                                                                                                                                                                                |
 | ---------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`BPOptimismSucker`](https://github.com/Bananapus/nana-suckers/blob/master/src/BPOptimismSucker.sol) | Ethereum Mainnet and Optimism | Uses the [OP Standard Bridge](https://docs.optimism.io/builders/app-developers/bridging/standard-bridge) and the [OP Messenger](https://docs.optimism.io/builders/app-developers/bridging/messaging)                                       |
-| [`BPBaseSucker`](https://github.com/Bananapus/nana-suckers/blob/master/src/BPBaseSucker.sol)         | Ethereum Mainnet and Base     | A thin wrapper around `BPOptimismSucker`                                                                                                                                                                                                   |
-| [`BPArbitrumSucker`](https://github.com/Bananapus/nana-suckers/blob/master/src/BPArbitrumSucker.sol) | Ethereum Mainnet and Arbitrum | Uses the [Arbitrum Inbox](https://docs.arbitrum.io/build-decentralized-apps/cross-chain-messaging) and the [Arbitrum Gateway](https://docs.arbitrum.io/build-decentralized-apps/token-bridging/bridge-tokens-programmatically/get-started) |
+| [`JBOptimismSucker`](https://github.com/Bananapus/nana-suckers/blob/master/src/JBOptimismSucker.sol) | Ethereum Mainnet and Optimism | Uses the [OP Standard Bridge](https://docs.optimism.io/builders/app-developers/bridging/standard-bridge) and the [OP Messenger](https://docs.optimism.io/builders/app-developers/bridging/messaging)                                       |
+| [`JBBaseSucker`](https://github.com/Bananapus/nana-suckers/blob/master/src/JBBaseSucker.sol)         | Ethereum Mainnet and Base     | A thin wrapper around `JBOptimismSucker`                                                                                                                                                                                                   |
+| [`JBArbitrumSucker`](https://github.com/Bananapus/nana-suckers/blob/master/src/JBArbitrumSucker.sol) | Ethereum Mainnet and Arbitrum | Uses the [Arbitrum Inbox](https://docs.arbitrum.io/build-decentralized-apps/cross-chain-messaging) and the [Arbitrum Gateway](https://docs.arbitrum.io/build-decentralized-apps/token-bridging/bridge-tokens-programmatically/get-started) |
 
 Suckers use two [merkle trees](https://en.wikipedia.org/wiki/Merkle_tree) to track project token claims associated with each terminal token it supports:
 
@@ -231,20 +231,20 @@ Suckers use two [merkle trees](https://en.wikipedia.org/wiki/Merkle_tree) to tra
 
 For example, a sucker which supports bridging ETH and USDC would have four trees – an inbox and outbox tree for each token. These trees are append-only, and when they're bridged over to the other chain, they aren't deleted – they only update the remote inbox tree with the latest root.
 
-To insert project tokens into the outbox tree, users call `BPSucker.prepare(…)` with:
+To insert project tokens into the outbox tree, users call `JBSucker.prepare(…)` with:
 
 1. The amount of project tokens to bridge, and
 2. the terminal token to bridge with them.
 
 The sucker redeems those project tokens to reclaim the chosen terminal token from the project's primary terminal for it. Then the sucker inserts a claim with this information into the outbox tree.
 
-Anyone can bridge an outbox tree to the peer chain by calling `BPSucker.toRemote(…)`. The outbox tree then _becomes_ the peer sucker's inbox tree for that token. Users can claim their tokens on the peer chain by providing a merkle proof which shows that their claim is in the inbox tree.
+Anyone can bridge an outbox tree to the peer chain by calling `JBSucker.toRemote(…)`. The outbox tree then _becomes_ the peer sucker's inbox tree for that token. Users can claim their tokens on the peer chain by providing a merkle proof which shows that their claim is in the inbox tree.
 
 ### Bridging Tokens
 
 Imagine that the "OhioDAO" project is deployed on Ethereum mainnet and Optimism:
 
-- It has the $OHIO ERC-20 project token and a `BPOptimismSucker` deployed on each network.
+- It has the $OHIO ERC-20 project token and a `JBOptimismSucker` deployed on each network.
 - Its suckers map\* mainnet ETH to Optimism ETH, and vice versa.
 
 \* Each sucker has mappings from terminal tokens on the local chain to associated terminal tokens on the remote chain.
@@ -269,7 +269,7 @@ JBMultiTerminal.pay{value: 1 ether}({
 - The (terminal) `token` is ETH, represented by [`JBConstants.NATIVE_TOKEN`](https://github.com/Bananapus/nana-core/blob/main/src/libraries/JBConstants.sol)
 - The `beneficiary` `0x1234…` is Jimmy's address.
 
-OhioDAO's ruleset has a `weight` of `1e18`, so Jimmy receives 1 $OHIO in return (`1e18` $OHIO). Before he can bridge his $OHIO to Optimism, Jimmy has to call the $OHIO contract's `ERC20.approve(…)` function to allow the `BPOptimismSucker` to use his balance:
+OhioDAO's ruleset has a `weight` of `1e18`, so Jimmy receives 1 $OHIO in return (`1e18` $OHIO). Before he can bridge his $OHIO to Optimism, Jimmy has to call the $OHIO contract's `ERC20.approve(…)` function to allow the `JBOptimismSucker` to use his balance:
 
 ```solidity
 JBERC20.approve({
@@ -278,10 +278,10 @@ JBERC20.approve({
 });
 ```
 
-The `spender` `0x5678…` is the `BPOptimismSucker`'s Ethereum mainnet address, and the `value` is Jimmy's $OHIO balance. Jimmy can now prepare his $OHIO for bridging by calling `BPOptimismSucker.prepare(…)`:
+The `spender` `0x5678…` is the `JBOptimismSucker`'s Ethereum mainnet address, and the `value` is Jimmy's $OHIO balance. Jimmy can now prepare his $OHIO for bridging by calling `JBOptimismSucker.prepare(…)`:
 
 ```solidity
-BPOptimismSucker.prepare({
+JBOptimismSucker.prepare({
     projectTokenAmount: 1e18,
     beneficiary: 0x1234…,
     minTokensReclaimed: 0,
@@ -297,24 +297,24 @@ Once this is called, the sucker:
 
 Specifically, the `prepare(…)` function inserts a leaf into the ETH outbox tree – the leaf is a keccak256 hash of the beneficiary's address, the amount of $OHIO which was redeemed, and the amount of ETH reclaimed by that redemption.
 
-To bridge the outbox tree over, Jimmy (or someone else) calls `BPOptimismSucker.toRemote(…)`, which takes one argument – the terminal token whose outbox tree should be bridged. Jimmy wants to bridge the ETH outbox tree, so he passes in `0x000000000000000000000000000000000000EEEe`. After a few minutes, the sucker will have bridged over the outbox tree and the ETH it got by redeeming Jimmy's $OHIO, which calls the peer sucker's `BPOptimismSucker.fromRemote(…)` function. The Optimism OhioDAO sucker's ETH inbox tree is updated with the new merkle root which contains Jimmy's claim.
+To bridge the outbox tree over, Jimmy (or someone else) calls `JBOptimismSucker.toRemote(…)`, which takes one argument – the terminal token whose outbox tree should be bridged. Jimmy wants to bridge the ETH outbox tree, so he passes in `0x000000000000000000000000000000000000EEEe`. After a few minutes, the sucker will have bridged over the outbox tree and the ETH it got by redeeming Jimmy's $OHIO, which calls the peer sucker's `JBOptimismSucker.fromRemote(…)` function. The Optimism OhioDAO sucker's ETH inbox tree is updated with the new merkle root which contains Jimmy's claim.
 
-Jimmy can claim his $OHIO on Optimism by calling `BPOptimismSucker.claim(…)`, which takes a single [`BPClaim`](https://github.com/Bananapus/nana-suckers/blob/master/src/structs/BPClaim.sol) as its argument. `BPClaim` looks like this:
+Jimmy can claim his $OHIO on Optimism by calling `JBOptimismSucker.claim(…)`, which takes a single [`JBClaim`](https://github.com/Bananapus/nana-suckers/blob/master/src/structs/JBClaim.sol) as its argument. `JBClaim` looks like this:
 
 ```solidity
-struct BPClaim {
+struct JBClaim {
     address token;
-    BPLeaf leaf;
-    // Must be `BPSucker.TREE_DEPTH` long.
+    JBLeaf leaf;
+    // Must be `JBSucker.TREE_DEPTH` long.
     bytes32[32] proof;
 }
 ```
 
-Here's the [`BPLeaf`](https://github.com/Bananapus/nana-suckers/blob/master/src/structs/BPLeaf.sol) struct:
+Here's the [`JBLeaf`](https://github.com/Bananapus/nana-suckers/blob/master/src/structs/JBLeaf.sol) struct:
 
 ```solidity
-/// @notice A leaf in the inbox or outbox tree of a `BPSucker`. Used to `claim` tokens from the inbox tree.
-struct BPLeaf {
+/// @notice A leaf in the inbox or outbox tree of a `JBSucker`. Used to `claim` tokens from the inbox tree.
+struct JBLeaf {
     uint256 index;
     address beneficiary;
     uint256 projectTokenAmount;
@@ -342,7 +342,7 @@ Jimmy's claims request looks like this:
 }
 ```
 
-The `chainId` is Optimism's network ID. Jimmy's getting his claims for the ETH inbox tree of the `BPOptimismSucker` at `0x5678…`. The `juicerkle` service will look through the entire inbox tree and return all of Jimmy's available claims as `BPClaim` structs. The response looks like this:
+The `chainId` is Optimism's network ID. Jimmy's getting his claims for the ETH inbox tree of the `JBOptimismSucker` at `0x5678…`. The `juicerkle` service will look through the entire inbox tree and return all of Jimmy's available claims as `JBClaim` structs. The response looks like this:
 
 ```js
 [
@@ -371,7 +371,7 @@ The `chainId` is Optimism's network ID. Jimmy's getting his claims for the ETH i
 ];
 ```
 
-Jimmy calls `BPOptimismSucker.claim(…)` with this to claim his $OHIO on Optimism. If the sucker's `ADD_TO_BALANCE_MODE` is set to `ON_CLAIM`, the bridged ETH associated with Jimmy's $OHIO is immediately added to OhioDAO's balance. Otherwise, it will be added once someone calls `BPOptimismSucker.addOutstandingAmountToBalance(…)`.
+Jimmy calls `JBOptimismSucker.claim(…)` with this to claim his $OHIO on Optimism. If the sucker's `ADD_TO_BALANCE_MODE` is set to `ON_CLAIM`, the bridged ETH associated with Jimmy's $OHIO is immediately added to OhioDAO's balance. Otherwise, it will be added once someone calls `JBOptimismSucker.addOutstandingAmountToBalance(…)`.
 
 ### Launching Suckers
 
@@ -382,7 +382,7 @@ There are a few requirements for launching a sucker pair:
 3. Both projects must allow owner minting for the suckers to mint bridged project tokens. That is, [`JBRulesetMetadata.allowOwnerMinting`](https://github.com/Bananapus/nana-core/blob/main/src/structs/JBRulesetMetadata.sol) must be `true`.
 4. Both projects must have an ERC-20 project token. If one doesn't, launch it with [`JBController.deployERC20For(…)`](https://github.com/Bananapus/nana-core/blob/main/src/JBController.sol#L620).
 
-Suckers are deployed through the [`BPSuckerRegistry`](https://github.com/Bananapus/nana-suckers/blob/master/src/BPSuckerRegistry.sol) on each chain. In the process of deploying the suckers, the sucker registry maps local tokens to remote tokens, so we'll have to give it permission:
+Suckers are deployed through the [`JBSuckerRegistry`](https://github.com/Bananapus/nana-suckers/blob/master/src/JBSuckerRegistry.sol) on each chain. In the process of deploying the suckers, the sucker registry maps local tokens to remote tokens, so we'll have to give it permission:
 
 ```solidity
 JBPermissionsData memory mapTokenPermission = JBPermissionsData({
@@ -397,35 +397,35 @@ JBPermissions.setPermissionsFor({
 });
 ```
 
-In this example, the project owner `0x1234…` gives the `BPSuckerRegistry` at `0x9ABC…` permission to map tokens for project 12's suckers. Now the owner can deploy the suckers:
+In this example, the project owner `0x1234…` gives the `JBSuckerRegistry` at `0x9ABC…` permission to map tokens for project 12's suckers. Now the owner can deploy the suckers:
 
 ```solidity
-BPTokenMapping memory ethMapping = BPTokenMapping({
+JBTokenMapping memory ethMapping = JBTokenMapping({
     localToken: 0x000000000000000000000000000000000000EEEe,
     minGas: 100_000, // 100k gas minimum
     remoteToken: 0x000000000000000000000000000000000000EEEe,
     minBridgeAmount: 25e15, // 0.025 ETH
 });
 
-BPSuckerDeployerConfig memory config = BPSuckerDeployerConfig({
+JBSuckerDeployerConfig memory config = JBSuckerDeployerConfig({
     deployer: 0xcdef…,
     mappings: [ethMapping]
 });
 
-BPSuckerRegistry.deploySuckersFor({
+JBSuckerRegistry.deploySuckersFor({
     projectId: 12,
     salt: 0xfce167d38e3d9c2a0375c172d979c39c696f2450616565c1c3284e00f0fac074,
     configurations: [config]
 });
 ```
 
-- The [`BPTokenMapping`](https://github.com/Bananapus/nana-suckers/blob/master/src/structs/BPTokenMapping.sol) maps local mainnet ETH to remote Optimism ETH.
+- The [`JBTokenMapping`](https://github.com/Bananapus/nana-suckers/blob/master/src/structs/JBTokenMapping.sol) maps local mainnet ETH to remote Optimism ETH.
   - To prevent spam, the mapping has a `minBridgeAmount` – ours blocks attempts to bridge less than 0.025 ETH.
   - To prevent transactions from failing, our `minGas` requires a gas limit greater than 100,000 wei.
   - These are good starting values, but you may need to adjust them – if your token has expensive transfer logic, you may need a higher `minGas`.
-- The [`BPSuckerDeployerConfig`](https://github.com/Bananapus/nana-suckers/blob/master/src/structs/BPSuckerDeployerConfig.sol) uses the [`BPOptimismSuckerDeployer`](https://github.com/Bananapus/nana-suckers/blob/master/src/deployers/BPOptimismSuckerDeployer.sol) at `0xcdef…` to deploy the sucker.
+- The [`JBSuckerDeployerConfig`](https://github.com/Bananapus/nana-suckers/blob/master/src/structs/JBSuckerDeployerConfig.sol) uses the [`JBOptimismSuckerDeployer`](https://github.com/Bananapus/nana-suckers/blob/master/src/deployers/JBOptimismSuckerDeployer.sol) at `0xcdef…` to deploy the sucker.
   - You can only use approved sucker deployers through the registry. Check for `SuckerDeployerAllowed` events or contact the registry's owner to figure out which deployers are approved.
-- We call `BPSuckerRegistry.deploySuckersFor(…)` with the project's ID (12), a randomly generated 32-byte salt, and the configuration.
+- We call `JBSuckerRegistry.deploySuckersFor(…)` with the project's ID (12), a randomly generated 32-byte salt, and the configuration.
   - **For the suckers to be peers, the `salt` has to match on both chains and the same address must call `deploySuckersFor(…)`.**
 
 The suckers are deployed! We have to give the sucker permission to mint bridged project tokens:
@@ -443,7 +443,7 @@ JBPermissions.setPermissionsFor({
 });
 ```
 
-In this example, the project owner `0x1234…` gives their new `BPSucker` at `0x1357…` permission to mint project 12's tokens.
+In this example, the project owner `0x1234…` gives their new `JBSucker` at `0x1357…` permission to mint project 12's tokens.
 
 Repeat this process on the other chain to deploy the peer sucker, and the project should be ready for bridging.
 

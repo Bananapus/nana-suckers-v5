@@ -28,7 +28,7 @@ abstract contract JBAllowanceSucker is JBSucker {
             address(this), PROJECT_ID, _amount, string("")
         );
 
-        // Get the primaty terminal of the project for the token.
+        // Get the primary terminal of the project for the token.
         IJBRedeemTerminal _terminal = IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, _token)));
 
         // Make sure a terminal is configured for the token.

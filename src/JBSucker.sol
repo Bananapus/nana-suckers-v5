@@ -92,10 +92,10 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
     uint256 public immutable PROJECT_ID;
 
-    /// @notice A reasonable minimum gas limit for a basic cross-chain call. The minimum amount of gas required to call the `fromRemote` (succesfully/safely) on the remote chain.
+    /// @notice A reasonable minimum gas limit for a basic cross-chain call. The minimum amount of gas required to call the `fromRemote` (successfully/safely) on the remote chain.
     uint32 constant MESSENGER_BASE_GAS_LIMIT = 300_000;
 
-    /// @notice A reasonable minimum gas limit used when bridging ERC-20s. The minimum amount of gas required to (succesfully/safely) perform a transfer on the remote chain.
+    /// @notice A reasonable minimum gas limit used when bridging ERC-20s. The minimum amount of gas required to (successfully/safely) perform a transfer on the remote chain.
     uint32 constant MESSENGER_ERC20_MIN_GAS_LIMIT = 200_000;
 
     //*********************************************************************//
@@ -202,7 +202,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         }
     }
 
-    /// @notice JBClaim project tokens which have been bridged from the remote chain for their beneficiary.
+    /// @notice `JBClaim` project tokens which have been bridged from the remote chain for their beneficiary.
     /// @param claimData The terminal token, merkle tree leaf, and proof for the claim.
     function claim(JBClaim calldata claimData) public {
         // Attempt to validate the proof against the inbox tree for the terminal token.

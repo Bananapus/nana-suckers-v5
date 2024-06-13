@@ -80,7 +80,7 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
             revert ALREADY_CONFIGURED();
         }
         // Configure these layer specific properties.
-        // This is done in a seperate call to make the deployment code chain agnostic.
+        // This is done in a separate call to make the deployment code chain agnostic.
         MESSENGER = messenger;
         BRIDGE = bridge;
     }
