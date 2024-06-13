@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {BPTokenMapping} from "../structs/BPTokenMapping.sol";
+import {JBTokenMapping} from "../structs/JBTokenMapping.sol";
 
-interface IBPSucker {
+interface IJBSucker {
     function PEER() external view returns (address);
 
     function peerChainID() external view returns (uint256 chainId);
@@ -13,9 +13,9 @@ interface IBPSucker {
     function prepare(uint256 projectTokenAmount, address beneficiary, uint256 minTokensReclaimed, address token)
         external;
 
-    function mapToken(BPTokenMapping calldata map) external;
+    function mapToken(JBTokenMapping calldata map) external;
 
-    function mapTokens(BPTokenMapping[] calldata maps) external;
+    function mapTokens(JBTokenMapping[] calldata maps) external;
 
     event NewInboxTreeRoot(address indexed token, uint64 nonce, bytes32 root);
 

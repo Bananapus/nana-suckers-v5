@@ -7,7 +7,7 @@ pragma solidity ^0.8.13;
 
 // import {MockPriceFeed} from "@bananapus/core/test/mock/MockPriceFeed.sol";
 
-// import {BPOptimismSucker, IJBDirectory, IJBTokens, IJBToken, IERC20, BPTokenMapping, OPMessenger} from "../src/BPOptimismSucker.sol";
+// import {JBOptimismSucker, IJBDirectory, IJBTokens, IJBToken, IERC20, JBTokenMapping, OPMessenger} from "../src/JBOptimismSucker.sol";
 // import "@bananapus/core/src/interfaces/IJBController.sol";
 // import "@bananapus/core/src/interfaces/terminal/IJBRedeemTerminal.sol";
 // import "@bananapus/core/src/interfaces/terminal/IJBMultiTerminal.sol";
@@ -21,9 +21,9 @@ pragma solidity ^0.8.13;
 
 // import {MockMessenger} from "./mocks/MockMessenger.sol";
 
-// contract BPOptimismSuckerTest is Test {
-//     BPOptimismSuckerHarnass public suckerL1;
-//     BPOptimismSuckerHarnass public suckerL2;
+// contract JBOptimismSuckerTest is Test {
+//     JBOptimismSuckerHarnass public suckerL1;
+//     JBOptimismSuckerHarnass public suckerL2;
 
 //     IJBController CONTROLLER;
 //     IJBDirectory DIRECTORY;
@@ -166,7 +166,7 @@ pragma solidity ^0.8.13;
 
 //         // // Configure the L2 sucker for the token.
 //         // vm.prank(_projectOwnerL2);
-//         // suckerL2.mapToken(address(_L2ERC20Token), BPTokenMapping({
+//         // suckerL2.mapToken(address(_L2ERC20Token), JBTokenMapping({
 //         //     minGas: 200_000,
 //         //     remoteToken: address(_L1ERC20Token)
 //         // }));
@@ -218,7 +218,7 @@ pragma solidity ^0.8.13;
 //         TestBridgeItems[] memory _items,
 //         address _terminalToken,
 //         uint256 _project,
-//         BPOptimismSuckerHarnass _sucker
+//         JBOptimismSuckerHarnass _sucker
 //     ) internal {
 //          IERC20 _projectToken = IERC20(address(TOKENS.tokenOf(_project)));
 
@@ -252,7 +252,7 @@ pragma solidity ^0.8.13;
 //         // );
 
 //         // Get the remote sucker.
-//         // BPOptimismSuckerHarnass _remoteSucker = BPOptimismSuckerHarnass(payable(address(_sucker.PEER())));
+//         // JBOptimismSuckerHarnass _remoteSucker = JBOptimismSuckerHarnass(payable(address(_sucker.PEER())));
 
 //         // address _remoteTerminalToken;
 //         // if(_terminalToken != JBConstants.NATIVE_TOKEN) {
@@ -285,8 +285,8 @@ pragma solidity ^0.8.13;
 //         address _suckerL2 = vm.computeCreateAddress(address(this), _nonce + 1);
 
 //         // Deploy the pair of suckers
-//         suckerL1 = new BPOptimismSuckerHarnass(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL2, _L1Project);
-//         suckerL2 = new BPOptimismSuckerHarnass(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL1, _L2Project);
+//         suckerL1 = new JBOptimismSuckerHarnass(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL2, _L1Project);
+//         suckerL2 = new JBOptimismSuckerHarnass(_mockMessenger, DIRECTORY, TOKENS, PERMISSIONS, _suckerL1, _L2Project);
 
 //         uint256[] memory _permissions = new uint256[](1);
 //         _permissions[0] = JBPermissionIds.MINT_TOKENS;
@@ -385,7 +385,7 @@ pragma solidity ^0.8.13;
 //     }
 // }
 
-// contract BPOptimismSuckerHarnass is BPOptimismSucker {
+// contract JBOptimismSuckerHarnass is JBOptimismSucker {
 
 //     // BPSuckBridgeItem[] internal _latestBridgeItems;
 
@@ -396,7 +396,7 @@ pragma solidity ^0.8.13;
 //         IJBPermissions _permissions,
 //         address _peer,
 //         uint256 _projectId
-//     ) BPOptimismSucker(
+//     ) JBOptimismSucker(
 //         _messenger,
 //         address(0)
 //         _directory,

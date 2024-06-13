@@ -9,13 +9,13 @@ import {IJBRulesets} from "@bananapus/core/src/interfaces/IJBRulesets.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {OPStandardBridge} from "../interfaces/OPStandardBridge.sol";
 import {OPMessenger} from "../interfaces/OPMessenger.sol";
-import {BPOptimismSucker} from "../BPOptimismSucker.sol";
-import {BPAddToBalanceMode} from "../enums/BPAddToBalanceMode.sol";
-import {IBPSucker} from "./../interfaces/IBPSucker.sol";
-import {IBPSuckerDeployer} from "./../interfaces/IBPSuckerDeployer.sol";
+import {JBOptimismSucker} from "../JBOptimismSucker.sol";
+import {JBAddToBalanceMode} from "../enums/JBAddToBalanceMode.sol";
+import {IJBSucker} from "./../interfaces/IJBSucker.sol";
+import {IJBSuckerDeployer} from "./../interfaces/IJBSuckerDeployer.sol";
 
-/// @notice An `IBPSuckerDeployerFeeless` implementation to deploy `BPOptimismSucker` contracts.
-contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
+/// @notice An `IJBSuckerDeployerFeeless` implementation to deploy `JBOptimismSucker` contracts.
+contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     error ONLY_SUCKERS();
     error ALREADY_CONFIGURED();
 
@@ -48,20 +48,20 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
         TOKENS = tokens;
     }
 
-    /// @notice Create a new `BPSucker` for a specific project.
+    /// @notice Create a new `JBSucker` for a specific project.
     /// @dev Uses the sender address as the salt, which means the same sender must call this function on both chains.
     /// @param localProjectId The project's ID on the local chain.
     /// @param salt The salt to use for the `create2` address.
     /// @return sucker The address of the new sucker.
-    function createForSender(uint256 localProjectId, bytes32 salt) external returns (IBPSucker sucker) {
+    function createForSender(uint256 localProjectId, bytes32 salt) external returns (IJBSucker sucker) {
         salt = keccak256(abi.encodePacked(msg.sender, salt));
 
         // Set for a callback to this contract.
         TEMP_ID_STORE = localProjectId;
 
-        sucker = IBPSucker(
+        sucker = IJBSucker(
             address(
-                new BPOptimismSucker{salt: salt}(DIRECTORY, TOKENS, PERMISSIONS, address(0), BPAddToBalanceMode.MANUAL)
+                new JBOptimismSucker{salt: salt}(DIRECTORY, TOKENS, PERMISSIONS, address(0), JBAddToBalanceMode.MANUAL)
             )
         );
 
@@ -80,7 +80,7 @@ contract BPOptimismSuckerDeployer is JBPermissioned, IBPSuckerDeployer {
             revert ALREADY_CONFIGURED();
         }
         // Configure these layer specific properties.
-        // This is done in a seperate call to make the deployment code chain agnostic.
+        // This is done in a separate call to make the deployment code chain agnostic.
         MESSENGER = messenger;
         BRIDGE = bridge;
     }

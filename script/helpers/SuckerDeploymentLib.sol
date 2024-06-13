@@ -5,15 +5,15 @@ import {stdJson} from "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {SphinxConstants, NetworkInfo} from "@sphinx-labs/contracts/SphinxConstants.sol";
 
-import {IBPSuckerRegistry} from "./../../src/interfaces/IBPSuckerRegistry.sol";
-import {IBPSuckerDeployer} from "./../../src/interfaces/IBPSuckerDeployer.sol";
+import {IJBSuckerRegistry} from "./../../src/interfaces/IJBSuckerRegistry.sol";
+import {IJBSuckerDeployer} from "./../../src/interfaces/IJBSuckerDeployer.sol";
 
 struct SuckerDeployment {
-    IBPSuckerRegistry registry;
+    IJBSuckerRegistry registry;
     /// @dev only those that are deployed on the requested chain contain an address.
-    IBPSuckerDeployer optimismDeployer;
-    IBPSuckerDeployer baseDeployer;
-    IBPSuckerDeployer arbitrumDeployer;
+    IJBSuckerDeployer optimismDeployer;
+    IJBSuckerDeployer baseDeployer;
+    IJBSuckerDeployer arbitrumDeployer;
 }
 
 library SuckerDeploymentLib {
@@ -46,7 +46,7 @@ library SuckerDeploymentLib {
     {
         // Is deployed on all (supported) chains.
         deployment.registry =
-            IBPSuckerRegistry(_getDeploymentAddress(path, "nana-suckers-testnet", network_name, "BPSuckerRegistry"));
+            IJBSuckerRegistry(_getDeploymentAddress(path, "nana-suckers-testnet", network_name, "JBSuckerRegistry"));
 
         bytes32 _network = keccak256(abi.encodePacked(network_name));
         bool _isMainnet = _network == keccak256("ethereum") || _network == keccak256("sepolia");
@@ -55,20 +55,20 @@ library SuckerDeploymentLib {
         bool _isArb = _network == keccak256("arbitrum") || _network == keccak256("arbitrum_sepolia");
 
         if (_isMainnet || _isOP) {
-            deployment.optimismDeployer = IBPSuckerDeployer(
-                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "BPOptimismSuckerDeployer")
+            deployment.optimismDeployer = IJBSuckerDeployer(
+                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "JBOptimismSuckerDeployer")
             );
         }
 
         if (_isMainnet || _isBase) {
-            deployment.baseDeployer = IBPSuckerDeployer(
-                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "BPBaseSuckerDeployer")
+            deployment.baseDeployer = IJBSuckerDeployer(
+                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "JBBaseSuckerDeployer")
             );
         }
 
         if (_isMainnet || _isArb) {
-            deployment.arbitrumDeployer = IBPSuckerDeployer(
-                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "BPArbitrumSuckerDeployer")
+            deployment.arbitrumDeployer = IJBSuckerDeployer(
+                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "JBArbitrumSuckerDeployer")
             );
         }
     }
