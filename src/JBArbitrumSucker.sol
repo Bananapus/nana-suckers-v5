@@ -18,20 +18,20 @@ import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import {ArbL1GatewayRouter} from "./interfaces/ArbL1GatewayRouter.sol";
 import {ArbL2GatewayRouter} from "./interfaces/ArbL2GatewayRouter.sol";
 import {IArbGatewayRouter} from "./interfaces/IArbGatewayRouter.sol";
-import {BPRemoteToken} from "./structs/BPRemoteToken.sol";
-import {BPInboxTreeRoot} from "./structs/BPInboxTreeRoot.sol";
-import {BPMessageRoot} from "./structs/BPMessageRoot.sol";
-import {BPLayer} from "./enums/BPLayer.sol";
-import {BPSucker, IBPSuckerDeployer, BPAddToBalanceMode} from "./BPSucker.sol";
-import {BPArbitrumSuckerDeployer} from "./deployers/BPArbitrumSuckerDeployer.sol";
+import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
+import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
+import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
+import {JBLayer} from "./enums/JBLayer.sol";
+import {JBSucker, IJBSuckerDeployer, JBAddToBalanceMode} from "./JBSucker.sol";
+import {JBArbitrumSuckerDeployer} from "./deployers/JBArbitrumSuckerDeployer.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 import {ARBAddresses} from "./libraries/ARBAddresses.sol";
 import {ARBChains} from "./libraries/ARBChains.sol";
 
-/// @notice A `BPSucker` implementation to suck tokens between two chains connected by an Arbitrum bridge.
+/// @notice A `JBSucker` implementation to suck tokens between two chains connected by an Arbitrum bridge.
 // NOTICE: UNFINISHED!
-contract BPArbitrumSucker is BPSucker {
+contract JBArbitrumSucker is JBSucker {
     error L1GatewayUnsupported();
     error ChainNotSupported();
     error NotEnoughGas();
@@ -44,7 +44,7 @@ contract BPArbitrumSucker is BPSucker {
     //*********************************************************************//
 
     /// @notice The layer that this contract is on.
-    BPLayer public immutable LAYER;
+    JBLayer public immutable LAYER;
 
     /// @notice The gateway router for the specific chain
     IArbGatewayRouter public immutable GATEWAYROUTER;
@@ -60,8 +60,8 @@ contract BPArbitrumSucker is BPSucker {
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
-        BPAddToBalanceMode atbMode
-    ) BPSucker(directory, tokens, permissions, peer, atbMode, IBPSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
+        JBAddToBalanceMode atbMode
+    ) JBSucker(directory, tokens, permissions, peer, atbMode, IJBSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
         // Layer specific properties
         uint256 _chainId = block.chainid;
 
@@ -71,16 +71,16 @@ contract BPArbitrumSucker is BPSucker {
         // Set LAYER based on the chain ID.
         if (_chainId == ARBChains.ETH_CHAINID || _chainId == ARBChains.ETH_SEP_CHAINID) {
             // Set the layer
-            LAYER = BPLayer.L1;
+            LAYER = JBLayer.L1;
 
             // Set the inbox depending on the chain
             _chainId == ARBChains.ETH_CHAINID
                 ? ARBINBOX = IInbox(ARBAddresses.L1_ETH_INBOX)
                 : ARBINBOX = IInbox(ARBAddresses.L1_SEP_INBOX);
         }
-        if (_chainId == ARBChains.ARB_CHAINID || _chainId == ARBChains.ARB_SEP_CHAINID) LAYER = BPLayer.L2;
+        if (_chainId == ARBChains.ARB_CHAINID || _chainId == ARBChains.ARB_SEP_CHAINID) LAYER = JBLayer.L2;
 
-        GATEWAYROUTER = BPArbitrumSuckerDeployer(msg.sender).gatewayRouter();
+        GATEWAYROUTER = JBArbitrumSuckerDeployer(msg.sender).gatewayRouter();
     }
 
     //*********************************************************************//
@@ -116,7 +116,7 @@ contract BPArbitrumSucker is BPSucker {
     /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message.
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
-    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken) internal override {
+    function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
         // TODO: Handle the `transportPayment`
         // if (transportPayment == 0) {
         //     revert UNEXPECTED_MSG_VALUE();
@@ -133,20 +133,20 @@ contract BPArbitrumSucker is BPSucker {
             revert TOKEN_NOT_MAPPED(token);
         }
 
-        // Build the calldata that will be send to the peer. This will call `BPSucker.fromRemote` on the remote peer.
+        // Build the calldata that will be send to the peer. This will call `JBSucker.fromRemote` on the remote peer.
         bytes memory data = abi.encodeCall(
-            BPSucker.fromRemote,
+            JBSucker.fromRemote,
             (
-                BPMessageRoot({
+                JBMessageRoot({
                     token: remoteToken.addr,
                     amount: amount,
-                    remoteRoot: BPInboxTreeRoot({nonce: nonce, root: outbox[token].tree.root()})
+                    remoteRoot: JBInboxTreeRoot({nonce: nonce, root: outbox[token].tree.root()})
                 })
             )
         );
 
         // Depending on which layer we are on, send the call to the other layer.
-        if (LAYER == BPLayer.L1) {
+        if (LAYER == JBLayer.L1) {
             _toL2(token, transportPayment, amount, data, remoteToken);
         } else {
             _toL1(token, amount, data, remoteToken);
@@ -159,9 +159,9 @@ contract BPArbitrumSucker is BPSucker {
     /// @notice Bridge the `token` and data to the remote L1 chain.
     /// @param token The token to bridge.
     /// @param amount The amount of tokens to bridge.
-    /// @param data The calldata to send to the remote chain. This calls `BPSucker.fromRemote` on the remote peer.
+    /// @param data The calldata to send to the remote chain. This calls `JBSucker.fromRemote` on the remote peer.
     /// @param remoteToken Information about the remote token to bridged to.
-    function _toL1(address token, uint256 amount, bytes memory data, BPRemoteToken memory remoteToken) internal {
+    function _toL1(address token, uint256 amount, bytes memory data, JBRemoteToken memory remoteToken) internal {
         uint256 nativeValue;
 
         // Revert if there's a `msg.value`. Sending a message to L1 does not require any payment.
@@ -189,13 +189,13 @@ contract BPArbitrumSucker is BPSucker {
     /// @notice Bridge the `token` and data to the remote L2 chain.
     /// @param token The token to bridge.
     /// @param amount The amount of tokens to bridge.
-    /// @param data The calldata to send to the remote chain. This calls `BPSucker.fromRemote` on the remote peer.
+    /// @param data The calldata to send to the remote chain. This calls `JBSucker.fromRemote` on the remote peer.
     function _toL2(
         address token,
         uint256 transportPayment,
         uint256 amount,
         bytes memory data,
-        BPRemoteToken memory /* remoteToken */
+        JBRemoteToken memory /* remoteToken */
     ) internal {
         uint256 nativeValue;
         uint256 _maxSubmissionCost = ARBINBOX.calculateRetryableSubmissionFee(data.length, 0.2 gwei);
@@ -246,7 +246,7 @@ contract BPArbitrumSucker is BPSucker {
     /// @param sender The message's sender.
     function _isRemotePeer(address sender) internal view override returns (bool _valid) {
         // If we are the L1 peer,
-        if (LAYER == BPLayer.L1) {
+        if (LAYER == JBLayer.L1) {
             IBridge bridge = ARBINBOX.bridge();
             // Check that the sender is the bridge and that the outbox has our peer as the sender.
             return sender == address(bridge) && address(PEER) == IOutbox(bridge.activeOutbox()).l2ToL1Sender();

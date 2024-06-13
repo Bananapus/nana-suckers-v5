@@ -4,13 +4,13 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 
 import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
-import "../../src/BPSucker.sol";
-import "../../src/deployers/BPOptimismSuckerDeployer.sol";
+import "../../src/JBSucker.sol";
+import "../../src/deployers/JBOptimismSuckerDeployer.sol";
 
-import {BPLeaf} from "../../src/structs/BPLeaf.sol";
-import {BPClaim} from "../../src/structs/BPClaim.sol";
+import {JBLeaf} from "../../src/structs/JBLeaf.sol";
+import {JBClaim} from "../../src/structs/JBClaim.sol";
 
-contract MerkleUnitTest is BPSucker, Test {
+contract MerkleUnitTest is JBSucker, Test {
     using MerkleLib for MerkleLib.Tree;
 
     bytes32[32] _proof;
@@ -18,12 +18,12 @@ contract MerkleUnitTest is BPSucker, Test {
     constructor()
         // OPMessenger(address(500)),
         // OPStandardBridge(address(550)),
-        BPSucker(
+        JBSucker(
             IJBDirectory(address(600)),
             IJBTokens(address(700)),
             IJBPermissions(address(800)),
             address(0),
-            BPAddToBalanceMode.MANUAL,
+            JBAddToBalanceMode.MANUAL,
             1
         )
     {}
@@ -80,7 +80,7 @@ contract MerkleUnitTest is BPSucker, Test {
     function test_validate() public {
         // Move outbound root to inbound root.
         inbox[JBConstants.NATIVE_TOKEN] =
-            BPInboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
+            JBInboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 
@@ -96,10 +96,10 @@ contract MerkleUnitTest is BPSucker, Test {
         );
 
         // Attempt to validate proof.
-        BPSucker(this).claim(
-            BPClaim({
+        JBSucker(this).claim(
+            JBClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: BPLeaf({
+                leaf: JBLeaf({
                     index: 2,
                     beneficiary: address(120),
                     projectTokenAmount: 5 ether,
@@ -113,7 +113,7 @@ contract MerkleUnitTest is BPSucker, Test {
     function test_validate_only_once() public {
         // Move outbound root to inbound root.
         inbox[JBConstants.NATIVE_TOKEN] =
-            BPInboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
+            JBInboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 
@@ -129,10 +129,10 @@ contract MerkleUnitTest is BPSucker, Test {
         );
 
         // Attempt to validate proof.
-        BPSucker(this).claim(
-            BPClaim({
+        JBSucker(this).claim(
+            JBClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: BPLeaf({
+                leaf: JBLeaf({
                     index: 2,
                     beneficiary: address(120),
                     projectTokenAmount: 5 ether,
@@ -144,10 +144,10 @@ contract MerkleUnitTest is BPSucker, Test {
 
         // Attempt to do it again.
         vm.expectRevert();
-        BPSucker(this).claim(
-            BPClaim({
+        JBSucker(this).claim(
+            JBClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: BPLeaf({
+                leaf: JBLeaf({
                     index: 2,
                     beneficiary: address(120),
                     projectTokenAmount: 5 ether,
@@ -162,7 +162,7 @@ contract MerkleUnitTest is BPSucker, Test {
         return false;
     }
 
-    function _sendRoot(uint256 transportPayment, address token, BPRemoteToken memory remoteToken)
+    function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken)
         internal
         virtual
         override
@@ -172,7 +172,7 @@ contract MerkleUnitTest is BPSucker, Test {
 
 contract DeployerUnitTest is Test {
     function testDoesntRevert() public {
-        BPOptimismSuckerDeployer _deployer = new BPOptimismSuckerDeployer(
+        JBOptimismSuckerDeployer _deployer = new JBOptimismSuckerDeployer(
             IJBDirectory(address(0)), IJBTokens(address(0)), IJBPermissions(address(0)), msg.sender
         );
         _deployer.createForSender(1, bytes32(0));

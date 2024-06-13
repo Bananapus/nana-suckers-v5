@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "./BPOptimismSucker.sol";
+import "./JBOptimismSucker.sol";
 
-contract BPBaseSucker is BPOptimismSucker {
+contract JBBaseSucker is JBOptimismSucker {
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
@@ -13,8 +13,8 @@ contract BPBaseSucker is BPOptimismSucker {
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
-        BPAddToBalanceMode atbMode
-    ) BPOptimismSucker(directory, tokens, permissions, peer, atbMode) {}
+        JBAddToBalanceMode atbMode
+    ) JBOptimismSucker(directory, tokens, permissions, peer, atbMode) {}
 
     //*********************************************************************//
     // ------------------------ external views --------------------------- //

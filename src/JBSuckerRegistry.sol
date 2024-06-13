@@ -4,12 +4,12 @@ pragma solidity ^0.8.21;
 import {JBOwnable, IJBProjects, IJBPermissions} from "@bananapus/ownable/src/JBOwnable.sol";
 import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
-import {IBPSucker} from "./interfaces/IBPSucker.sol";
-import {IBPSuckerRegistry} from "./interfaces/IBPSuckerRegistry.sol";
-import {BPSuckerDeployerConfig} from "./structs/BPSuckerDeployerConfig.sol";
-import {BPSuckersPair} from "./structs/BPSuckersPair.sol";
+import {IJBSucker} from "./interfaces/IJBSucker.sol";
+import {IJBSuckerRegistry} from "./interfaces/IJBSuckerRegistry.sol";
+import {JBSuckerDeployerConfig} from "./structs/JBSuckerDeployerConfig.sol";
+import {JBSuckersPair} from "./structs/JBSuckersPair.sol";
 
-contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
+contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
     error INVALID_DEPLOYER(address deployer);
@@ -42,15 +42,15 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
 
     /// @notice Helper function for retrieving the projects suckers and their metadata.
     /// @param projectId The ID of the project to get the suckers of.
-    function getSuckerPairs(uint256 projectId) external view returns (BPSuckersPair[] memory _pairs) {
+    function getSuckerPairs(uint256 projectId) external view returns (JBSuckersPair[] memory _pairs) {
         address[] memory _suckers = _suckersOf[projectId].keys();
         uint256 _n = _suckers.length;
-        _pairs = new BPSuckersPair[](_n);
+        _pairs = new JBSuckersPair[](_n);
 
         for (uint256 _i = 0; _i < _n; _i++) {
-            IBPSucker _sucker = IBPSucker(_suckers[_i]);
+            IJBSucker _sucker = IJBSucker(_suckers[_i]);
             _pairs[_i] =
-                BPSuckersPair({local: address(_sucker), remote: _sucker.PEER(), remoteChainId: _sucker.peerChainID()});
+                JBSuckersPair({local: address(_sucker), remote: _sucker.PEER(), remoteChainId: _sucker.peerChainID()});
         }
     }
 
@@ -78,7 +78,7 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
     /// @param salt The salt used to deploy the contract. For the suckers to be peers, this must be the same value on each chain where suckers are deployed.
     /// @param configurations The sucker deployer configs to use to deploy the suckers.
     /// @return suckers The addresses of the deployed suckers.
-    function deploySuckersFor(uint256 projectId, bytes32 salt, BPSuckerDeployerConfig[] calldata configurations)
+    function deploySuckersFor(uint256 projectId, bytes32 salt, JBSuckerDeployerConfig[] calldata configurations)
         public
         override
         returns (address[] memory suckers)
@@ -104,7 +104,7 @@ contract BPSuckerRegistry is JBOwnable, IBPSuckerRegistry {
             }
 
             // Create the sucker.
-            IBPSucker sucker = configurations[i].deployer.createForSender({localProjectId: projectId, salt: salt});
+            IJBSucker sucker = configurations[i].deployer.createForSender({localProjectId: projectId, salt: salt});
             suckers[i] = address(sucker);
 
             // Store the sucker as being deployed for this project.

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import "../src/deployers/BPOptimismSuckerDeployer.sol";
-import "../src/deployers/BPBaseSuckerDeployer.sol";
-import "../src/deployers/BPArbitrumSuckerDeployer.sol";
+import "../src/deployers/JBOptimismSuckerDeployer.sol";
+import "../src/deployers/JBBaseSuckerDeployer.sol";
+import "../src/deployers/JBArbitrumSuckerDeployer.sol";
 import "@bananapus/core/script/helpers/CoreDeploymentLib.sol";
 
 import {Sphinx} from "@sphinx-labs/contracts/SphinxPlugin.sol";
 import {Script} from "forge-std/Script.sol";
-import {BPSuckerRegistry} from "./../src/BPSuckerRegistry.sol";
+import {JBSuckerRegistry} from "./../src/JBSuckerRegistry.sol";
 import {ARBChains} from "../src/libraries/ARBChains.sol";
 
 contract DeployScript is Script, Sphinx {
@@ -51,13 +51,13 @@ contract DeployScript is Script, Sphinx {
         if (
             !_isDeployed(
                 REGISTRY_SALT,
-                type(BPSuckerRegistry).creationCode,
+                type(JBSuckerRegistry).creationCode,
                 abi.encode(core.projects, core.permissions, safeAddress())
             )
         ) {
             // Deploy the registry and pre-aprove the deployers we just deployed.
-            BPSuckerRegistry _registry =
-                new BPSuckerRegistry{salt: REGISTRY_SALT}(core.projects, core.permissions, safeAddress());
+            JBSuckerRegistry _registry =
+                new JBSuckerRegistry{salt: REGISTRY_SALT}(core.projects, core.permissions, safeAddress());
 
             // Before transferring ownership to JBDAO we approve the deployers.
             if (PRE_APPROVED_DEPLOYERS.length != 0) {
@@ -76,7 +76,7 @@ contract DeployScript is Script, Sphinx {
         if (
             _isDeployed(
                 OP_SALT,
-                type(BPOptimismSuckerDeployer).creationCode,
+                type(JBOptimismSuckerDeployer).creationCode,
                 abi.encode(core.directory, core.tokens, core.permissions, safeAddress())
             )
         ) return;
@@ -84,7 +84,7 @@ contract DeployScript is Script, Sphinx {
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
         if (block.chainid == 1 || block.chainid == 11155111) {
-            BPOptimismSuckerDeployer _opDeployer = new BPOptimismSuckerDeployer{salt: OP_SALT}(
+            JBOptimismSuckerDeployer _opDeployer = new JBOptimismSuckerDeployer{salt: OP_SALT}(
                 core.directory, core.tokens, core.permissions, safeAddress()
             );
 
@@ -107,7 +107,7 @@ contract DeployScript is Script, Sphinx {
         // Check if we should do the L2 portion.
         // OP & OP Sepolia.
         if (block.chainid == 10 || block.chainid == 11155420) {
-            BPOptimismSuckerDeployer _opDeployer = new BPOptimismSuckerDeployer{salt: OP_SALT}(
+            JBOptimismSuckerDeployer _opDeployer = new JBOptimismSuckerDeployer{salt: OP_SALT}(
                 core.directory, core.tokens, core.permissions, safeAddress()
             );
 
@@ -127,7 +127,7 @@ contract DeployScript is Script, Sphinx {
         if (
             _isDeployed(
                 BASE_SALT,
-                type(BPBaseSuckerDeployer).creationCode,
+                type(JBBaseSuckerDeployer).creationCode,
                 abi.encode(core.directory, core.tokens, core.permissions, safeAddress())
             )
         ) return;
@@ -135,8 +135,8 @@ contract DeployScript is Script, Sphinx {
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
         if (block.chainid == 1 || block.chainid == 11155111) {
-            BPBaseSuckerDeployer _baseDeployer =
-                new BPBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.tokens, core.permissions, safeAddress());
+            JBBaseSuckerDeployer _baseDeployer =
+                new JBBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.tokens, core.permissions, safeAddress());
 
             _baseDeployer.configureLayerSpecific(
                 OPMessenger(
@@ -157,8 +157,8 @@ contract DeployScript is Script, Sphinx {
         // Check if we should do the L2 portion.
         // BASE & BASE Sepolia.
         if (block.chainid == 8453 || block.chainid == 84532) {
-            BPBaseSuckerDeployer _baseDeployer =
-                new BPBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.tokens, core.permissions, safeAddress());
+            JBBaseSuckerDeployer _baseDeployer =
+                new JBBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.tokens, core.permissions, safeAddress());
 
             _baseDeployer.configureLayerSpecific(
                 OPMessenger(0x4200000000000000000000000000000000000007),
@@ -176,7 +176,7 @@ contract DeployScript is Script, Sphinx {
         if (
             _isDeployed(
                 ARB_SALT,
-                type(BPArbitrumSuckerDeployer).creationCode,
+                type(JBArbitrumSuckerDeployer).creationCode,
                 abi.encode(core.directory, core.tokens, core.permissions, safeAddress())
             )
         ) return;
@@ -184,7 +184,7 @@ contract DeployScript is Script, Sphinx {
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
         if (block.chainid == 1 || block.chainid == 11155111) {
-            BPArbitrumSuckerDeployer _arbDeployer = new BPArbitrumSuckerDeployer{salt: ARB_SALT}(
+            JBArbitrumSuckerDeployer _arbDeployer = new JBArbitrumSuckerDeployer{salt: ARB_SALT}(
                 core.directory, core.tokens, core.permissions, safeAddress()
             );
 
@@ -194,7 +194,7 @@ contract DeployScript is Script, Sphinx {
         // Check if we should do the L2 portion.
         // ARB & ARB Sepolia.
         if (block.chainid == 10 || block.chainid == 421614) {
-            BPArbitrumSuckerDeployer _arbDeployer = new BPArbitrumSuckerDeployer{salt: ARB_SALT}(
+            JBArbitrumSuckerDeployer _arbDeployer = new JBArbitrumSuckerDeployer{salt: ARB_SALT}(
                 core.directory, core.tokens, core.permissions, safeAddress()
             );
 
