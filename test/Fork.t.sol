@@ -27,6 +27,7 @@ import {JBAddToBalanceMode} from "../src/enums/JBAddToBalanceMode.sol";
 import {MerkleLib} from "../src/utils/MerkleLib.sol";
 
 import "forge-std/Test.sol";
+import {JBCCIPSuckerDeployer} from "src/deployers/JBCCIPSuckerDeployer.sol";
 import {JBCCIPSucker} from "../src/JBCCIPSucker.sol";
 import {BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {CCIPLocalSimulatorFork, Register} from "@chainlink/local/src/ccip/CCIPLocalSimulatorFork.sol";
@@ -46,7 +47,9 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
     JBAddToBalanceMode atbMode = JBAddToBalanceMode.ON_CLAIM;
 
     // Sucker and token
-    JBCCIPSucker suckerGlobal;
+    JBCCIPSuckerDeployer suckerDeployer;
+    JBCCIPSuckerDeployer suckerDeployer2;
+    IJBSucker suckerGlobal;
     IJBToken projectOneToken;
 
     // Chain ids and selectors
@@ -224,8 +227,16 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
         // run setup on our first fork (sepolia) so we have a JBV4 setup (deploys v4 contracts).
         super.setUp();
 
+        vm.stopPrank();
+        suckerDeployer =
+            new JBCCIPSuckerDeployer{salt: "salty"}(jbDirectory(), jbTokens(), jbPermissions(), address(this));
+
+        // Set the remote chain as arb-sep, which also grabs the chain selector from CCIPHelper for deployer
+        suckerDeployer.configureLayerSpecific(421614);
+
         // deploy our first sucker (on sepolia, the current fork, or "L1").
-        suckerGlobal = new JBCCIPSucker{salt: "SUCKER"}(jbDirectory(), jbTokens(), jbPermissions(), address(0), atbMode);
+        suckerGlobal = suckerDeployer.createForSender(1, "salty");
+        vm.label(address(suckerGlobal), "suckerGlobal");
 
         // In-memory vars needed for setup
         // Allow the sucker to mint- This permission array is also used in second project config toward the end of this setup.
@@ -257,16 +268,24 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
         // Setup JBV4 on our forked L2 (arb-sep).
         super.setUp();
 
+        vm.stopPrank();
+        suckerDeployer2 =
+            new JBCCIPSuckerDeployer{salt: "salty"}(jbDirectory(), jbTokens(), jbPermissions(), address(this));
+        suckerDeployer2.configureLayerSpecific(11155111);
+
         // Deploy the sucker on L2.
+        vm.prank(address(suckerDeployer2));
         deployCodeTo(
-            "JBCCIPSucker.sol", abi.encode(jbDirectory(), jbTokens(), jbPermissions(), atbMode), address(suckerGlobal)
+            "JBCCIPSucker.sol",
+            abi.encode(jbDirectory(), jbTokens(), jbPermissions(), address(0), atbMode),
+            address(suckerGlobal)
         );
 
         // Launch our project on L2.
+        vm.startPrank(multisig());
         launchAndConfigureL2Project();
 
         // Allow the L2 sucker to mint.
-        vm.startPrank(multisig());
         jbPermissions().setPermissionsFor(multisig(), perms);
 
         // Enable intended chains for the L2 Sucker
@@ -337,8 +356,9 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
         (, bytes32 inboxRoot) = suckerGlobal.inbox(address(ccipBnMArbSepolia));
         assertNotEq(inboxRoot, bytes32(0));
 
+        // TODO: Maybe test claiming but it was working in previous version from another repo
         // Setup claim data
-        JBLeaf memory _leaf = JBLeaf({
+        /* JBLeaf memory _leaf = JBLeaf({
             index: 1,
             beneficiary: user,
             projectTokenAmount: projectTokenAmount,
@@ -350,6 +370,6 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
 
         JBClaim memory _claimData = JBClaim({token: address(ccipBnMArbSepolia), leaf: _leaf, proof: _proof});
 
-        /* suckerGlobal.testClaim(_claimData); */
+        suckerGlobal.testClaim(_claimData); */
     }
 }

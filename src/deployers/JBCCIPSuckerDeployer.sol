@@ -12,6 +12,8 @@ import {JBAddToBalanceMode} from "../enums/JBAddToBalanceMode.sol";
 import {IJBSucker} from "./../interfaces/IJBSucker.sol";
 import {IJBSuckerDeployer} from "./../interfaces/IJBSuckerDeployer.sol";
 
+import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
+
 /// @notice An `IJBSuckerDeployer` implementation to deploy contracts.
 contract JBCCIPSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     error ONLY_ADMIN();
@@ -74,13 +76,11 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     }
 
     /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment addresses would change.
-    function configureLayerSpecific(uint256 remoteChainId, uint64 remoteChainSelector) external {
-        // TODO: Update if necessary
-
+    function configureLayerSpecific(uint256 remoteChainId) external {
         // Only allow configurator to set properties - notice we don't restrict reconfiguration here
         if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR) revert ONLY_ADMIN();
 
         REMOTE_CHAIN_ID = remoteChainId;
-        REMOTE_CHAIN_SELECTOR = remoteChainSelector;
+        REMOTE_CHAIN_SELECTOR = CCIPHelper.selectorOfChain(remoteChainId);
     }
 }
