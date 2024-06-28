@@ -23,6 +23,7 @@ import {ModifiedReceiver} from "./utils/ModifiedReceiver.sol";
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
+import {IWETH9} from "./interfaces/IWETH9.sol";
 
 /// @notice A `JBSucker` implementation to suck tokens between chains with Chainlink CCIP
 contract JBCCIPSucker is JBSucker, ModifiedReceiver {
@@ -32,9 +33,13 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     uint256 public remoteChainId;
     uint64 public remoteChainSelector;
 
+    address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
     event SuckingToRemote(address token, uint64 nonce);
 
     error MUST_PAY_BRIDGE();
+    error NATIVE_ON_ETH_ONLY();
+    error REMOTE_OF_NATIVE_MUST_BE_WETH();
     error NotEnoughBalance(uint256 balance, uint256 fees);
     error FailedToRefundFee();
 
@@ -62,9 +67,25 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
+        bool localIsNative = token == JBConstants.NATIVE_TOKEN;
+        bool willSendWeth = localIsNative && block.chainid == 1;
+        address remoteTokenAddress = remoteToken.addr;
+
+        // Make sure we are attempting to pay the bridge
         if (transportPayment == 0) {
             revert MUST_PAY_BRIDGE();
         }
+
+        // Ensure the token is mapped to an address on the remote chain.
+        if (remoteTokenAddress == address(0)) {
+            revert TOKEN_NOT_MAPPED(token);
+        }
+
+        // Only support native backing token (and wrapping) if on Ethereum
+        if (block.chainid != 1 && localIsNative) revert NATIVE_ON_ETH_ONLY();
+
+        // Cannot bridge native tokens unless wrapped
+        if (remoteTokenAddress == JBConstants.NATIVE_TOKEN) revert REMOTE_OF_NATIVE_MUST_BE_WETH();
 
         // Get the amount to send and then clear it from the outbox tree.
         uint256 amount = outbox[token].balance;
@@ -73,13 +94,11 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         // Increment the outbox tree's nonce.
         uint64 nonce = ++outbox[token].nonce;
 
-        // Ensure the token is mapped to an address on the remote chain.
-        if (remoteToken.addr == address(0)) {
-            revert TOKEN_NOT_MAPPED(token);
-        }
-
         bytes32 _root = outbox[token].tree.root();
         uint256 _index = outbox[token].tree.count - 1;
+
+        // Wrap the token if it's native
+        if (willSendWeth) IWETH9(CCIPHelper.wethOfChain(block.chainid)).deposit{value: amount}();
 
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage({
@@ -89,7 +108,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
                 amount: amount,
                 remoteRoot: JBInboxTreeRoot({nonce: nonce, root: _root})
             }),
-            _token: token,
+            _token: willSendWeth ? WETH : token,
             _amount: amount,
             _feeTokenAddress: address(0), // Paid in native
             _minGas: MESSENGER_BASE_GAS_LIMIT + remoteToken.minGas
