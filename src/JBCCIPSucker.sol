@@ -34,8 +34,8 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
 
     event SuckingToRemote(address token, uint64 nonce);
 
+    error MUST_PAY_BRIDGE();
     error NotEnoughBalance(uint256 balance, uint256 fees);
-
     error FailedToRefundFee();
 
     //*********************************************************************//
@@ -63,7 +63,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
         if (transportPayment == 0) {
-            revert UNEXPECTED_MSG_VALUE();
+            revert MUST_PAY_BRIDGE();
         }
 
         // Get the amount to send and then clear it from the outbox tree.
