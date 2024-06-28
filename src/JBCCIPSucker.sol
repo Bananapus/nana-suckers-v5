@@ -91,7 +91,8 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
             }),
             _token: token,
             _amount: amount,
-            _feeTokenAddress: address(0) // Paid in native
+            _feeTokenAddress: address(0), // Paid in native
+            _minGas: MESSENGER_BASE_GAS_LIMIT + remoteToken.minGas
         });
 
         // Initialize a router client instance to interact with cross-chain router
@@ -105,19 +106,19 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         }
 
         // approve the Router to spend tokens on contract's behalf. It will spend the amount of the given token
-        IERC20(token).approve(address(router), amount);
+        SafeERC20.forceApprove(IERC20(token), address(router), amount);
 
-        // TODO: Handle this messageId, maybe necessary
+        // TODO: Handle this messageId- for later version with message retries
         // Send the message through the router and store the returned message ID
         /* messageId =  */
         router.ccipSend{value: fees}({destinationChainSelector: remoteChainSelector, message: evm2AnyMessage});
 
+        // Emit an event for the relayers to watch for.
+        emit RootToRemote(_root, token, _index, nonce);
+
         // Refund remaining balance.
         (bool sent,) = msg.sender.call{value: msg.value - fees}("");
         if (!sent) revert FailedToRefundFee();
-
-        // Emit an event for the relayers to watch for.
-        emit RootToRemote(_root, token, _index, nonce);
     }
 
     /// @notice Construct a CCIP message.
@@ -133,7 +134,8 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         JBMessageRoot memory _root,
         address _token,
         uint256 _amount,
-        address _feeTokenAddress
+        address _feeTokenAddress,
+        uint256 _minGas
     ) private pure returns (Client.EVM2AnyMessage memory) {
         // Set the token amounts
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
@@ -145,7 +147,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
             tokenAmounts: tokenAmounts, // The amount and type of token being transferred
             extraArgs: Client._argsToBytes(
                 // Additional arguments, setting gas limit
-                Client.EVMExtraArgsV1({gasLimit: 300_000})
+                Client.EVMExtraArgsV1({gasLimit: _minGas})
             ),
             // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees
             feeToken: _feeTokenAddress
