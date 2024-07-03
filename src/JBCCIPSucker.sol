@@ -151,7 +151,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
 
     /// @notice Override this function in your implementation.
     /// @param message Any2EVMMessage
-    function _ccipReceive(Client.Any2EVMMessage memory message) internal virtual override {
+    function _ccipReceive(Client.Any2EVMMessage memory message) internal override {
         // Decode the message root from the peer
         JBMessageRoot memory root = abi.decode(message.data, (JBMessageRoot));
         address origin = abi.decode(message.sender, (address));
@@ -171,7 +171,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     }
 
     /// @notice This function is not in use for the CCIP sucker.
-    function fromRemote(JBMessageRoot calldata) external payable virtual override {
+    function fromRemote(JBMessageRoot calldata) external payable override {
         revert();
     }
 
