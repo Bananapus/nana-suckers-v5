@@ -90,7 +90,6 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         uint64 nonce = ++outbox[token].nonce;
 
         bytes32 _root = outbox[token].tree.root();
-        uint256 _index = outbox[token].tree.count - 1;
 
         // Wrap the token if it's native
         if (willSendWeth) IWETH9(CCIPHelper.wethOfChain(block.chainid)).deposit{value: amount}();
@@ -129,12 +128,15 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         }
 
         // approve the Router to spend tokens on contract's behalf. It will spend the amount of the given token
-        SafeERC20.forceApprove(IERC20(token), address(router), amount);
+        SafeERC20.forceApprove(IERC20(willSendWeth ? WETH : token), address(router), amount);
 
         // TODO: Handle this messageId- for later version with message retries
         // Send the message through the router and store the returned message ID
         /* messageId =  */
         router.ccipSend{value: fees}({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: evm2AnyMessage});
+
+        // Keeps our tree count zero indexed
+        uint256 _index = outbox[token].tree.count - 1;
 
         // Emit an event for the relayers to watch for.
         emit RootToRemote(_root, token, _index, nonce);
