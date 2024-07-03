@@ -4,15 +4,13 @@ pragma solidity 0.8.23;
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IJBPrices} from "@bananapus/core/src/interfaces/IJBPrices.sol";
-import {IJBRulesets} from "@bananapus/core/src/interfaces/IJBRulesets.sol";
 import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 
 import {IJBCCIPSuckerDeployer} from "src/interfaces/IJBCCIPSuckerDeployer.sol";
-import {JBSucker, IJBSuckerDeployer, JBAddToBalanceMode} from "./JBSucker.sol";
+import {JBSucker, JBAddToBalanceMode} from "./JBSucker.sol";
 import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
 import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
 import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
@@ -30,12 +28,9 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
-    uint256 public immutable remoteChainId;
-    uint64 public immutable remoteChainSelector;
-
-    address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-
-    event SuckingToRemote(address token, uint64 nonce);
+    address public immutable WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    uint256 public immutable REMOTE_CHAIN_ID;
+    uint64 public immutable REMOTE_CHAIN_SELECTOR;
 
     error MUST_PAY_BRIDGE();
     error NATIVE_ON_ETH_ONLY();
@@ -54,8 +49,8 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         address peer,
         JBAddToBalanceMode atbMode
     ) JBSucker(directory, tokens, permissions, peer, atbMode, IJBCCIPSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
-        remoteChainId = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_ID();
-        remoteChainSelector = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_SELECTOR();
+        REMOTE_CHAIN_ID = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_ID();
+        REMOTE_CHAIN_SELECTOR = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_SELECTOR();
     }
 
     //*********************************************************************//
@@ -127,7 +122,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         IRouterClient router = IRouterClient(this.getRouter());
 
         // Get the fee required to send the CCIP message
-        uint256 fees = router.getFee({destinationChainSelector: remoteChainSelector, message: evm2AnyMessage});
+        uint256 fees = router.getFee({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: evm2AnyMessage});
 
         if (fees > transportPayment) {
             revert NotEnoughBalance(transportPayment, fees);
@@ -139,7 +134,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         // TODO: Handle this messageId- for later version with message retries
         // Send the message through the router and store the returned message ID
         /* messageId =  */
-        router.ccipSend{value: fees}({destinationChainSelector: remoteChainSelector, message: evm2AnyMessage});
+        router.ccipSend{value: fees}({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: evm2AnyMessage});
 
         // Emit an event for the relayers to watch for.
         emit RootToRemote(_root, token, _index, nonce);
@@ -151,12 +146,11 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
 
     /// @notice Override this function in your implementation.
     /// @param message Any2EVMMessage
-    function _ccipReceive(Client.Any2EVMMessage memory message) internal override {
-        // Decode the message root from the peer
+    function _ccipReceive(Client.Any2EVMMessage memory message) internal override onlyRouter {
         JBMessageRoot memory root = abi.decode(message.data, (JBMessageRoot));
+
         address origin = abi.decode(message.sender, (address));
 
-        // Make sure that the message came from our peer.
         if (origin != address(this)) revert NOT_PEER();
 
         // Increase the outstanding amount to be added to the project's balance by the amount being received.
@@ -188,8 +182,8 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
-    function peerChainID() external view virtual override returns (uint256 chainId) {
+    function peerChainID() external view override returns (uint256 chainId) {
         // Return the remote chain id
-        return remoteChainId;
+        return REMOTE_CHAIN_ID;
     }
 }
