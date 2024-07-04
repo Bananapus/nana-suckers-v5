@@ -31,6 +31,7 @@ import {JBCCIPSuckerDeployer} from "src/deployers/JBCCIPSuckerDeployer.sol";
 import {JBCCIPSucker} from "../src/JBCCIPSucker.sol";
 import {BurnMintERC677Helper} from "@chainlink/local/src/ccip/CCIPLocalSimulator.sol";
 import {CCIPLocalSimulatorFork, Register} from "@chainlink/local/src/ccip/CCIPLocalSimulatorFork.sol";
+import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
 
 import {JBClaim} from "../src/structs/JBClaim.sol";
 import {JBLeaf} from "../src/structs/JBClaim.sol";
@@ -94,7 +95,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
             allowSetController: false,
             ownerMustSendPayouts: false,
             holdFees: false,
-            useTotalSurplusForRedemptions: true,
+            useTotalSurplusForRedemptions: false,
             useDataHookForPay: false,
             useDataHookForRedeem: false,
             dataHook: address(0),
@@ -108,14 +109,10 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
         JBFundAccessLimitGroup[] memory _fundAccessLimitGroup = new JBFundAccessLimitGroup[](1);
         {
             // Specify a payout limit.
-            JBCurrencyAmount[] memory _payoutLimits = new JBCurrencyAmount[](1);
-            _payoutLimits[0] =
-                JBCurrencyAmount({amount: 10 * 10 ** 18, currency: uint32(uint160(JBConstants.NATIVE_TOKEN))});
+            JBCurrencyAmount[] memory _payoutLimits = new JBCurrencyAmount[](0);
 
             // Specify a surplus allowance.
-            JBCurrencyAmount[] memory _surplusAllowances = new JBCurrencyAmount[](1);
-            _surplusAllowances[0] =
-                JBCurrencyAmount({amount: 5 * 10 ** 18, currency: uint32(uint160(JBConstants.NATIVE_TOKEN))});
+            JBCurrencyAmount[] memory _surplusAllowances = new JBCurrencyAmount[](0);
 
             _fundAccessLimitGroup[0] = JBFundAccessLimitGroup({
                 terminal: address(jbMultiTerminal()),
@@ -354,6 +351,87 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
         // This is the most simple verification that messages are being sent and received though
         // Meaning CCIP transferred the data to our sucker on L2's inbox
         (, bytes32 inboxRoot) = suckerGlobal.inbox(address(ccipBnMArbSepolia));
+        assertNotEq(inboxRoot, bytes32(0));
+
+        // TODO: Maybe test claiming but it was working in previous version from another repo
+        // Setup claim data
+        /* JBLeaf memory _leaf = JBLeaf({
+            index: 1,
+            beneficiary: user,
+            projectTokenAmount: projectTokenAmount,
+            terminalTokenAmount: maxRedeemed
+        });
+
+        // faux proof data for test claim
+        bytes32[32] memory _proof;
+
+        JBClaim memory _claimData = JBClaim({token: address(ccipBnMArbSepolia), leaf: _leaf, proof: _proof});
+
+        suckerGlobal.testClaim(_claimData); */
+    }
+
+    function test_forkWethTransfer() external {
+        // Declare test actors and parameters
+        address rootSender = makeAddr("rootSender");
+        address user = makeAddr("him");
+        uint256 amountToPay = 1 ether;
+        /* uint256 amountToSend = 1 ether; */
+        uint256 maxRedeemed = amountToPay / 2;
+
+        // Select our L1 fork to begin this test.
+        vm.selectFork(sepoliaFork);
+
+        // Give ourselves ETH
+        vm.deal(user, amountToPay);
+
+        Register.NetworkDetails memory arbSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(421614); // arb sep
+
+        // Map the token
+        JBTokenMapping memory map = JBTokenMapping({
+            localToken: JBConstants.NATIVE_TOKEN,
+            minGas: 200_000,
+            remoteToken: arbSepoliaNetworkDetails.wrappedNativeAddress,
+            minBridgeAmount: 1
+        });
+
+        vm.prank(multisig());
+        suckerGlobal.mapToken(map);
+
+        vm.startPrank(user);
+
+        // receive 500 project tokens as a result
+        uint256 projectTokenAmount =
+            jbMultiTerminal().pay{value: amountToPay}(1, JBConstants.NATIVE_TOKEN, amountToPay, user, 0, "", "");
+
+        // Approve the sucker to use those project tokens received by the user (we are still pranked as user)
+        IERC20(address(projectOneToken)).approve(address(suckerGlobal), projectTokenAmount);
+
+        // Call prepare which uses our project tokens to retrieve (redeem) for our backing tokens (test token)
+        suckerGlobal.prepare(projectTokenAmount, user, maxRedeemed, JBConstants.NATIVE_TOKEN);
+        vm.stopPrank();
+
+        // Give the root sender some eth to pay the fees
+        vm.deal(rootSender, 1 ether);
+
+        // Initiates the bridging
+        vm.prank(rootSender);
+        suckerGlobal.toRemote{value: 1 ether}(JBConstants.NATIVE_TOKEN);
+
+        // Fees are paid but balance isn't zero (excess msg.value is returned)
+        assert(rootSender.balance < 1 ether);
+        assert(rootSender.balance > 0);
+
+        // Use CCIP local to initiate the transfer on the L2
+        ccipLocalSimulatorFork.switchChainAndRouteMessage(arbSepoliaFork);
+
+        address thisWETH = CCIPHelper.wethOfChain(CCIPHelper.ARB_SEP_ID);
+
+        // Check that the tokens were transferred
+        assertEq(IERC20(thisWETH).balanceOf(address(suckerGlobal)), maxRedeemed);
+
+        // This is the most simple verification that messages are being sent and received though
+        // Meaning CCIP transferred the data to our sucker on L2's inbox
+        (, bytes32 inboxRoot) = suckerGlobal.inbox(thisWETH);
         assertNotEq(inboxRoot, bytes32(0));
 
         // TODO: Maybe test claiming but it was working in previous version from another repo

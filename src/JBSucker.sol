@@ -256,7 +256,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
     /// @notice Map an ERC-20 token on the local chain to an ERC-20 token on the remote chain, allowing that token to be bridged.
     /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging them.
-    function mapToken(JBTokenMapping calldata map) public {
+    function mapToken(JBTokenMapping calldata map) public virtual {
         address token = map.localToken;
         bool isNative = map.localToken == JBConstants.NATIVE_TOKEN;
 

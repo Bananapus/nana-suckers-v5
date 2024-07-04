@@ -8,6 +8,8 @@ import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
+import {JBTokenMapping} from "./structs/JBTokenMapping.sol";
+import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
 
 import {IJBCCIPSuckerDeployer} from "src/interfaces/IJBCCIPSuckerDeployer.sol";
 import {JBSucker, JBAddToBalanceMode} from "./JBSucker.sol";
@@ -29,7 +31,8 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     using BitMaps for BitMaps.BitMap;
 
     IRouterClient public ROUTER;
-    address public immutable WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    // TODO: Revert this back to 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 for prod
+    address public immutable WETH;
     uint256 public immutable REMOTE_CHAIN_ID;
     uint64 public immutable REMOTE_CHAIN_SELECTOR;
 
@@ -54,6 +57,36 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         REMOTE_CHAIN_ID = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_ID();
         REMOTE_CHAIN_SELECTOR = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_SELECTOR();
         ROUTER = IRouterClient(i_ccipRouter);
+        // TODO: Remove this init and revert this back to 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2 for prod
+        WETH = CCIPHelper.wethOfChain(block.chainid);
+    }
+
+    /// @notice Map an ERC-20 token on the local chain to an ERC-20 token on the remote chain, allowing that token to be bridged.
+    /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging them.
+    function mapToken(JBTokenMapping calldata map) public override {
+        address token = map.localToken;
+        bool isNative = map.localToken == JBConstants.NATIVE_TOKEN;
+
+        /* // If the token being mapped is the native token, the `remoteToken` must also be the native token.
+        // The native token can also be mapped to the 0 address, which is used to disable native token bridging.
+        if (isNative && map.remoteToken != JBConstants.NATIVE_TOKEN && map.remoteToken != address(0)) {
+            revert INVALID_NATIVE_REMOTE_ADDRESS(map.remoteToken);
+        } */
+
+        // Enforce a reasonable minimum gas limit for bridging. A minimum which is too low could lead to the loss of funds.
+        if (map.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT) {
+            revert BELOW_MIN_GAS(MESSENGER_ERC20_MIN_GAS_LIMIT, map.minGas);
+        }
+
+        // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
+        _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, JBPermissionIds.MAP_SUCKER_TOKEN);
+
+        // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds to the remote chain.
+        if (map.remoteToken == address(0) && outbox[token].balance != 0) _sendRoot(0, token, remoteTokenFor[token]);
+
+        // Update the token mapping.
+        remoteTokenFor[token] =
+            JBRemoteToken({minGas: map.minGas, addr: map.remoteToken, minBridgeAmount: map.minBridgeAmount});
     }
 
     //*********************************************************************//
@@ -66,7 +99,8 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
         bool localIsNative = token == JBConstants.NATIVE_TOKEN;
-        bool willSendWeth = localIsNative && block.chainid == 1;
+        // TODO: change to only check chainid 1 for prod
+        bool willSendWeth = localIsNative && (block.chainid == 1 || block.chainid == 11155111);
         address remoteTokenAddress = remoteToken.addr;
 
         // Make sure we are attempting to pay the bridge
@@ -79,8 +113,9 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
             revert TOKEN_NOT_MAPPED(token);
         }
 
+        // TODO: re-enable a similar check before prod?
         // Only support native backing token (and wrapping) if on Ethereum
-        if (block.chainid != 1 && localIsNative) revert NATIVE_ON_ETH_ONLY();
+        // if (block.chainid != 1 && localIsNative) revert NATIVE_ON_ETH_ONLY();
 
         // Cannot bridge native tokens unless wrapped
         if (remoteTokenAddress == JBConstants.NATIVE_TOKEN) revert REMOTE_OF_NATIVE_MUST_BE_WETH();
@@ -153,6 +188,9 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         if (!sent) revert FailedToRefundFee();
     }
 
+    /// @notice Checks if targetToken is in tokenList.
+    /// @param tokenList address[] of tokens supported by the router on the current chain.
+    /// @param targetToken address to check for tokenList inclusion.
     function _isTokenInList(address[] memory tokenList, address targetToken) internal pure returns (bool) {
         // Iterate through the tokenList
         for (uint256 i = 0; i < tokenList.length; i++) {
