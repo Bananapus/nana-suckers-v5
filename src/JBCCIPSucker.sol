@@ -28,6 +28,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
+    IRouterClient public ROUTER;
     address public immutable WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     uint256 public immutable REMOTE_CHAIN_ID;
     uint64 public immutable REMOTE_CHAIN_SELECTOR;
@@ -35,6 +36,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     error MUST_PAY_BRIDGE();
     error NATIVE_ON_ETH_ONLY();
     error REMOTE_OF_NATIVE_MUST_BE_WETH();
+    error INVALID_TOKEN_TO_DESTINATION();
     error NotEnoughBalance(uint256 balance, uint256 fees);
     error FailedToRefundFee();
 
@@ -51,6 +53,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     ) JBSucker(directory, tokens, permissions, peer, atbMode, IJBCCIPSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
         REMOTE_CHAIN_ID = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_ID();
         REMOTE_CHAIN_SELECTOR = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_SELECTOR();
+        ROUTER = IRouterClient(i_ccipRouter);
     }
 
     //*********************************************************************//
@@ -82,6 +85,13 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         // Cannot bridge native tokens unless wrapped
         if (remoteTokenAddress == JBConstants.NATIVE_TOKEN) revert REMOTE_OF_NATIVE_MUST_BE_WETH();
 
+        // Check that CCIP supports the token being transferred.
+        address[] memory supportedForTransferList = ROUTER.getSupportedTokens(REMOTE_CHAIN_SELECTOR);
+
+        if (!_isTokenInList(supportedForTransferList, willSendWeth ? WETH : token)) {
+            revert INVALID_TOKEN_TO_DESTINATION();
+        }
+
         // Get the amount to send and then clear it from the outbox tree.
         uint256 amount = outbox[token].balance;
         delete outbox[token].balance;
@@ -90,9 +100,6 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         uint64 nonce = ++outbox[token].nonce;
 
         bytes32 _root = outbox[token].tree.root();
-
-        // Wrap the token if it's native
-        if (willSendWeth) IWETH9(CCIPHelper.wethOfChain(block.chainid)).deposit{value: amount}();
 
         // Set the token amounts
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
@@ -117,23 +124,23 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
             feeToken: address(0)
         });
 
-        // Initialize a router client instance to interact with cross-chain router
-        IRouterClient router = IRouterClient(this.getRouter());
-
         // Get the fee required to send the CCIP message
-        uint256 fees = router.getFee({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: evm2AnyMessage});
+        uint256 fees = ROUTER.getFee({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: evm2AnyMessage});
 
         if (fees > transportPayment) {
             revert NotEnoughBalance(transportPayment, fees);
         }
 
+        // Wrap the token if it's native
+        if (willSendWeth) IWETH9(WETH).deposit{value: amount}();
+
         // approve the Router to spend tokens on contract's behalf. It will spend the amount of the given token
-        SafeERC20.forceApprove(IERC20(willSendWeth ? WETH : token), address(router), amount);
+        SafeERC20.forceApprove(IERC20(willSendWeth ? WETH : token), address(ROUTER), amount);
 
         // TODO: Handle this messageId- for later version with message retries
-        // Send the message through the router and store the returned message ID
+        // Send the message through the ROUTER and store the returned message ID
         /* messageId =  */
-        router.ccipSend{value: fees}({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: evm2AnyMessage});
+        ROUTER.ccipSend{value: fees}({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: evm2AnyMessage});
 
         // Keeps our tree count zero indexed
         uint256 _index = outbox[token].tree.count - 1;
@@ -144,6 +151,19 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         // Refund remaining balance.
         (bool sent,) = msg.sender.call{value: msg.value - fees}("");
         if (!sent) revert FailedToRefundFee();
+    }
+
+    function _isTokenInList(address[] memory tokenList, address targetToken) internal pure returns (bool) {
+        // Iterate through the tokenList
+        for (uint256 i = 0; i < tokenList.length; i++) {
+            if (tokenList[i] == targetToken) {
+                // Target token found in the list
+                return true;
+            }
+        }
+
+        // Target token not found in the list
+        return false;
     }
 
     /// @notice Override this function in your implementation.
