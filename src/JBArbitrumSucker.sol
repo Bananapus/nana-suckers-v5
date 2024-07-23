@@ -145,15 +145,15 @@ contract JBArbitrumSucker is JBSucker {
             )
         );
 
+        // Emit an event for the relayers to watch for.
+        emit RootToRemote(outbox[token].tree.root(), token, outbox[token].tree.count - 1, nonce);
+
         // Depending on which layer we are on, send the call to the other layer.
         if (LAYER == JBLayer.L1) {
             _toL2(token, transportPayment, amount, data, remoteToken);
         } else {
             _toL1(token, amount, data, remoteToken);
         }
-
-        // Emit an event for the relayers to watch for.
-        emit RootToRemote(outbox[token].tree.root(), token, outbox[token].tree.count - 1, nonce);
     }
 
     /// @notice Bridge the `token` and data to the remote L1 chain.
@@ -171,8 +171,10 @@ contract JBArbitrumSucker is JBSucker {
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
+            // slither-disable-next-line calls-loop
             SafeERC20.forceApprove(IERC20(token), GATEWAYROUTER.getGateway(token), amount);
 
+            // slither-disable-next-line calls-loop,unused-return
             ArbL2GatewayRouter(address(GATEWAYROUTER)).outboundTransfer(
                 remoteToken.addr, address(PEER), amount, bytes("")
             );
@@ -183,6 +185,7 @@ contract JBArbitrumSucker is JBSucker {
 
         // Send the message to the peer with the redeemed ETH.
         // Address `100` is the ArbSys precompile address.
+        // slither-disable-next-line calls-loop,unused-return
         ArbSys(address(100)).sendTxToL1{value: nativeValue}(address(PEER), data);
     }
 
@@ -198,6 +201,7 @@ contract JBArbitrumSucker is JBSucker {
         JBRemoteToken memory /* remoteToken */
     ) internal {
         uint256 nativeValue;
+        // slither-disable-next-line calls-loop
         uint256 _maxSubmissionCost = ARBINBOX.calculateRetryableSubmissionFee(data.length, 0.2 gwei);
         uint256 _feeTotal = _maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * 0.2 gwei);
 
@@ -207,9 +211,11 @@ contract JBArbitrumSucker is JBSucker {
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
             // Approve the tokens to be bridged.
+            // slither-disable-next-line calls-loop
             SafeERC20.forceApprove(IERC20(token), GATEWAYROUTER.getGateway(token), amount);
 
             // Perform the ERC-20 bridge transfer.
+            // slither-disable-next-line calls-loop,unused-return
             ArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: transportPayment}({
                 _token: token,
                 _refundTo: msg.sender,
@@ -230,6 +236,7 @@ contract JBArbitrumSucker is JBSucker {
 
         // Create the retryable ticket containing the merkleRoot.
         // TODO: We could even make this unsafe.
+        // slither-disable-next-line calls-loop,unused-return
         ARBINBOX.createRetryableTicket{value: transportPayment}({
             to: address(PEER),
             l2CallValue: nativeValue,
