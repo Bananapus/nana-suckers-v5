@@ -149,11 +149,13 @@ contract JBArbitrumSucker is JBSucker {
         emit RootToRemote(outbox[token].tree.root(), token, outbox[token].tree.count - 1, nonce);
 
         // Depending on which layer we are on, send the call to the other layer.
+        // slither-disable-start out-of-order-retryable
         if (LAYER == JBLayer.L1) {
             _toL2(token, transportPayment, amount, data, remoteToken);
         } else {
             _toL1(token, amount, data, remoteToken);
         }
+        // slither-disable-end out-of-order-retryable
     }
 
     /// @notice Bridge the `token` and data to the remote L1 chain.
@@ -215,6 +217,7 @@ contract JBArbitrumSucker is JBSucker {
             SafeERC20.forceApprove(IERC20(token), GATEWAYROUTER.getGateway(token), amount);
 
             // Perform the ERC-20 bridge transfer.
+            // slither-disable-start out-of-order-retryable
             // slither-disable-next-line calls-loop,unused-return
             ArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: transportPayment}({
                 _token: token,
@@ -247,6 +250,7 @@ contract JBArbitrumSucker is JBSucker {
             maxFeePerGas: 0.2 gwei,
             data: data
         });
+        // slither-disable-end out-of-order-retryable
     }
 
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
