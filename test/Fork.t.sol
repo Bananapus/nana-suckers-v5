@@ -36,7 +36,7 @@ import {JBClaim} from "../src/structs/JBClaim.sol";
 import {JBLeaf} from "../src/structs/JBClaim.sol";
 import {MerkleLib} from "../src/utils/MerkleLib.sol";
 
-contract CCIPSuckerForkedTests is TestBaseWorkflow {
+contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
     // CCIP Local Simulator Contracts
     CCIPLocalSimulatorFork ccipLocalSimulatorFork;
     BurnMintERC677Helper ccipBnM;
@@ -82,7 +82,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
 
     function initMetadata() public {
         _metadata = JBRulesetMetadata({
-            reservedRate: JBConstants.MAX_RESERVED_RATE / 2, //50%
+            reservedPercent: JBConstants.MAX_RESERVED_PERCENT / 2, //50%
             redemptionRate: JBConstants.MAX_REDEMPTION_RATE, //50%
             baseCurrency: uint32(uint160(address(JBConstants.NATIVE_TOKEN))),
             pausePay: false,
@@ -92,6 +92,8 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
             allowTerminalMigration: false,
             allowSetTerminals: false,
             allowSetController: false,
+            allowAddAccountingContext: true,
+            allowAddPriceFeed: true,
             ownerMustSendPayouts: false,
             holdFees: false,
             useTotalSurplusForRedemptions: true,
@@ -131,18 +133,35 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
             _rulesetConfigurations[0].mustStartAtOrAfter = 0;
             _rulesetConfigurations[0].duration = 0;
             _rulesetConfigurations[0].weight = 1000 * 10 ** 18;
-            _rulesetConfigurations[0].decayRate = 0;
+            _rulesetConfigurations[0].decayPercent = 0;
             _rulesetConfigurations[0].approvalHook = IJBRulesetApprovalHook(address(0));
             _rulesetConfigurations[0].metadata = _metadata;
             _rulesetConfigurations[0].splitGroups = new JBSplitGroup[](0);
             _rulesetConfigurations[0].fundAccessLimitGroups = _fundAccessLimitGroup;
 
             JBTerminalConfig[] memory _terminalConfigurations = new JBTerminalConfig[](1);
-            address[] memory _tokensToAccept = new address[](2);
-            _tokensToAccept[0] = JBConstants.NATIVE_TOKEN;
-            _tokensToAccept[1] = address(ccipBnM);
+            JBAccountingContext[] memory _tokensToAccept = new JBAccountingContext[](2);
+
+            _tokensToAccept[0] = JBAccountingContext({
+                token: JBConstants.NATIVE_TOKEN,
+                decimals: 18,
+                currency: uint32(uint160(JBConstants.NATIVE_TOKEN))
+            });
+
+            _tokensToAccept[1] = JBAccountingContext({
+                token: address(ccipBnM),
+                decimals: 18,
+                currency: uint32(uint160(address(ccipBnM)))
+            });
+
             _terminalConfigurations[0] =
-                JBTerminalConfig({terminal: jbMultiTerminal(), tokensToAccept: _tokensToAccept});
+                JBTerminalConfig({terminal: jbMultiTerminal(), accountingContextsToAccept: _tokensToAccept});
+
+            mockExpect(
+                address(ccipBnM),
+                abi.encodeCall(IERC165.supportsInterface, (type(IERC20Metadata).interfaceId)),
+                abi.encode(true)
+            );
 
             // Create a first project to collect fees.
             jbController().launchProjectFor({
@@ -160,11 +179,12 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
             MockPriceFeed _priceFeedNativeTest = new MockPriceFeed(100 * 10 ** 18, 18); // 2000 test token == 1 native token
             vm.label(address(_priceFeedNativeTest), "Mock Price Feed Native-ccipBnM");
 
+            vm.startPrank(address(jbController()));
             IJBPrices(jbPrices()).addPriceFeedFor({
                 projectId: 1,
                 pricingCurrency: uint32(uint160(address(ccipBnM))),
                 unitCurrency: uint32(uint160(JBConstants.NATIVE_TOKEN)),
-                priceFeed: IJBPriceFeed(_priceFeedNativeTest)
+                feed: IJBPriceFeed(_priceFeedNativeTest)
             });
         }
     }
@@ -189,18 +209,35 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
             _rulesetConfigurations[0].mustStartAtOrAfter = 0;
             _rulesetConfigurations[0].duration = 0;
             _rulesetConfigurations[0].weight = 1000 * 10 ** 18;
-            _rulesetConfigurations[0].decayRate = 0;
+            _rulesetConfigurations[0].decayPercent = 0;
             _rulesetConfigurations[0].approvalHook = IJBRulesetApprovalHook(address(0));
             _rulesetConfigurations[0].metadata = _metadata;
             _rulesetConfigurations[0].splitGroups = new JBSplitGroup[](0);
             _rulesetConfigurations[0].fundAccessLimitGroups = _fundAccessLimitGroup;
 
             JBTerminalConfig[] memory _terminalConfigurations = new JBTerminalConfig[](1);
-            address[] memory _tokensToAccept = new address[](2);
-            _tokensToAccept[0] = JBConstants.NATIVE_TOKEN;
-            _tokensToAccept[1] = address(ccipBnMArbSepolia);
+            JBAccountingContext[] memory _tokensToAccept = new JBAccountingContext[](2);
+
+            _tokensToAccept[0] = JBAccountingContext({
+                token: JBConstants.NATIVE_TOKEN,
+                decimals: 18,
+                currency: uint32(uint160(JBConstants.NATIVE_TOKEN))
+            });
+
+            _tokensToAccept[1] = JBAccountingContext({
+                token: address(ccipBnMArbSepolia),
+                decimals: 18,
+                currency: uint32(uint160(address(ccipBnMArbSepolia)))
+            });
+
             _terminalConfigurations[0] =
-                JBTerminalConfig({terminal: jbMultiTerminal(), tokensToAccept: _tokensToAccept});
+                JBTerminalConfig({terminal: jbMultiTerminal(), accountingContextsToAccept: _tokensToAccept});
+
+            mockExpect(
+                address(ccipBnMArbSepolia),
+                abi.encodeCall(IERC165.supportsInterface, (type(IERC20Metadata).interfaceId)),
+                abi.encode(true)
+            );
 
             // Create a first project to collect fees.
             jbController().launchProjectFor({
@@ -240,7 +277,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow {
 
         // In-memory vars needed for setup
         // Allow the sucker to mint- This permission array is also used in second project config toward the end of this setup.
-        uint256[] memory ids = new uint256[](1);
+        uint8[] memory ids = new uint8[](1);
         ids[0] = JBPermissionIds.MINT_TOKENS;
 
         // Permissions data for setPermissionsFor().
