@@ -59,7 +59,7 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
     /// @param deployer The address of the deployer to add.
     function allowSuckerDeployer(address deployer) public override onlyOwner {
         suckerDeployerIsAllowed[deployer] = true;
-        emit SuckerDeployerAllowed(deployer);
+        emit SuckerDeployerAllowed(deployer, msg.sender);
     }
 
     /// @notice Adds multiple suckers deployer to the allowlist.
@@ -68,7 +68,7 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
     function allowSuckerDeployers(address[] calldata deployers) public onlyOwner {
         for (uint256 _i; _i < deployers.length; _i++) {
             suckerDeployerIsAllowed[deployers[_i]] = true;
-            emit SuckerDeployerAllowed(deployers[_i]);
+            emit SuckerDeployerAllowed(deployers[_i], msg.sender);
         }
     }
 
@@ -114,7 +114,7 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
             sucker.mapTokens(configurations[i].mappings);
         }
 
-        emit SuckersDeployedFor(projectId, suckers);
+        emit SuckersDeployedFor(projectId, suckers, configurations, msg.sender);
     }
 
     function _emitTransferEvent(address previousOwner, address newOwner, uint88 newProjectId)
