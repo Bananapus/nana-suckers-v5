@@ -11,4 +11,5 @@ I left a number of notes throughout. Please `grep -ri "TODO" src`!
 
 ### Sucker
 
-For my own edification – why does `_isRemotePeer` need to accept `sender` as an arg? Could it not just check `msg.sender` directly?
+- For my own edification – why does `_isRemotePeer` need to accept `sender` as an arg? Could it not just check `msg.sender` directly?
+- Where does `i_ccipRouter` get defined (when used in the constructor, on line 66).
