@@ -25,7 +25,7 @@ import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/
 import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
 import {IWETH9} from "./interfaces/IWETH9.sol";
 
-/// @notice A `JBSucker` implementation to suck tokens between chains with Chainlink CCIP
+/// @notice A `JBSucker` implementation which uses Chainlink's [CCIP](https://docs.chain.link/ccip) to bridge tokens and send messages (merkle roots) between chains.
 contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
@@ -53,7 +53,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         IJBPermissions permissions,
         address peer,
         JBAddToBalanceMode atbMode
-    ) JBSucker(directory, tokens, permissions, peer, atbMode, IJBCCIPSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
+    ) JBSucker(directory, tokens, permissions, peer, atbMode, IJBCCIPSuckerDeployer(msg.sender).TEMP_PROJECT_ID()) {
         REMOTE_CHAIN_ID = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_ID();
         REMOTE_CHAIN_SELECTOR = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_SELECTOR();
         ROUTER = IRouterClient(i_ccipRouter);
@@ -65,9 +65,10 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging them.
     function mapToken(JBTokenMapping calldata map) public override {
         address token = map.localToken;
-        bool isNative = map.localToken == JBConstants.NATIVE_TOKEN;
 
-        /* // If the token being mapped is the native token, the `remoteToken` must also be the native token.
+        // TODO: Can this be deleted? Why is it commented out?
+        /* bool isNative = map.localToken == JBConstants.NATIVE_TOKEN;
+        // If the token being mapped is the native token, the `remoteToken` must also be the native token.
         // The native token can also be mapped to the 0 address, which is used to disable native token bridging.
         if (isNative && map.remoteToken != JBConstants.NATIVE_TOKEN && map.remoteToken != address(0)) {
             revert INVALID_NATIVE_REMOTE_ADDRESS(map.remoteToken);
