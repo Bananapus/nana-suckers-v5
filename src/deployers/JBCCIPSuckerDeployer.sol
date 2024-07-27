@@ -16,9 +16,7 @@ import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
 
 /// @notice An `IJBSuckerDeployer` which deploys `JBCCIPSucker` contracts.
 contract JBCCIPSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
-    error ONLY_ADMIN();
-    error ONLY_SUCKERS();
-    error ALREADY_CONFIGURED();
+    error ADMIN_MUST_SET_CONSTANTS();
     error CONSTANTS_NOT_SET();
 
     /// @notice The directory of terminals and controllers for projects.
@@ -83,7 +81,7 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     /// @param remoteChainId The ID of the remote chain to connect with.
     function setChainSpecificConstants(uint256 remoteChainId) external {
         // Only allow the pre-specified admin to set these constants.
-        if (msg.sender != ADMIN_TO_SET_CONSTANTS) revert ONLY_ADMIN();
+        if (msg.sender != ADMIN_TO_SET_CONSTANTS) revert ADMIN_MUST_SET_CONSTANTS();
 
         REMOTE_CHAIN_ID = remoteChainId;
         REMOTE_CHAIN_SELECTOR = CCIPHelper.selectorOfChain(remoteChainId);
