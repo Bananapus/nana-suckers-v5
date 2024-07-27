@@ -44,11 +44,11 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     address public immutable WETH;
 
     error MUST_PAY_ROUTER_FEE();
-    error NATIVE_ON_ETH_ONLY();
+    error LOCAL_NATIVE_ON_MAINNET_ONLY();
     error REMOTE_OF_NATIVE_MUST_BE_WETH();
     error TOKEN_NOT_SUPPORTED();
-    error NotEnoughBalance(uint256 balance, uint256 fees);
-    error FailedToRefundFee();
+    error InsufficientMaxRouterFee(uint256 balance, uint256 fees);
+    error FailedToRefund();
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -127,7 +127,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
 
         // TODO: Should we add something like this back for production?
         // Only support local native tokens (and wrapping) on Ethereum mainnet.
-        // if (block.chainid != 1 && localIsNative) revert NATIVE_ON_ETH_ONLY();
+        // if (block.chainid != 1 && localIsNative) revert LOCAL_NATIVE_ON_MAINNET_ONLY();
 
         // Revert if the remote token is the native token – we can only bridge wrapped native tokens.
         if (remoteTokenAddress == JBConstants.NATIVE_TOKEN) revert REMOTE_OF_NATIVE_MUST_BE_WETH();
@@ -176,7 +176,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
 
         // If the caller didn't send enough to cover the router fee, revert.
         if (fees > maxRouterFee) {
-            revert NotEnoughBalance(maxRouterFee, fees);
+            revert InsufficientMaxRouterFee(maxRouterFee, fees);
         }
 
         // If the local token is the native token, wrap it.
@@ -199,7 +199,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
 
         // Return the remaining `msg.value` to the caller now that fees have been paid.
         (bool sent,) = msg.sender.call{value: msg.value - fees}("");
-        if (!sent) revert FailedToRefundFee();
+        if (!sent) revert FailedToRefund();
     }
 
     /// @notice Checks whether the `targetToken` is in the `tokenList`.
