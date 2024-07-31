@@ -15,7 +15,6 @@ import {IJBSucker} from "./../interfaces/IJBSucker.sol";
 import {IJBSuckerDeployer} from "./../interfaces/IJBSuckerDeployer.sol";
 
 contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
-    error ONLY_SUCKERS();
     error ALREADY_CONFIGURED();
 
     /// @notice The directory of terminals and controllers for projects.

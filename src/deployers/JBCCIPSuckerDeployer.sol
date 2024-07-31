@@ -17,7 +17,6 @@ import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
 /// @notice An `IJBSuckerDeployer` implementation to deploy contracts.
 contract JBCCIPSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     error ONLY_ADMIN();
-    error ONLY_SUCKERS();
     error ALREADY_CONFIGURED();
     error NOT_CONFIGURED();
 
