@@ -70,10 +70,6 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
             )
         );
 
-        // TODO: See if resetting this value is cheaper than deletion
-        // Delete after callback should complete.
-        /* delete TEMP_ID_STORE; */
-
         isSucker[address(sucker)] = true;
     }
 
