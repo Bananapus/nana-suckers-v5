@@ -36,7 +36,6 @@ import {JBArbitrumSuckerDeployer} from "src/deployers/JBArbitrumSuckerDeployer.s
 contract ArbSuckerDeployForkedTests is TestBaseWorkflow, JBTest {
     // Re-used parameters for project/ruleset/sucker setups
     JBRulesetMetadata _metadata;
-    JBAddToBalanceMode atbMode = JBAddToBalanceMode.ON_CLAIM;
 
     // Sucker and token
     JBArbitrumSuckerDeployer suckerDeployer;
@@ -48,8 +47,6 @@ contract ArbSuckerDeployForkedTests is TestBaseWorkflow, JBTest {
     // Chain ids and selectors
     uint256 sepoliaFork;
     uint256 arbSepoliaFork;
-    uint64 arbSepoliaChainSelector = 3478487238524512106;
-    uint64 ethSepoliaChainSelector = 16015286601757825753;
 
     // RPCs
     string ETHEREUM_SEPOLIA_RPC_URL = vm.envOr("RPC_ETHEREUM_SEPOLIA", string("https://1rpc.io/sepolia"));
@@ -144,9 +141,6 @@ contract ArbSuckerDeployForkedTests is TestBaseWorkflow, JBTest {
                 terminalConfigurations: _terminalConfigurations, // Set terminals to receive fees.
                 memo: ""
             });
-
-            // Setup an erc20 for the project
-            projectOneToken = jbController().deployERC20For(1, "SuckerToken", "SOOK", bytes32(0));
         }
     }
 
@@ -206,6 +200,20 @@ contract ArbSuckerDeployForkedTests is TestBaseWorkflow, JBTest {
         // run setup on our first fork (sepolia) so we have a JBV4 setup (deploys v4 contracts).
         super.setUp();
 
+        // Mimics JBV4 deployment across all forks in this env.
+        vm.makePersistent(address(jbDirectory()));
+        vm.makePersistent(address(jbTokens()));
+        vm.makePersistent(address(jbPermissions()));
+        vm.makePersistent(address(jbMultiTerminal()));
+        vm.makePersistent(address(jbController()));
+        vm.makePersistent(address(jbProjects()));
+        vm.makePersistent(address(jbPrices()));
+        vm.makePersistent(address(jbSplits()));
+        vm.makePersistent(address(jbAccessConstraintStore()));
+        vm.makePersistent(address(jbFeelessAddresses()));
+        vm.makePersistent(address(jbTerminalStore()));
+        vm.makePersistent(address(jbRulesets()));
+
         vm.stopPrank();
         suckerDeployer =
             new JBArbitrumSuckerDeployer{salt: "salty"}(jbDirectory(), jbTokens(), jbPermissions(), address(this));
@@ -222,11 +230,6 @@ contract ArbSuckerDeployForkedTests is TestBaseWorkflow, JBTest {
         // Permissions data for setPermissionsFor().
         JBPermissionsData memory perms =
             JBPermissionsData({operator: address(suckerOne), projectId: 1, permissionIds: ids});
-
-        // Chain selectors of remote chains allowed by the suckers (bi-directional in this example).
-        uint64[] memory allowedChains = new uint64[](2);
-        allowedChains[0] = arbSepoliaChainSelector;
-        allowedChains[1] = ethSepoliaChainSelector;
 
         // Allow our L1 sucker to mint.
         vm.startPrank(multisig());
@@ -246,6 +249,7 @@ contract ArbSuckerDeployForkedTests is TestBaseWorkflow, JBTest {
             new JBArbitrumSuckerDeployer{salt: "salty"}(jbDirectory(), jbTokens(), jbPermissions(), address(this));
 
         suckerTwo = suckerDeployer2.createForSender(1, "salty");
+        vm.label(address(suckerTwo), "suckerTwo");
 
         // Launch our project on L2.
         vm.startPrank(multisig());
@@ -262,9 +266,7 @@ contract ArbSuckerDeployForkedTests is TestBaseWorkflow, JBTest {
     // ------------------------------- Tests ----------------------------- //
     //*********************************************************************//
 
-    function test_something() external {
-        emit log_address(address(suckerDeployer));
-        emit log_address(address(suckerDeployer2));
+    function test_addresses_match() external {
         assertEq(address(suckerDeployer), address(suckerDeployer2));
         assertEq(address(suckerOne), address(suckerTwo));
     }
