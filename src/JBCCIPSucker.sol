@@ -72,14 +72,10 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         address remoteTokenAddress = remoteToken.addr;
 
         // Make sure we are attempting to pay the bridge
-        if (transportPayment == 0) {
-            revert MUST_PAY_BRIDGE();
-        }
+        if (transportPayment == 0) revert MUST_PAY_BRIDGE();
 
         // Ensure the token is mapped to an address on the remote chain.
-        if (remoteTokenAddress == address(0)) {
-            revert TOKEN_NOT_MAPPED(token);
-        }
+        if (remoteTokenAddress == address(0)) revert TOKEN_NOT_MAPPED(token);
 
         // Only support native backing token (and wrapping) if on Ethereum
         if (block.chainid != 1 && localIsNative) revert NATIVE_ON_ETH_ONLY();
@@ -94,8 +90,8 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         // Increment the outbox tree's nonce.
         uint64 nonce = ++outbox[token].nonce;
 
-        bytes32 _root = outbox[token].tree.root();
-        uint256 _index = outbox[token].tree.count - 1;
+        bytes32 root = outbox[token].tree.root();
+        uint256 index = outbox[token].tree.count - 1;
 
         // Wrap the token if it's native
         if (willSendWeth) IWETH9(CCIPHelper.wethOfChain(block.chainid)).deposit{value: amount}();
@@ -106,7 +102,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
             _root: JBMessageRoot({
                 token: remoteToken.addr,
                 amount: amount,
-                remoteRoot: JBInboxTreeRoot({nonce: nonce, root: _root})
+                remoteRoot: JBInboxTreeRoot({nonce: nonce, root: root})
             }),
             _token: willSendWeth ? WETH : token,
             _amount: amount,
@@ -133,7 +129,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         router.ccipSend{value: fees}({destinationChainSelector: remoteChainSelector, message: evm2AnyMessage});
 
         // Emit an event for the relayers to watch for.
-        emit RootToRemote(_root, token, _index, nonce);
+        emit RootToRemote(root, token, index, nonce);
 
         // Refund remaining balance.
         (bool sent,) = msg.sender.call{value: msg.value - fees}("");
@@ -187,7 +183,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         address origin = abi.decode(any2EvmMessage.sender, (address));
 
         // Make sure that the message came from our peer.
-        if (origin != address(this)) revert NOT_PEER();
+        if (origin != PEER) revert NOT_PEER();
 
         // Increase the outstanding amount to be added to the project's balance by the amount being received.
         amountToAddToBalance[root.token] += root.amount;
