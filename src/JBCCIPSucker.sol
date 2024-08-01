@@ -197,11 +197,16 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         }
     }
 
-    /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
+    /// @notice Unused in this context.
     /// @param sender The message's sender.
-    function _isRemotePeer(address sender) internal view override onlyRouter returns (bool _valid) {
-        // Checks modifier onlyRouter and returns true if passing.
-        return true;
+    function _isRemotePeer(address sender) internal view override returns (bool _valid) {
+        return false;
+    }
+
+    /// @notice Unused in this context.
+    function fromRemote(JBMessageRoot calldata root) external payable override {
+        // Unused in this context.
+        revert();
     }
 
     /// @notice Returns the chain on which the peer is located.
