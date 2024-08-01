@@ -198,14 +198,10 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     }
 
     /// @notice Unused in this context.
-    /// @param sender The message's sender.
-    function _isRemotePeer(address sender) internal view override returns (bool _valid) {
-        return false;
-    }
+    function _isRemotePeer(address sender) internal view override returns (bool _valid) {}
 
     /// @notice Unused in this context.
     function fromRemote(JBMessageRoot calldata root) external payable override {
-        // Unused in this context.
         revert();
     }
 
