@@ -177,7 +177,7 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
 
             // Store the sucker as being deployed for this project.
             // slither-disable-next-line unused-return
-            _suckersOf[projectId].set(address(sucker), _SUCKER_EXISTS);
+            _suckersOf[projectId].set({key: address(sucker), value: _SUCKER_EXISTS});
 
             // Map the tokens for the sucker.
             // slither-disable-next-line reentrancy-events,calls-loop
