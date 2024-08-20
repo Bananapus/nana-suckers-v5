@@ -15,7 +15,6 @@ import {IOPMessenger} from "../interfaces/IOPMessenger.sol";
 import {IOPStandardBridge} from "../interfaces/IOPStandardBridge.sol";
 
 contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerDeployer {
-
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
@@ -52,7 +51,7 @@ contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerD
 
     /// @notice A temporary storage slot used by suckers to maintain deterministic deploys.
     uint256 public override tempStoreId;
-    
+
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
@@ -73,7 +72,6 @@ contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerD
     //*********************************************************************//
     // --------------------- external transactions ----------------------- //
     //*********************************************************************//
-
 
     /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment addresses would change.
     /// @notice messenger the OPMesssenger on this layer.
@@ -102,7 +100,15 @@ contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerD
         tempStoreId = localProjectId;
 
         sucker = IJBSucker(
-            address(new JBBaseSucker{salt: salt}(DIRECTORY, PERMISSIONS, TOKENS, address(0), JBAddToBalanceMode.MANUAL))
+            address(
+                new JBBaseSucker{salt: salt}({
+                    directory: DIRECTORY,
+                    permissions: PERMISSIONS,
+                    tokens: TOKENS,
+                    peer: address(0),
+                    addToBalanceMode: JBAddToBalanceMode.MANUAL
+                })
+            )
         );
 
         // TODO: See if resetting this value is cheaper than deletion

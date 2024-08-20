@@ -11,7 +11,6 @@ import {JBSucker} from "./../JBSucker.sol";
 import {IJBSuckerDeployerFeeless} from "../interfaces/IJBSuckerDeployerFeeless.sol";
 
 abstract contract JBAllowanceSucker is JBSucker {
-
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
@@ -56,8 +55,7 @@ abstract contract JBAllowanceSucker is JBSucker {
             revert JBAllowanceSucker_TokenNotMapped();
         }
 
-        uint256 surplus =
-            terminal.currentSurplusOf(PROJECT_ID, accountingContext.decimals, accountingContext.currency);
+        uint256 surplus = terminal.currentSurplusOf(PROJECT_ID, accountingContext.decimals, accountingContext.currency);
 
         // TODO: replace with PRB-Math muldiv.
         uint256 backingAssets = amount * surplus / totalSupply;

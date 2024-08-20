@@ -99,12 +99,7 @@ contract MerkleUnitTest is JBSucker, Test {
         JBSucker(this).claim(
             JBClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: JBLeaf({
-                    index: 2,
-                    beneficiary: address(120),
-                    projectTokenCount: 5 ether,
-                    terminalTokenAmount: 5 ether
-                }),
+                leaf: JBLeaf({index: 2, beneficiary: address(120), projectTokenCount: 5 ether, terminalTokenAmount: 5 ether}),
                 proof: __proof
             })
         );
@@ -132,12 +127,7 @@ contract MerkleUnitTest is JBSucker, Test {
         JBSucker(this).claim(
             JBClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: JBLeaf({
-                    index: 2,
-                    beneficiary: address(120),
-                    projectTokenCount: 5 ether,
-                    terminalTokenAmount: 5 ether
-                }),
+                leaf: JBLeaf({index: 2, beneficiary: address(120), projectTokenCount: 5 ether, terminalTokenAmount: 5 ether}),
                 proof: __proof
             })
         );
@@ -147,12 +137,7 @@ contract MerkleUnitTest is JBSucker, Test {
         JBSucker(this).claim(
             JBClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: JBLeaf({
-                    index: 2,
-                    beneficiary: address(120),
-                    projectTokenCount: 5 ether,
-                    terminalTokenAmount: 5 ether
-                }),
+                leaf: JBLeaf({index: 2, beneficiary: address(120), projectTokenCount: 5 ether, terminalTokenAmount: 5 ether}),
                 proof: __proof
             })
         );

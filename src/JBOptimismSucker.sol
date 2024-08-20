@@ -47,18 +47,18 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
 
-    /// @param directory A contract storing directories of terminals and controllers for each project.    
-    /// @param tokens A contract that manages token minting and burning.    
+    /// @param directory A contract storing directories of terminals and controllers for each project.
+    /// @param tokens A contract that manages token minting and burning.
     /// @param permissions A contract storing permissions.
     /// @param peer The address of the peer sucker on the remote chain.
-    /// @param atbMode The mode of adding tokens to balance.
+    /// @param addToBalanceMode The mode of adding tokens to balance.
     constructor(
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
         address peer,
-        JBAddToBalanceMode atbMode
-    ) JBSucker(directory, permissions, tokens, peer, atbMode, IJBSuckerDeployer(msg.sender).tempStoreId()) {
+        JBAddToBalanceMode addToBalanceMode
+    ) JBSucker(directory, permissions, tokens, peer, addToBalanceMode, IJBSuckerDeployer(msg.sender).tempStoreId()) {
         // Fetch the messenger and bridge by doing a callback to the deployer contract.
         OPBRIDGE = JBOptimismSuckerDeployer(msg.sender).opBridge();
         OPMESSENGER = JBOptimismSuckerDeployer(msg.sender).opMessenger();
@@ -117,7 +117,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
         if (token != JBConstants.NATIVE_TOKEN) {
             // Approve the tokens bing bridged.
             // slither-disable-next-line reentrancy-events
-            SafeERC20.forceApprove(IERC20(token), address(OPBRIDGE), amount);
+            SafeERC20.forceApprove({token: IERC20(token), spender: address(OPBRIDGE), value: amount});
 
             // Bridge the tokens to the peer sucker.
             // slither-disable-next-line reentrency-events,calls-loop

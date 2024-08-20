@@ -61,19 +61,19 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
-    
-    /// @param directory A contract storing directories of terminals and controllers for each project.    
+
+    /// @param directory A contract storing directories of terminals and controllers for each project.
     /// @param permissions A contract storing permissions.
-    /// @param tokens A contract that manages token minting and burning.    
+    /// @param tokens A contract that manages token minting and burning.
     /// @param peer The address of the peer sucker on the remote chain.
-    /// @param atbMode The mode of adding tokens to balance.
+    /// @param addToBalanceMode The mode of adding tokens to balance.
     constructor(
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
         address peer,
-        JBAddToBalanceMode atbMode
-    ) JBSucker(directory, permissions, tokens, peer, atbMode, IJBSuckerDeployer(msg.sender).tempStoreId()) {
+        JBAddToBalanceMode addToBalanceMode
+    ) JBSucker(directory, permissions, tokens, peer, addToBalanceMode, IJBSuckerDeployer(msg.sender).tempStoreId()) {
         // Layer specific properties
         uint256 chainId = block.chainid;
 
@@ -107,7 +107,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         if (chainId == ARBChains.ARB_CHAINID) return ARBChains.ETH_CHAINID;
         if (chainId == ARBChains.ETH_SEP_CHAINID) return ARBChains.ARB_SEP_CHAINID;
         if (chainId == ARBChains.ARB_SEP_CHAINID) return ARBChains.ETH_SEP_CHAINID;
-        return 0; 
+        return 0;
     }
 
     //*********************************************************************//
@@ -208,12 +208,15 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
             // slither-disable-next-line calls-loop
-            SafeERC20.forceApprove(IERC20(token), GATEWAYROUTER.getGateway(token), amount);
+            SafeERC20.forceApprove({token: IERC20(token), spender: GATEWAYROUTER.getGateway(token), value: amount});
 
             // slither-disable-next-line calls-loop,unused-return
-            IArbL2GatewayRouter(address(GATEWAYROUTER)).outboundTransfer(
-                remoteToken.addr, address(PEER), amount, bytes("")
-            );
+            IArbL2GatewayRouter(address(GATEWAYROUTER)).outboundTransfer({
+                l1Token: remoteToken.addr,
+                to: address(PEER),
+                amount: amount,
+                data: bytes("")
+            });
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
@@ -238,7 +241,8 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     ) internal {
         uint256 nativeValue;
         // slither-disable-next-line calls-loop
-        uint256 maxSubmissionCost = ARBINBOX.calculateRetryableSubmissionFee(data.length, 0.2 gwei);
+        uint256 maxSubmissionCost =
+            ARBINBOX.calculateRetryableSubmissionFee({dataLength: data.length, baseFee: 0.2 gwei});
         uint256 feeTotal = maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * 0.2 gwei);
 
         // Ensure we bridge enough for gas costs on L2 side
@@ -248,7 +252,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         if (token != JBConstants.NATIVE_TOKEN) {
             // Approve the tokens to be bridged.
             // slither-disable-next-line calls-loop
-            SafeERC20.forceApprove(IERC20(token), GATEWAYROUTER.getGateway(token), amount);
+            SafeERC20.forceApprove({token: IERC20(token), spender: GATEWAYROUTER.getGateway(token), value: amount});
 
             // Perform the ERC-20 bridge transfer.
             // slither-disable-start out-of-order-retryable

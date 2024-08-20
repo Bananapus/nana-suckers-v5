@@ -62,14 +62,14 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
     /// @param projectId The ID of the project to check for.
     /// @param addr The address of the sucker to check.
     /// @return flag A flag indicating if the sucker belongs to the project, and was deployed through this registry.
-    function isSuckerOf(uint256 projectId, address addr) external override view returns (bool) {
+    function isSuckerOf(uint256 projectId, address addr) external view override returns (bool) {
         return _suckersOf[projectId].get(addr) == _SUCKER_EXISTS;
     }
 
     /// @notice Gets all of the specified project's suckers which were deployed through this registry.
     /// @param projectId The ID of the project to get the suckers of.
     /// @return suckers The addresses of the suckers.
-    function suckersOf(uint256 projectId) external override view returns (address[] memory) {
+    function suckersOf(uint256 projectId) external view override returns (address[] memory) {
         return _suckersOf[projectId].keys();
     }
 
@@ -113,7 +113,6 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
     /// @dev Can only be called by this contract's owner (initially project ID 1, or JuiceboxDAO).
     /// @param deployers The address of the deployer to add.
     function allowSuckerDeployers(address[] calldata deployers) public onlyOwner {
-        
         // Keep a reference to the number of deployers.
         uint256 numberOfDeployers = deployers.length;
 
@@ -183,7 +182,12 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
             // Map the tokens for the sucker.
             // slither-disable-next-line reentrancy-events,calls-loop
             sucker.mapTokens(configuration.mappings);
-            emit SuckerDeployedFor({projectId: projectId, sucker: address(sucker), configuration: configuration, caller: msg.sender});
+            emit SuckerDeployedFor({
+                projectId: projectId,
+                sucker: address(sucker),
+                configuration: configuration,
+                caller: msg.sender
+            });
         }
     }
 
@@ -198,7 +202,10 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
     {
         // Only emit after the initial transfer.
         if (address(this).code.length != 0) {
-            emit OwnershipTransferred({previousOwner: previousOwner, newOwner: newProjectId == 0 ? newOwner : PROJECTS.ownerOf(newProjectId)});
+            emit OwnershipTransferred({
+                previousOwner: previousOwner,
+                newOwner: newProjectId == 0 ? newOwner : PROJECTS.ownerOf(newProjectId)
+            });
         }
     }
 }

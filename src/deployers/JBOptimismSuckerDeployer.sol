@@ -15,8 +15,7 @@ import {IOPMessenger} from "../interfaces/IOPMessenger.sol";
 import {IOPStandardBridge} from "../interfaces/IOPStandardBridge.sol";
 
 /// @notice An `IJBSuckerDeployerFeeless` implementation to deploy `JBOptimismSucker` contracts.
-contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerDeployer  {
-
+contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerDeployer {
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
@@ -97,7 +96,13 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
 
         sucker = IJBSucker(
             address(
-                new JBOptimismSucker{salt: salt}(DIRECTORY, PERMISSIONS, TOKENS, address(0), JBAddToBalanceMode.MANUAL)
+                new JBOptimismSucker{salt: salt}({
+                    directory: DIRECTORY,
+                    permissions: PERMISSIONS,
+                    tokens: TOKENS,
+                    peer: address(0),
+                    addToBalanceMode: JBAddToBalanceMode.MANUAL
+                })
             )
         );
 

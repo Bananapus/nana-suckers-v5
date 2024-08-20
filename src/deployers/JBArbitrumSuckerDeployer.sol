@@ -18,7 +18,6 @@ import {ARBChains} from "../libraries/ARBChains.sol";
 
 /// @notice An `IJBSuckerDeployerFeeless` implementation to deploy `JBOptimismSucker` contracts.
 contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbitrumSuckerDeployer {
-
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
@@ -56,7 +55,7 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
-    
+
     /// @param directory The directory of terminals and controllers for projects.
     /// @param permissions The permissions contract for the deployer.
     /// @param tokens The contract that manages token minting and burning.
@@ -101,7 +100,13 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
 
         sucker = IJBSucker(
             address(
-                new JBArbitrumSucker{salt: salt}(DIRECTORY, PERMISSIONS, TOKENS, address(0), JBAddToBalanceMode.MANUAL)
+                new JBArbitrumSucker{salt: salt}({
+                    directory: DIRECTORY,
+                    permissions: PERMISSIONS,
+                    tokens: TOKENS,
+                    peer: address(0),
+                    addToBalanceMode: JBAddToBalanceMode.MANUAL
+                })
             )
         );
 
@@ -111,7 +116,6 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
 
         isSucker[address(sucker)] = true;
     }
-
 
     /* /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment addresses would change.
     /// @notice messenger the OPMesssenger on this layer.
