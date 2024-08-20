@@ -27,6 +27,7 @@ import {ARBAddresses} from "./libraries/ARBAddresses.sol";
 import {ARBChains} from "./libraries/ARBChains.sol";
 import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
 import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
+import {JBOutboxTree} from "./structs/JBOutboxTree.sol";
 import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
@@ -101,7 +102,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
-    function peerChainID() external view virtual override returns (uint256) {
+    function peerChainId() external view virtual override returns (uint256) {
         uint256 chainId = block.chainid;
         if (chainId == ARBChains.ETH_CHAINID) return ARBChains.ARB_CHAINID;
         if (chainId == ARBChains.ARB_CHAINID) return ARBChains.ETH_CHAINID;
@@ -150,12 +151,15 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         //     revert JBArbitrumSucker_NotEnoughGas();
         // }
 
+        // Get the outbox in storage.
+        JBOutboxTree storage outbox = _outboxOf[token];
+
         // Get the amount to send and then clear it.
-        uint256 amount = outbox[token].balance;
-        delete outbox[token].balance;
+        uint256 amount = outbox.balance;
+        delete outbox.balance;
 
         // Increment the outbox tree's nonce.
-        uint64 nonce = ++outbox[token].nonce;
+        uint64 nonce = ++outbox.nonce;
 
         if (remoteToken.addr == address(0)) {
             revert JBArbitrumSucker_TokenNotMapped();
@@ -168,16 +172,16 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
                 JBMessageRoot({
                     token: remoteToken.addr,
                     amount: amount,
-                    remoteRoot: JBInboxTreeRoot({nonce: nonce, root: outbox[token].tree.root()})
+                    remoteRoot: JBInboxTreeRoot({nonce: nonce, root: outbox.tree.root()})
                 })
             )
         );
 
         // Emit an event for the relayers to watch for.
         emit RootToRemote({
-            root: outbox[token].tree.root(),
+            root: outbox.tree.root(),
             token: token,
-            index: outbox[token].tree.count - 1,
+            index: outbox.tree.count - 1,
             nonce: nonce,
             caller: msg.sender
         });

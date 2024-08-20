@@ -56,10 +56,10 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     //*********************************************************************//
 
     /// @notice A reasonable minimum gas limit for a basic cross-chain call. The minimum amount of gas required to call the `fromRemote` (successfully/safely) on the remote chain.
-    uint32 constant MESSENGER_BASE_GAS_LIMIT = 300_000;
+    uint32 public constant override MESSENGER_BASE_GAS_LIMIT = 300_000;
 
     /// @notice A reasonable minimum gas limit used when bridging ERC-20s. The minimum amount of gas required to (successfully/safely) perform a transfer on the remote chain.
-    uint32 constant MESSENGER_ERC20_MIN_GAS_LIMIT = 200_000;
+    uint32 public constant override MESSENGER_ERC20_MIN_GAS_LIMIT = 200_000;
 
     //*********************************************************************//
     // ------------------------- internal constants ----------------------- //
@@ -73,38 +73,30 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     //*********************************************************************//
 
     /// @notice Whether the `amountToAddToBalance` gets added to the project's balance automatically when `claim` is called or manually by calling `addOutstandingAmountToBalance`.
-    JBAddToBalanceMode public immutable ADD_TO_BALANCE_MODE;
+    JBAddToBalanceMode public immutable override ADD_TO_BALANCE_MODE;
 
     /// @notice The address of this contract's deployer.
-    address public immutable DEPLOYER;
+    address public immutable override DEPLOYER;
 
     /// @notice The directory of terminals and controllers for projects.
-    IJBDirectory public immutable DIRECTORY;
+    IJBDirectory public immutable override DIRECTORY;
 
     /// @notice The peer sucker on the remote chain.
     address public immutable override PEER;
 
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
-    uint256 public immutable PROJECT_ID;
+    uint256 public immutable override PROJECT_ID;
 
     /// @notice The contract that manages token minting and burning.
-    IJBTokens public immutable TOKENS;
+    IJBTokens public immutable override TOKENS;
 
     //*********************************************************************//
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
 
     /// @notice The outstanding amount of tokens to be added to the project's balance by `claim` or `addOutstandingAmountToBalance`.
-    mapping(address token => uint256 amount) public amountToAddToBalance;
-
-    /// @notice The inbox merkle tree root for a given token.
-    mapping(address token => JBInboxTreeRoot root) public inbox;
-
-    /// @notice The outbox merkle tree for a given token.
-    mapping(address token => JBOutboxTree) public outbox;
-
-    /// @notice Information about the token on the remote chain that the given token on the local chain is mapped to.
-    mapping(address token => JBRemoteToken remoteToken) public remoteTokenFor;
+    /// @custom:param token The local terminal token to get the amount to add to balance for.
+    mapping(address token => uint256 amount) public override amountToAddToBalanceOf;
 
     //*********************************************************************//
     // -------------------- internal stored properties ------------------- //
@@ -112,7 +104,20 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
     /// @notice Tracks whether individual leaves in a given token's merkle tree have been executed (to prevent double-spending).
     /// @dev A leaf is "executed" when the tokens it represents are minted for its beneficiary.
-    mapping(address token => BitMaps.BitMap) _executed;
+    /// @custom:param token The token to get the executed bitmap of.
+    mapping(address token => BitMaps.BitMap) internal _executedFor;
+
+    /// @notice The inbox merkle tree root for a given token.
+    /// @custom:param token The local terminal token to get the inbox for.
+    mapping(address token => JBInboxTreeRoot root) internal _inboxOf;
+
+    /// @notice The outbox merkle tree for a given token.
+    /// @custom:param token The local terminal token to get the outbox for.
+    mapping(address token => JBOutboxTree) internal _outboxOf;
+
+    /// @notice Information about the token on the remote chain that the given token on the local chain is mapped to.
+    /// @custom:param token The local terminal token to get the remote token for.
+    mapping(address token => JBRemoteToken remoteToken) internal _remoteTokenFor;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -147,16 +152,34 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     // ------------------------ external views --------------------------- //
     //*********************************************************************//
 
+    /// @notice The inbox merkle tree root for a given token.
+    /// @param token The local terminal token to get the inbox for.
+    function inboxOf(address token) external view returns (JBInboxTreeRoot memory) {
+        return _inboxOf[token];
+    }
+
     /// @notice Checks whether the specified token is mapped to a remote token.
     /// @param token The terminal token to check.
     /// @return A boolean which is `true` if the token is mapped to a remote token and `false` if it is not.
     function isMapped(address token) external view override returns (bool) {
-        return remoteTokenFor[token].addr != address(0);
+        return _remoteTokenFor[token].addr != address(0);
+    }
+
+    /// @notice Information about the token on the remote chain that the given token on the local chain is mapped to.
+    /// @param token The local terminal token to get the remote token for.
+    function outboxOf(address token) external view returns (JBOutboxTree memory) {
+        return _outboxOf[token];
     }
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chain ID of the peer.
-    function peerChainID() external view virtual returns (uint256);
+    function peerChainId() external view virtual returns (uint256);
+
+    /// @notice Information about the token on the remote chain that the given token on the local chain is mapped to.
+    /// @param token The local terminal token to get the remote token for.
+    function remoteTokenFor(address token) external view returns (JBRemoteToken memory) {
+        return _remoteTokenFor[token];
+    }
 
     //*********************************************************************//
     // ------------------------ internal views --------------------------- //
@@ -198,7 +221,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         }
 
         // Add entire outstanding amount to the project's balance.
-        _addToBalance(token, amountToAddToBalance[token]);
+        _addToBalance({token: token, amount: amountToAddToBalanceOf[token]});
     }
 
     /// @notice Performs multiple claims.
@@ -262,12 +285,16 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         }
 
         // Increase the outstanding amount to be added to the project's balance by the amount being received.
-        amountToAddToBalance[root.token] += root.amount;
+        amountToAddToBalanceOf[root.token] += root.amount;
+
+        // Get the inbox in storage.
+        JBInboxTreeRoot storage inbox = _inboxOf[root.token];
 
         // If the received tree's nonce is greater than the current inbox tree's nonce, update the inbox tree.
         // We can't revert because this could be a native token transfer. If we reverted, we would lose the native tokens.
-        if (root.remoteRoot.nonce > inbox[root.token].nonce) {
-            inbox[root.token] = root.remoteRoot;
+        if (root.remoteRoot.nonce > inbox.nonce) {
+            inbox.nonce = root.remoteRoot.nonce;
+            inbox.root = root.remoteRoot.root;
             emit NewInboxTreeRoot({
                 token: root.token,
                 nonce: root.remoteRoot.nonce,
@@ -303,12 +330,12 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         });
 
         // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds to the remote chain.
-        if (map.remoteToken == address(0) && outbox[token].balance != 0) {
-            _sendRoot({transportPayment: 0, token: token, remoteToken: remoteTokenFor[token]});
+        if (map.remoteToken == address(0) && _outboxOf[token].balance != 0) {
+            _sendRoot({transportPayment: 0, token: token, remoteToken: _remoteTokenFor[token]});
         }
 
         // Update the token mapping.
-        remoteTokenFor[token] =
+        _remoteTokenFor[token] =
             JBRemoteToken({minGas: map.minGas, addr: map.remoteToken, minBridgeAmount: map.minBridgeAmount});
     }
 
@@ -345,7 +372,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         }
 
         // Make sure that the token is mapped to a remote token.
-        if (remoteTokenFor[token].addr == address(0)) {
+        if (_remoteTokenFor[token].addr == address(0)) {
             revert JBSucker_TokenNotMapped();
         }
 
@@ -415,10 +442,10 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     /// @dev This sends the outbox root for the specified `token` to the remote chain.
     /// @param token The terminal token being bridged.
     function toRemote(address token) external payable {
-        JBRemoteToken memory remoteToken = remoteTokenFor[token];
+        JBRemoteToken memory remoteToken = _remoteTokenFor[token];
 
         // Ensure that the amount being bridged exceeds the minimum bridge amount.
-        if (outbox[token].balance < remoteToken.minBridgeAmount) {
+        if (_outboxOf[token].balance < remoteToken.minBridgeAmount) {
             revert JBSucker_QueueInsufficientSize();
         }
 
@@ -442,14 +469,14 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     /// @param amount The amount of terminal tokens to add to the project's balance.
     function _addToBalance(address token, uint256 amount) internal {
         // Make sure that the current `amountToAddToBalance` is greater than or equal to the amount being added.
-        uint256 addableAmount = amountToAddToBalance[token];
+        uint256 addableAmount = amountToAddToBalanceOf[token];
         if (amount > addableAmount) {
             revert JBSucker_InsufficientBalance();
         }
 
         // Update the outstanding amount of tokens which can be added to the project's balance.
         unchecked {
-            amountToAddToBalance[token] = addableAmount - amount;
+            amountToAddToBalanceOf[token] = addableAmount - amount;
         }
 
         // Get the project's primary terminal for the token.
@@ -507,19 +534,22 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
             beneficiary: beneficiary
         });
 
+        // Get the outbox in storage.
+        JBOutboxTree storage outbox = _outboxOf[token];
+
         // Create a new tree based on the outbox tree for the terminal token with the hash inserted.
-        MerkleLib.Tree memory tree = outbox[token].tree.insert(hashed);
+        MerkleLib.Tree memory tree = outbox.tree.insert(hashed);
 
         // Update the outbox tree and balance for the terminal token.
-        outbox[token].tree = tree;
-        outbox[token].balance += terminalTokenAmount;
+        outbox.tree = tree;
+        outbox.balance += terminalTokenAmount;
 
         emit InsertToOutboxTree({
             beneficiary: beneficiary,
             token: token,
             hashed: hashed,
             index: tree.count - 1, // Subtract 1 since we want the 0-based index.
-            root: outbox[token].tree.root(),
+            root: outbox.tree.root(),
             projectTokenCount: projectTokenCount,
             terminalTokenAmount: terminalTokenAmount,
             caller: msg.sender
@@ -554,12 +584,12 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         bytes32[_TREE_DEPTH] calldata leaves
     ) internal {
         // Make sure the leaf has not already been executed.
-        if (_executed[terminalToken].get(index)) {
+        if (_executedFor[terminalToken].get(index)) {
             revert JBSucker_LeafAlreadyExecuted();
         }
 
         // Register the leaf as executed to prevent double-spending.
-        _executed[terminalToken].set(index);
+        _executedFor[terminalToken].set(index);
 
         // Calculate the root based on the leaf, the branch, and the index.
         bytes32 root = MerkleLib.branchRoot({
@@ -569,7 +599,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         });
 
         // Compare the calculated root to the terminal token's inbox root. Revert if they do not match.
-        if (root != inbox[terminalToken].root) {
+        if (root != _inboxOf[terminalToken].root) {
             revert JBSucker_InvalidProof();
         }
     }

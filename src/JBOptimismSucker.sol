@@ -18,6 +18,7 @@ import {IOPStandardBridge} from "./interfaces/IOPStandardBridge.sol";
 import {JBAddToBalanceMode} from "./enums/JBAddToBalanceMode.sol";
 import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
 import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
+import {JBOutboxTree} from "./structs/JBOutboxTree.sol";
 import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
@@ -70,7 +71,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
-    function peerChainID() external view virtual override returns (uint256) {
+    function peerChainId() external view virtual override returns (uint256) {
         uint256 chainId = block.chainid;
         if (chainId == 1) return 10;
         if (chainId == 10) return 1;
@@ -101,12 +102,15 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
             revert JBOptimismSucker_UnexpectedMsgValue();
         }
 
+        // Get the outbox in storage.
+        JBOutboxTree storage outbox = _outboxOf[token];
+
         // Get the amount to send and then clear it from the outbox tree.
-        uint256 amount = outbox[token].balance;
-        delete outbox[token].balance;
+        uint256 amount = outbox.balance;
+        delete outbox.balance;
 
         // Increment the outbox tree's nonce.
-        uint64 nonce = ++outbox[token].nonce;
+        uint64 nonce = ++outbox.nonce;
 
         // Ensure the token is mapped to an address on the remote chain.
         if (remoteToken.addr == address(0)) {
@@ -134,8 +138,8 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
             nativeValue = amount;
         }
 
-        bytes32 root = outbox[token].tree.root();
-        uint256 index = outbox[token].tree.count - 1;
+        bytes32 root = outbox.tree.root();
+        uint256 index = outbox.tree.count - 1;
 
         // Send the message to the peer with the redeemed ETH.
         // slither-disable-next-line arbitrary-send-eth,reentrency-events,calls-loop

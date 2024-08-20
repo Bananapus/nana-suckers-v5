@@ -93,7 +93,7 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
 
             // slither-disable-next-line calls-loop
             pairs[i] =
-                JBSuckersPair({local: address(sucker), remote: sucker.PEER(), remoteChainId: sucker.peerChainID()});
+                JBSuckersPair({local: address(sucker), remote: sucker.PEER(), remoteChainId: sucker.peerChainId()});
         }
     }
 

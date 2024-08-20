@@ -79,8 +79,8 @@ contract MerkleUnitTest is JBSucker, Test {
 
     function test_validate() public {
         // Move outbound root to inbound root.
-        inbox[JBConstants.NATIVE_TOKEN] =
-            JBInboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
+        _inboxOf[JBConstants.NATIVE_TOKEN] =
+            JBInboxTreeRoot({nonce: 0, root: _outboxOf[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 
@@ -107,8 +107,8 @@ contract MerkleUnitTest is JBSucker, Test {
 
     function test_validate_only_once() public {
         // Move outbound root to inbound root.
-        inbox[JBConstants.NATIVE_TOKEN] =
-            JBInboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
+        _inboxOf[JBConstants.NATIVE_TOKEN] =
+            JBInboxTreeRoot({nonce: 0, root: _outboxOf[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 
@@ -152,7 +152,7 @@ contract MerkleUnitTest is JBSucker, Test {
         virtual
         override
     {}
-    function peerChainID() external view override returns (uint256 chainId) {}
+    function peerChainId() external view override returns (uint256 chainId) {}
 }
 
 contract DeployerUnitTest is Test {
