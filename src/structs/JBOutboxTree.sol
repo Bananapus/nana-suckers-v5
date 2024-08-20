@@ -5,6 +5,9 @@ import {MerkleLib} from "../utils/MerkleLib.sol";
 
 /// @notice A merkle tree used to track the outbox for a given token in a `JBSucker`.
 /// @dev The outbox is used to send from the local chain to the remote chain.
+/// @custom:member nonce The nonce of the outbox.
+/// @custom:member balance The balance of the outbox.
+/// @custom:member tree The merkle tree.
 struct JBOutboxTree {
     uint64 nonce;
     uint256 balance;

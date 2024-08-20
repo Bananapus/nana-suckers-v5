@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface OPStandardBridge {
+interface IOPStandardBridge {
     /**
      * @notice Sends ERC20 tokens to a receiver's address on the other chain. Note that if the
      *         ERC20 token on the other chain does not recognize the local token as the correct

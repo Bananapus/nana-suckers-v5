@@ -8,13 +8,18 @@ contract JBBaseSucker is JBOptimismSucker {
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
 
+    /// @param directory A contract storing directories of terminals and controllers for each project.    
+    /// @param permissions A contract storing permissions.
+    /// @param tokens A contract that manages token minting and burning.    
+    /// @param peer The address of the peer sucker on the remote chain.
+    /// @param atbMode The mode of adding tokens to balance.
     constructor(
         IJBDirectory directory,
-        IJBTokens tokens,
         IJBPermissions permissions,
+        IJBTokens tokens,
         address peer,
         JBAddToBalanceMode atbMode
-    ) JBOptimismSucker(directory, tokens, permissions, peer, atbMode) {}
+    ) JBOptimismSucker(directory, permissions, tokens, peer, atbMode) {}
 
     //*********************************************************************//
     // ------------------------ external views --------------------------- //
@@ -22,11 +27,12 @@ contract JBBaseSucker is JBOptimismSucker {
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
-    function peerChainID() external view virtual override returns (uint256 chainId) {
-        uint256 _localChainId = block.chainid;
-        if (_localChainId == 1) return 8453;
-        if (_localChainId == 8453) return 1;
-        if (_localChainId == 11155111) return 84532;
-        if (_localChainId == 84532) return 11155111;
+    function peerChainID() external view virtual override returns (uint256) {
+        uint256 chainId = block.chainid;
+        if (chainId == 1) return 8453;
+        if (chainId == 8453) return 1;
+        if (chainId == 11155111) return 84532;
+        if (chainId == 84532) return 11155111;
+        return 0;
     }
 }

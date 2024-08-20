@@ -106,7 +106,7 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
     /// @param deployer The address of the deployer to add.
     function allowSuckerDeployer(address deployer) public override onlyOwner {
         suckerDeployerIsAllowed[deployer] = true;
-        emit SuckerDeployerAllowed(deployer, msg.sender);
+        emit SuckerDeployerAllowed({deployer: deployer, caller: msg.sender});
     }
 
     /// @notice Adds multiple suckers deployer to the allowlist.
@@ -127,7 +127,7 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
 
             // Allow the deployer.
             suckerDeployerIsAllowed[deployer] = true;
-            emit SuckerDeployerAllowed(deployer, msg.sender);
+            emit SuckerDeployerAllowed({deployer: deployer, caller: msg.sender});
         }
     }
 
@@ -183,7 +183,7 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
             // Map the tokens for the sucker.
             // slither-disable-next-line reentrancy-events,calls-loop
             sucker.mapTokens(configuration.mappings);
-            emit SuckerDeployedFor(projectId, address(sucker), configuration, msg.sender);
+            emit SuckerDeployedFor({projectId: projectId, sucker: address(sucker), configuration: configuration, caller: msg.sender});
         }
     }
 
@@ -198,7 +198,7 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
     {
         // Only emit after the initial transfer.
         if (address(this).code.length != 0) {
-            emit OwnershipTransferred(previousOwner, newProjectId == 0 ? newOwner : PROJECTS.ownerOf(newProjectId));
+            emit OwnershipTransferred({previousOwner: previousOwner, newOwner: newProjectId == 0 ? newOwner : PROJECTS.ownerOf(newProjectId)});
         }
     }
 }

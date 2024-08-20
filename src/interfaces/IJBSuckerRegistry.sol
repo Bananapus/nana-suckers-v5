@@ -4,10 +4,10 @@ pragma solidity ^0.8.21;
 import {JBSuckerDeployerConfig} from "../structs/JBSuckerDeployerConfig.sol";
 
 interface IJBSuckerRegistry {
-    event SuckerDeployerAllowed(address deployer, address caller);
     event SuckerDeployedFor(
         uint256 projectId, address sucker, JBSuckerDeployerConfig configuration, address caller
     );
+    event SuckerDeployerAllowed(address deployer, address caller);
 
     function isSuckerOf(uint256 projectId, address addr) external view returns (bool);
     function suckersOf(uint256 projectId) external view returns (address[] memory);

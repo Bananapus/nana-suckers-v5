@@ -20,8 +20,8 @@ contract MerkleUnitTest is JBSucker, Test {
         // OPStandardBridge(address(550)),
         JBSucker(
             IJBDirectory(address(600)),
-            IJBTokens(address(700)),
             IJBPermissions(address(800)),
+            IJBTokens(address(700)),
             address(0),
             JBAddToBalanceMode.MANUAL,
             1

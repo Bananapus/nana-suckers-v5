@@ -1,56 +1,67 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
+import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
+import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IJBPrices} from "@bananapus/core/src/interfaces/IJBPrices.sol";
-import {IJBRulesets} from "@bananapus/core/src/interfaces/IJBRulesets.sol";
-import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
-import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
-import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
-import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 
-import {JBSucker, IJBSuckerDeployer, JBAddToBalanceMode} from "./JBSucker.sol";
+import {JBSucker} from "./JBSucker.sol";
+import {JBOptimismSuckerDeployer} from "./deployers/JBOptimismSuckerDeployer.sol";
+import {IJBOptimismSucker} from "./interfaces/IJBOptimismSucker.sol";
+import {IJBSuckerDeployer} from "./interfaces/IJBSuckerDeployer.sol";
+import {IOPMessenger} from "./interfaces/IOPMessenger.sol";
+import {IOPStandardBridge} from "./interfaces/IOPStandardBridge.sol";
+import {JBAddToBalanceMode} from "./enums/JBAddToBalanceMode.sol";
+import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
 import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
 import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
-import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
-import {JBOptimismSuckerDeployer} from "./deployers/JBOptimismSuckerDeployer.sol";
-import {OPMessenger} from "./interfaces/OPMessenger.sol";
-import {OPStandardBridge} from "./interfaces/OPStandardBridge.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 /// @notice A `JBSucker` implementation to suck tokens between two chains connected by an OP Bridge.
-contract JBOptimismSucker is JBSucker {
-    using MerkleLib for MerkleLib.Tree;
+contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
     using BitMaps for BitMaps.BitMap;
+    using MerkleLib for MerkleLib.Tree;
 
-    event SuckingToRemote(address token, uint64 nonce);
+    //*********************************************************************//
+    // --------------------------- custom errors ------------------------- //
+    //*********************************************************************//
+
+    error JBOptimismSucker_TokenNotMapped();
+    error JBOptimismSucker_UnexpectedMsgValue();
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
 
-    /// @notice The messenger used to send messages between the local and remote sucker.
-    OPMessenger public immutable OPMESSENGER;
-
     /// @notice The bridge used to bridge tokens between the local and remote chain.
-    OPStandardBridge public immutable OPBRIDGE;
+    IOPStandardBridge public immutable override OPBRIDGE;
+
+    /// @notice The messenger used to send messages between the local and remote sucker.
+    IOPMessenger public immutable override OPMESSENGER;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
 
+    /// @param directory A contract storing directories of terminals and controllers for each project.    
+    /// @param permissions A contract storing permissions.
+    /// @param tokens A contract that manages token minting and burning.    
+    /// @param peer The address of the peer sucker on the remote chain.
+    /// @param atbMode The mode of adding tokens to balance.
     constructor(
         IJBDirectory directory,
         IJBTokens tokens,
         IJBPermissions permissions,
         address peer,
         JBAddToBalanceMode atbMode
-    ) JBSucker(directory, tokens, permissions, peer, atbMode, IJBSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
+    ) JBSucker(directory, permissions, tokens, peer, atbMode, IJBSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
         // Fetch the messenger and bridge by doing a callback to the deployer contract.
-        OPMESSENGER = JBOptimismSuckerDeployer(msg.sender).MESSENGER();
         OPBRIDGE = JBOptimismSuckerDeployer(msg.sender).BRIDGE();
+        OPMESSENGER = JBOptimismSuckerDeployer(msg.sender).MESSENGER();
     }
 
     //*********************************************************************//
@@ -59,12 +70,23 @@ contract JBOptimismSucker is JBSucker {
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
-    function peerChainID() external view virtual override returns (uint256 chainId) {
-        uint256 _localChainId = block.chainid;
-        if (_localChainId == 1) return 10;
-        if (_localChainId == 10) return 1;
-        if (_localChainId == 11155111) return 11155420;
-        if (_localChainId == 11155420) return 11155111;
+    function peerChainID() external view virtual override returns (uint256) {
+        uint256 chainId = block.chainid;
+        if (chainId == 1) return 10;
+        if (chainId == 10) return 1;
+        if (chainId == 11155111) return 11155420;
+        if (chainId == 11155420) return 11155111;
+        return 0;
+    }
+
+    //*********************************************************************//
+    // ------------------------ internal views --------------------------- //
+    //*********************************************************************//
+
+    /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
+    /// @param sender The message's sender.
+    function _isRemotePeer(address sender) internal view override returns (bool valid) {
+        return sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == PEER;
     }
 
     //*********************************************************************//
@@ -80,7 +102,7 @@ contract JBOptimismSucker is JBSucker {
 
         // Revert if there's a `msg.value`. The OP bridge does not expect to be paid.
         if (transportPayment != 0) {
-            revert UNEXPECTED_MSG_VALUE();
+            revert JBOptimismSucker_UnexpectedMsgValue();
         }
 
         // Get the amount to send and then clear it from the outbox tree.
@@ -92,7 +114,7 @@ contract JBOptimismSucker is JBSucker {
 
         // Ensure the token is mapped to an address on the remote chain.
         if (remoteToken.addr == address(0)) {
-            revert TOKEN_NOT_MAPPED(token);
+            revert JBOptimismSucker_TokenNotMapped();
         }
 
         // If the token is an ERC20, bridge it to the peer.
@@ -116,8 +138,8 @@ contract JBOptimismSucker is JBSucker {
             nativeValue = amount;
         }
 
-        bytes32 _root = outbox[token].tree.root();
-        uint256 _index = outbox[token].tree.count - 1;
+        bytes32 root = outbox[token].tree.root();
+        uint256 index = outbox[token].tree.count - 1;
 
         // Send the message to the peer with the redeemed ETH.
         // slither-disable-next-line arbitrary-send-eth,reentrency-events,calls-loop
@@ -129,7 +151,7 @@ contract JBOptimismSucker is JBSucker {
                     JBMessageRoot({
                         token: remoteToken.addr,
                         amount: amount,
-                        remoteRoot: JBInboxTreeRoot({nonce: nonce, root: _root})
+                        remoteRoot: JBInboxTreeRoot({nonce: nonce, root: root})
                     })
                 )
             ),
@@ -137,12 +159,6 @@ contract JBOptimismSucker is JBSucker {
         );
 
         // Emit an event for the relayers to watch for.
-        emit RootToRemote(_root, token, _index, nonce);
-    }
-
-    /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
-    /// @param sender The message's sender.
-    function _isRemotePeer(address sender) internal override returns (bool valid) {
-        return sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == PEER;
+        emit RootToRemote({root: root, token: token, index: index, nonce: nonce, caller: msg.sender});
     }
 }
