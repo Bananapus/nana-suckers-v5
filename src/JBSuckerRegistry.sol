@@ -66,13 +66,6 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
         return _suckersOf[projectId].get(addr) == _SUCKER_EXISTS;
     }
 
-    /// @notice Gets all of the specified project's suckers which were deployed through this registry.
-    /// @param projectId The ID of the project to get the suckers of.
-    /// @return suckers The addresses of the suckers.
-    function suckersOf(uint256 projectId) external view override returns (address[] memory) {
-        return _suckersOf[projectId].keys();
-    }
-
     /// @notice Helper function for retrieving the projects suckers and their metadata.
     /// @param projectId The ID of the project to get the suckers of.
     /// @return pairs The pairs of suckers and their metadata.
@@ -95,6 +88,13 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
             pairs[i] =
                 JBSuckersPair({local: address(sucker), remote: sucker.PEER(), remoteChainId: sucker.peerChainId()});
         }
+    }
+
+    /// @notice Gets all of the specified project's suckers which were deployed through this registry.
+    /// @param projectId The ID of the project to get the suckers of.
+    /// @return suckers The addresses of the suckers.
+    function suckersOf(uint256 projectId) external view override returns (address[] memory) {
+        return _suckersOf[projectId].keys();
     }
 
     //*********************************************************************//
