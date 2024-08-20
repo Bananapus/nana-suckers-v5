@@ -5,6 +5,7 @@ src = "src"
 out = "out"
 libs = ["lib", "node_modules"]
 extra_output = ['storageLayout']
+optimizer_runs = 100000000
 fs_permissions = [{ access = "read-write", path = "../"}]
 
 [rpc_endpoints]

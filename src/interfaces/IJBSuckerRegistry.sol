@@ -5,11 +5,11 @@ import {JBSuckerDeployerConfig} from "../structs/JBSuckerDeployerConfig.sol";
 
 interface IJBSuckerRegistry {
     event SuckerDeployerAllowed(address deployer, address caller);
-    event SuckersDeployedFor(
-        uint256 projectId, address[] suckers, JBSuckerDeployerConfig[] configurations, address caller
+    event SuckerDeployedFor(
+        uint256 projectId, address sucker, JBSuckerDeployerConfig configuration, address caller
     );
 
-    function isSuckerOf(uint256 projectId, address suckerAddress) external view returns (bool);
+    function isSuckerOf(uint256 projectId, address addr) external view returns (bool);
     function suckersOf(uint256 projectId) external view returns (address[] memory);
     function suckerDeployerIsAllowed(address deployer) external view returns (bool);
 

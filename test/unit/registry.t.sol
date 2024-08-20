@@ -19,14 +19,14 @@ contract RegistryUnitTest is Test {
     function testDeployNoProjectCheck() public {
         JBProjects _projecs = new JBProjects(msg.sender, address(0));
         JBPermissions _permissions = new JBPermissions();
-        new JBSuckerRegistry(_projecs, _permissions, address(100));
+        new JBSuckerRegistry(_permissions, _projecs, address(100));
     }
 
     function testTransferWithProjectCheck() public {
         JBProjects _projecs = new JBProjects(msg.sender, address(0));
         JBPermissions _permissions = new JBPermissions();
 
-        JBSuckerRegistry _registry = new JBSuckerRegistry(_projecs, _permissions, address(100));
+        JBSuckerRegistry _registry = new JBSuckerRegistry(_permissions, _projecs, address(100));
 
         vm.expectRevert();
         vm.prank(address(100));

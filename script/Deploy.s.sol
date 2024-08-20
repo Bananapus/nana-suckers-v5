@@ -57,7 +57,7 @@ contract DeployScript is Script, Sphinx {
         ) {
             // Deploy the registry and pre-aprove the deployers we just deployed.
             JBSuckerRegistry _registry =
-                new JBSuckerRegistry{salt: REGISTRY_SALT}(core.projects, core.permissions, safeAddress());
+                new JBSuckerRegistry{salt: REGISTRY_SALT}(core.permissions, core.projects, safeAddress());
 
             // Before transferring ownership to JBDAO we approve the deployers.
             if (PRE_APPROVED_DEPLOYERS.length != 0) {
