@@ -435,7 +435,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         // Sanity check to make sure we received the expected amount.
         // This prevents malicious terminals from reporting amounts other than what they send.
         // slither-disable-next-line incorrect-equality
-        assert(reclaimedAmount == _balanceOf(token, address(this)) - balanceBefore);
+        assert(reclaimedAmount == _balanceOf({token: token, addr: address(this)}) - balanceBefore);
     }
 
     /// @notice Bridge the project tokens, redeemed funds, and beneficiary information for a given `token` to the remote chain.
@@ -483,6 +483,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         // slither
         // slither-disable-next-line calls-loop
         IJBTerminal terminal = DIRECTORY.primaryTerminalOf({projectId: PROJECT_ID, token: token});
+
         // slither-disable-next-line incorrect-equality
         if (address(terminal) == address(0)) revert JBSucker_NoTerminalForToken();
 
@@ -490,6 +491,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         if (token != JBConstants.NATIVE_TOKEN) {
             // slither-disable-next-line calls-loop
             uint256 balanceBefore = IERC20(token).balanceOf(address(this));
+
             SafeERC20.forceApprove({token: IERC20(token), spender: address(terminal), value: amount});
 
             // slither-disable-next-line calls-loop
