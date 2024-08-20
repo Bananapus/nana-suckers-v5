@@ -57,6 +57,10 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
 
+    /// @param directory The directory of terminals and controllers for projects.
+    /// @param permissions The permissions contract for the deployer.
+    /// @param tokens The contract that manages token minting and burning.
+    /// @param configurator The address of the configurator.
     constructor(IJBDirectory directory, IJBTokens tokens, IJBPermissions permissions, address configurator)
         JBPermissioned(permissions)
     {
