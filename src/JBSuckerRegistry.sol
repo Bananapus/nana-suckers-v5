@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.23;
 
+import {JBPermissioned} from "@bananapus/core/src/abstract/JBPermissioned.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {IJBProjects} from "@bananapus/core/src/interfaces/IJBProjects.sol";
-import {JBOwnable} from "@bananapus/ownable/src/JBOwnable.sol";
 import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 import {IJBSucker} from "./interfaces/IJBSucker.sol";
@@ -12,7 +13,7 @@ import {IJBSuckerRegistry} from "./interfaces/IJBSuckerRegistry.sol";
 import {JBSuckerDeployerConfig} from "./structs/JBSuckerDeployerConfig.sol";
 import {JBSuckersPair} from "./structs/JBSuckersPair.sol";
 
-contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
+contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
     //*********************************************************************//
@@ -27,6 +28,13 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
 
     /// @notice A constant indicating that this sucker exists and belongs to a specific project.
     uint256 internal constant _SUCKER_EXISTS = 1;
+
+    //*********************************************************************//
+    // --------------- public immutable stored properties ---------------- //
+    //*********************************************************************//
+
+    /// @notice A contract which mints ERC-721s that represent project ownership and transfers.
+    IJBProjects public immutable override PROJECTS;
 
     //*********************************************************************//
     // --------------------- public stored properties -------------------- //
@@ -51,8 +59,11 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
     /// @param projects A contract which mints ERC-721s that represent project ownership and transfers.
     /// @param initialOwner The initial owner of this contract.
     constructor(IJBPermissions permissions, IJBProjects projects, address initialOwner)
-        JBOwnable(projects, permissions, address(initialOwner), 0)
-    {}
+        JBPermissioned(permissions)
+        Ownable(initialOwner)
+    {
+        PROJECTS = projects;
+    }
 
     //*********************************************************************//
     // ------------------------- external views -------------------------- //
@@ -187,24 +198,6 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
                 sucker: address(sucker),
                 configuration: configuration,
                 caller: msg.sender
-            });
-        }
-    }
-
-    //*********************************************************************//
-    // ------------------------ internal functions ----------------------- //
-    //*********************************************************************//
-
-    function _emitTransferEvent(address previousOwner, address newOwner, uint88 newProjectId)
-        internal
-        virtual
-        override
-    {
-        // Only emit after the initial transfer.
-        if (address(this).code.length != 0) {
-            emit OwnershipTransferred({
-                previousOwner: previousOwner,
-                newOwner: newProjectId == 0 ? newOwner : PROJECTS.ownerOf(newProjectId)
             });
         }
     }

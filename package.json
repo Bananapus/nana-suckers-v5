@@ -20,7 +20,6 @@
   "dependencies": {
     "@arbitrum/nitro-contracts": "github:OffchainLabs/nitro-contracts",
     "@bananapus/core": "^0.0.30",
-    "@bananapus/ownable": "^0.0.6",
     "@bananapus/permission-ids": "^0.0.12",
     "@openzeppelin/contracts": "^5.0.2",
     "@prb/math": "^4.0.3"

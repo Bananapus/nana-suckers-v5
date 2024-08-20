@@ -65,7 +65,7 @@ contract DeployScript is Script, Sphinx {
             }
 
             // Transfer ownership to JBDAO.
-            _registry.transferOwnershipToProject(1);
+            _registry.transferOwnership(core.projects.ownerOf(1));
         }
     }
 
