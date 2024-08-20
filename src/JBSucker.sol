@@ -17,7 +17,6 @@ import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 import {JBAddToBalanceMode} from "./enums/JBAddToBalanceMode.sol";
 import {IJBSucker} from "./interfaces/IJBSucker.sol";
 import {IJBSuckerDeployer} from "./interfaces/IJBSuckerDeployer.sol";
-import {JBSuckerConstants} from "./libraries/JBSuckerConstants.sol";
 import {JBClaim} from "./structs/JBClaim.sol";
 import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
 import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
@@ -61,6 +60,13 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
     /// @notice A reasonable minimum gas limit used when bridging ERC-20s. The minimum amount of gas required to (successfully/safely) perform a transfer on the remote chain.
     uint32 constant MESSENGER_ERC20_MIN_GAS_LIMIT = 200_000;
+
+    //*********************************************************************//
+    // ------------------------- internal constants ----------------------- //
+    //*********************************************************************//
+    
+    /// @notice The depth of the merkle tree used to store the outbox and inbox.
+    uint32 constant _TREE_DEPTH = 32;
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -134,7 +140,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         PROJECT_ID = projectId;
 
         // Sanity check: make sure the merkle lib uses the same tree depth.
-        assert(MerkleLib.TREE_DEPTH == JBSuckerConstants.TREE_DEPTH);
+        assert(MerkleLib.TREE_DEPTH == _TREE_DEPTH);
     }
 
     //*********************************************************************//
@@ -180,44 +186,6 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         return keccak256(abi.encode(projectTokenCount, terminalTokenAmount, beneficiary));
     }
 
-    /// @notice Redeems project tokens for terminal tokens.
-    /// @param projectToken The project token being redeemed.
-    /// @param count The number of project tokens to redeem.
-    /// @param token The terminal token to redeem for.
-    /// @param minTokensReclaimed The minimum amount of terminal tokens to reclaim. If the amount reclaimed is less than this, the transaction will revert.
-    /// @return reclaimedAmount The amount of terminal tokens reclaimed by the redemption.
-    function _getBackingAssets(IERC20 projectToken, uint256 count, address token, uint256 minTokensReclaimed)
-        internal
-        virtual
-        view
-        returns (uint256 reclaimedAmount)
-    {
-        projectToken;
-
-        // Get the project's primary terminal for `token`. We will redeem from this terminal.
-        IJBRedeemTerminal terminal = IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, token)));
-
-        // If the project doesn't have a primary terminal for `token`, revert.
-        if (address(terminal) == address(0)) {
-            revert JBSucker_NoTerminalForToken();
-        }
-
-        // Redeem the tokens.
-        uint256 balanceBefore = _balanceOf(token, address(this));
-        reclaimedAmount = terminal.redeemTokensOf(
-            address(this), PROJECT_ID, token, count, minTokensReclaimed, payable(address(this)), bytes("")
-        );
-
-        // Sanity check to make sure we received the expected amount.
-        // This prevents malicious terminals from reporting amounts other than what they send.
-        // slither-disable-next-line incorrect-equality
-        assert(reclaimedAmount == _balanceOf(token, address(this)) - balanceBefore);
-    }
-
-    /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
-    /// @param sender The message's sender.
-    function _isRemotePeer(address sender) internal view virtual returns (bool valid);
-
     //*********************************************************************//
     // --------------------- external transactions ----------------------- //
     //*********************************************************************//
@@ -249,7 +217,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     function claim(JBClaim calldata claimData) public {
         // Attempt to validate the proof against the inbox tree for the terminal token.
         _validate({
-            projectTokenAmount: claimData.leaf.projectTokenAmount,
+            projectTokenCount: claimData.leaf.projectTokenCount,
             terminalToken: claimData.token,
             terminalTokenAmount: claimData.leaf.terminalTokenAmount,
             beneficiary: claimData.leaf.beneficiary,
@@ -260,7 +228,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         emit Claimed({
             beneficiary: claimData.leaf.beneficiary,
             token: claimData.token,
-            projectTokenCount: claimData.leaf.projectTokenAmount,
+            projectTokenCount: claimData.leaf.projectTokenCount,
             terminalTokenAmount: claimData.leaf.terminalTokenAmount,
             index: claimData.leaf.index,
             autoAddedToBalance: ADD_TO_BALANCE_MODE == JBAddToBalanceMode.ON_CLAIM ? true : false,
@@ -269,14 +237,18 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
         // If this contract's add to balance mode is `ON_CLAIM`, add the redeemed funds to the project's balance.
         if (ADD_TO_BALANCE_MODE == JBAddToBalanceMode.ON_CLAIM) {
-            _addToBalance(claimData.token, claimData.leaf.terminalTokenAmount);
+            _addToBalance({token: claimData.token, amount: claimData.leaf.terminalTokenAmount});
         }
 
         // Mint the project tokens for the beneficiary.
         // slither-disable-next-line calls-loop,unused-return
-        IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).mintTokensOf(
-            PROJECT_ID, claimData.leaf.projectTokenAmount, claimData.leaf.beneficiary, "", false
-        );
+        IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).mintTokensOf({
+            projectId: PROJECT_ID,
+            tokenCount: claimData.leaf.projectTokenCount,
+            beneficiary: claimData.leaf.beneficiary,
+            memo: "",
+            useReservedPercent: false
+        });
     }
 
     /// @notice Receive a merkle root for a terminal token from the remote project.
@@ -323,10 +295,14 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
         // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
         // slither-disable-next-line calls-loop
-        _requirePermissionFrom(DIRECTORY.PROJECTS().ownerOf(PROJECT_ID), PROJECT_ID, JBPermissionIds.MAP_SUCKER_TOKEN);
+        _requirePermissionFrom({
+            account: DIRECTORY.PROJECTS().ownerOf(PROJECT_ID),
+            projectId: PROJECT_ID,
+            permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
+        });
 
         // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds to the remote chain.
-        if (map.remoteToken == address(0) && outbox[token].balance != 0) _sendRoot(0, token, remoteTokenFor[token]);
+        if (map.remoteToken == address(0) && outbox[token].balance != 0) _sendRoot({transportPayment: 0, token: token, remoteToken: remoteTokenFor[token]});
 
         // Update the token mapping.
         remoteTokenFor[token] =
@@ -372,11 +348,11 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
         // Transfer the tokens to this contract.
         // slither-disable-next-line reentrancy-events,reentrancy-benign
-        projectToken.safeTransferFrom(msg.sender, address(this), projectTokenCount);
+        projectToken.safeTransferFrom({from: msg.sender, to: address(this), value: projectTokenCount});
 
         // Redeem the tokens.
         // slither-disable-next-line reentrancy-events,reentrancy-benign
-        uint256 terminalTokenAmount = _getBackingAssets({
+        uint256 terminalTokenAmount = _pullBackingAssets({
             projectToken: projectToken,
             count: projectTokenCount,
             token: token,
@@ -392,6 +368,39 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         });
     }
 
+    /// @notice Redeems project tokens for terminal tokens.
+    /// @param projectToken The project token being redeemed.
+    /// @param count The number of project tokens to redeem.
+    /// @param token The terminal token to redeem for.
+    /// @param minTokensReclaimed The minimum amount of terminal tokens to reclaim. If the amount reclaimed is less than this, the transaction will revert.
+    /// @return reclaimedAmount The amount of terminal tokens reclaimed by the redemption.
+    function _pullBackingAssets(IERC20 projectToken, uint256 count, address token, uint256 minTokensReclaimed)
+        internal
+        virtual
+        returns (uint256 reclaimedAmount)
+    {
+        projectToken;
+
+        // Get the project's primary terminal for `token`. We will redeem from this terminal.
+        IJBRedeemTerminal terminal = IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(PROJECT_ID, token)));
+
+        // If the project doesn't have a primary terminal for `token`, revert.
+        if (address(terminal) == address(0)) {
+            revert JBSucker_NoTerminalForToken();
+        }
+
+        // Redeem the tokens.
+        uint256 balanceBefore = _balanceOf(token, address(this));
+        reclaimedAmount = terminal.redeemTokensOf(
+            address(this), PROJECT_ID, token, count, minTokensReclaimed, payable(address(this)), bytes("")
+        );
+
+        // Sanity check to make sure we received the expected amount.
+        // This prevents malicious terminals from reporting amounts other than what they send.
+        // slither-disable-next-line incorrect-equality
+        assert(reclaimedAmount == _balanceOf(token, address(this)) - balanceBefore);
+    }
+
     /// @notice Bridge the project tokens, redeemed funds, and beneficiary information for a given `token` to the remote chain.
     /// @dev This sends the outbox root for the specified `token` to the remote chain.
     /// @param token The terminal token being bridged.
@@ -404,7 +413,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         }
 
         // Send the merkle root to the remote chain.
-        _sendRoot(msg.value, token, remoteToken);
+        _sendRoot({transportPayment: msg.value, token: token, remoteToken: remoteToken});
     }
 
     //*********************************************************************//
@@ -436,7 +445,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         // Get the project's primary terminal for the token.
         // slither
         // slither-disable-next-line calls-loop
-        IJBTerminal terminal = DIRECTORY.primaryTerminalOf(PROJECT_ID, token);
+        IJBTerminal terminal = DIRECTORY.primaryTerminalOf({projectId: PROJECT_ID, token: token});
         // slither-disable-next-line incorrect-equality
         if (address(terminal) == address(0)) revert JBSucker_NoTerminalForToken();
 
@@ -444,10 +453,10 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         if (token != JBConstants.NATIVE_TOKEN) {
             // slither-disable-next-line calls-loop
             uint256 balanceBefore = IERC20(token).balanceOf(address(this));
-            SafeERC20.forceApprove(IERC20(token), address(terminal), amount);
+            SafeERC20.forceApprove({token: IERC20(token), spender: address(terminal), value: amount});
 
             // slither-disable-next-line calls-loop
-            terminal.addToBalanceOf(PROJECT_ID, token, amount, false, string(""), bytes(""));
+            terminal.addToBalanceOf({projectId: PROJECT_ID, token: token, amount: amount, shouldReturnHeldFees: false, memo: "", metadata: ""});
 
             // Sanity check: make sure we transfer the full amount.
             // slither-disable-next-line calls-loop,incorrect-equality
@@ -455,7 +464,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         } else {
             // If the token is the native token, use `msg.value`.
             // slither-disable-next-line arbitrary-send-eth,calls-loop
-            terminal.addToBalanceOf{value: amount}(PROJECT_ID, token, amount, false, string(""), bytes(""));
+            terminal.addToBalanceOf({projectId: PROJECT_ID, token: token, amount: amount, shouldReturnHeldFees: false, memo: "", metadata: ""});
         }
     }
     /// @notice Inserts a new leaf into the outbox merkle tree for the specified `token`.
@@ -495,6 +504,10 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         });
     }
 
+    /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
+    /// @param sender The message's sender.
+    function _isRemotePeer(address sender) internal virtual returns (bool valid);
+
     /// @notice Send the outbox root for the specified token to the remote peer.
     /// @dev The call may have a `transportPayment` for bridging native tokens. Require it to be `0` if it is not needed. Make sure if a value being paid to the bridge is expected to revert if the given value is `0`.
     /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message. (usually derived from `msg.value`)
@@ -504,19 +517,19 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
     /// @notice Validates a leaf as being in the inbox merkle tree and registers the leaf as executed (to prevent double-spending).
     /// @dev Reverts if the leaf is invalid.
-    /// @param projectTokenAmount The amount of project tokens which were redeemed.
+    /// @param projectTokenCount The number of project tokens which were redeemed.
     /// @param terminalToken The terminal token that the project tokens were redeemed for.
     /// @param terminalTokenAmount The amount of terminal tokens reclaimed by the redemption.
     /// @param beneficiary The beneficiary which will receive the project tokens.
     /// @param index The index of the leaf being proved in the terminal token's inbox tree.
     /// @param leaves The leaves that prove that the leaf at the `index` is in the tree (i.e. the merkle branch that the leaf is on).
     function _validate(
-        uint256 projectTokenAmount,
+        uint256 projectTokenCount,
         address terminalToken,
         uint256 terminalTokenAmount,
         address beneficiary,
         uint256 index,
-        bytes32[JBSuckerConstants.TREE_DEPTH] calldata leaves
+        bytes32[_TREE_DEPTH] calldata leaves
     ) internal {
         // Make sure the leaf has not already been executed.
         if (_executed[terminalToken].get(index)) {
@@ -528,9 +541,9 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
         // Calculate the root based on the leaf, the branch, and the index.
         bytes32 root = MerkleLib.branchRoot({
-            _item: _buildTreeHash(projectTokenAmount, terminalTokenAmount, beneficiary),
-            _branch: leaves,
-            _index: index
+            item: _buildTreeHash(projectTokenCount, terminalTokenAmount, beneficiary),
+            branch: leaves,
+            index: index
         });
 
         // Compare the calculated root to the terminal token's inbox root. Revert if they do not match.

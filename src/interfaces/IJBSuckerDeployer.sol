@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
+
 import {IJBSucker} from "./IJBSucker.sol";
 
 interface IJBSuckerDeployer {
-    function createForSender(uint256 localProjectId, bytes32 salt) external returns (IJBSucker sucker);
+    function DIRECTORY() external view returns (IJBDirectory);
+    function TOKENS() external view returns (IJBTokens);
+    function LAYER_SPECIFIC_CONFIGURATOR() external view returns (address);
 
-    function TEMP_ID_STORE() external view returns (uint256);
+    function isSucker(address sucker) external view returns (bool);
+    function tempStoreId() external view returns (uint256);
+
+    function createForSender(uint256 localProjectId, bytes32 salt) external returns (IJBSucker sucker);
 }

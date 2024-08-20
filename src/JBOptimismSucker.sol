@@ -48,20 +48,20 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
     //*********************************************************************//
 
     /// @param directory A contract storing directories of terminals and controllers for each project.    
-    /// @param permissions A contract storing permissions.
     /// @param tokens A contract that manages token minting and burning.    
+    /// @param permissions A contract storing permissions.
     /// @param peer The address of the peer sucker on the remote chain.
     /// @param atbMode The mode of adding tokens to balance.
     constructor(
         IJBDirectory directory,
-        IJBTokens tokens,
         IJBPermissions permissions,
+        IJBTokens tokens,
         address peer,
         JBAddToBalanceMode atbMode
-    ) JBSucker(directory, permissions, tokens, peer, atbMode, IJBSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
+    ) JBSucker(directory, permissions, tokens, peer, atbMode, IJBSuckerDeployer(msg.sender).tempStoreId()) {
         // Fetch the messenger and bridge by doing a callback to the deployer contract.
-        OPBRIDGE = JBOptimismSuckerDeployer(msg.sender).BRIDGE();
-        OPMESSENGER = JBOptimismSuckerDeployer(msg.sender).MESSENGER();
+        OPBRIDGE = JBOptimismSuckerDeployer(msg.sender).opBridge();
+        OPMESSENGER = JBOptimismSuckerDeployer(msg.sender).opMessenger();
     }
 
     //*********************************************************************//
@@ -80,18 +80,14 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
     }
 
     //*********************************************************************//
-    // ------------------------ internal views --------------------------- //
+    // --------------------- internal transactions ----------------------- //
     //*********************************************************************//
 
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
-    function _isRemotePeer(address sender) internal view override returns (bool valid) {
+    function _isRemotePeer(address sender) internal override returns (bool valid) {
         return sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == PEER;
     }
-
-    //*********************************************************************//
-    // --------------------- internal transactions ----------------------- //
-    //*********************************************************************//
 
     /// @notice Use the `OPMESSENGER` to send the outbox tree for the `token` and the corresponding funds to the peer over the `OPBRIDGE`.
     /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message.

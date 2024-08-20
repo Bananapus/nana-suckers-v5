@@ -102,7 +102,7 @@ contract MerkleUnitTest is JBSucker, Test {
                 leaf: JBLeaf({
                     index: 2,
                     beneficiary: address(120),
-                    projectTokenAmount: 5 ether,
+                    projectTokenCount: 5 ether,
                     terminalTokenAmount: 5 ether
                 }),
                 proof: __proof
@@ -135,7 +135,7 @@ contract MerkleUnitTest is JBSucker, Test {
                 leaf: JBLeaf({
                     index: 2,
                     beneficiary: address(120),
-                    projectTokenAmount: 5 ether,
+                    projectTokenCount: 5 ether,
                     terminalTokenAmount: 5 ether
                 }),
                 proof: __proof
@@ -150,7 +150,7 @@ contract MerkleUnitTest is JBSucker, Test {
                 leaf: JBLeaf({
                     index: 2,
                     beneficiary: address(120),
-                    projectTokenAmount: 5 ether,
+                    projectTokenCount: 5 ether,
                     terminalTokenAmount: 5 ether
                 }),
                 proof: __proof
@@ -158,7 +158,7 @@ contract MerkleUnitTest is JBSucker, Test {
         );
     }
 
-    function _isRemotePeer(address) internal virtual override returns (bool valid) {
+    function _isRemotePeer(address) internal view virtual override returns (bool valid) {
         return false;
     }
 

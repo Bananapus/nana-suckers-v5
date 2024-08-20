@@ -10,13 +10,14 @@ import {JBArbitrumSucker} from "../JBArbitrumSucker.sol";
 import {JBAddToBalanceMode} from "../enums/JBAddToBalanceMode.sol";
 import {JBLayer} from "../enums/JBLayer.sol";
 import {IArbGatewayRouter} from "../interfaces/IArbGatewayRouter.sol";
+import {IJBArbitrumSuckerDeployer} from "../interfaces/IJBArbitrumSuckerDeployer.sol";
 import {IJBSucker} from "./../interfaces/IJBSucker.sol";
 import {IJBSuckerDeployer} from "./../interfaces/IJBSuckerDeployer.sol";
 import {ARBAddresses} from "../libraries/ARBAddresses.sol";
 import {ARBChains} from "../libraries/ARBChains.sol";
 
 /// @notice An `IJBSuckerDeployerFeeless` implementation to deploy `JBOptimismSucker` contracts.
-contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
+contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbitrumSuckerDeployer {
 
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
@@ -31,7 +32,7 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     //*********************************************************************//
 
     /// @notice The directory of terminals and controllers for projects.
-    IJBDirectory immutable override DIRECTORY;
+    IJBDirectory public immutable override DIRECTORY;
 
     /// @notice The layer that this contract is on.
     JBLayer public immutable override LAYER;
@@ -40,7 +41,7 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     address public immutable override LAYER_SPECIFIC_CONFIGURATOR;
 
     /// @notice The contract that manages token minting and burning.
-    IJBTokens immutable override TOKENS;
+    IJBTokens public immutable override TOKENS;
 
     //*********************************************************************//
     // ---------------------- public stored properties ------------------- //
@@ -49,12 +50,8 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     /// @notice A mapping of suckers deployed by this contract.
     mapping(address => bool) public override isSucker;
 
-    //*********************************************************************//
-    // -------------------- internal stored properties ------------------- //
-    //*********************************************************************//
-
     /// @notice A temporary storage slot used by suckers to maintain deterministic deploys.
-    uint256 internal _tempIdStore;
+    uint256 public override tempStoreId;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -100,7 +97,7 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
         salt = keccak256(abi.encodePacked(msg.sender, salt));
 
         // Set for a callback to this contract.
-        _tempIdStore = localProjectId;
+        tempStoreId = localProjectId;
 
         sucker = IJBSucker(
             address(

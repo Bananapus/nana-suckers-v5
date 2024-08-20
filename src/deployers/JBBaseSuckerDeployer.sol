@@ -5,14 +5,16 @@ import {JBPermissioned} from "@bananapus/core/src/abstract/JBPermissioned.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
-import {OPStandardBridge} from "../interfaces/OPStandardBridge.sol";
-import {OPMessenger} from "../interfaces/OPMessenger.sol";
+
 import {JBBaseSucker} from "../JBBaseSucker.sol";
 import {JBAddToBalanceMode} from "../enums/JBAddToBalanceMode.sol";
-import {IJBSucker} from "./../interfaces/IJBSucker.sol";
-import {IJBSuckerDeployer} from "./../interfaces/IJBSuckerDeployer.sol";
+import {IJBSucker} from "../interfaces/IJBSucker.sol";
+import {IJBSuckerDeployer} from "../interfaces/IJBSuckerDeployer.sol";
+import {IJBOpSuckerDeployer} from "../interfaces/IJBOpSuckerDeployer.sol";
+import {IOPMessenger} from "../interfaces/IOPMessenger.sol";
+import {IOPStandardBridge} from "../interfaces/IOPStandardBridge.sol";
 
-contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
+contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerDeployer {
 
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
@@ -27,33 +29,29 @@ contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     //*********************************************************************//
 
     /// @notice The directory of terminals and controllers for projects.
-    IJBDirectory immutable override DIRECTORY;
+    IJBDirectory public immutable override DIRECTORY;
 
     /// @notice Only this address can configure this deployer, can only be used once.
-    address immutable override LAYER_SPECIFIC_CONFIGURATOR;
+    address public immutable override LAYER_SPECIFIC_CONFIGURATOR;
 
     /// @notice The contract that manages token minting and burning.
-    IJBTokens immutable override TOKENS;
+    IJBTokens public immutable override TOKENS;
 
     //*********************************************************************//
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
 
     /// @notice The messenger used to send messages between the local and remote sucker.
-    OPMessenger public override opMessenger;
+    IOPMessenger public override opMessenger;
 
     /// @notice The bridge used to bridge tokens between the local and remote chain.
-    OPStandardBridge public override opBridge;
+    IOPStandardBridge public override opBridge;
 
     /// @notice A mapping of suckers deployed by this contract.
     mapping(address => bool) public override isSucker;
 
-    //*********************************************************************//
-    // -------------------- internal stored properties ------------------- //
-    //*********************************************************************//
-
     /// @notice A temporary storage slot used by suckers to maintain deterministic deploys.
-    uint256 internal _tempIdStore;
+    uint256 public override tempStoreId;
     
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -82,7 +80,7 @@ contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     /// @notice bridge the OPStandardBridge on this layer.
     /// @param messenger the OPMesssenger on this layer.
     /// @param bridge the OPStandardBridge on this layer.
-    function configureLayerSpecific(OPMessenger messenger, OPStandardBridge bridge) external override {
+    function configureLayerSpecific(IOPMessenger messenger, IOPStandardBridge bridge) external override {
         if (address(opMessenger) != address(0) || address(opBridge) != address(0)) {
             revert JBBaseSuckerDeployer_AlreadyConfigured();
         }
@@ -101,7 +99,7 @@ contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
         salt = keccak256(abi.encodePacked(msg.sender, salt));
 
         // Set for a callback to this contract.
-        _tempIdStore = localProjectId;
+        tempStoreId = localProjectId;
 
         sucker = IJBSucker(
             address(new JBBaseSucker{salt: salt}(DIRECTORY, PERMISSIONS, TOKENS, address(0), JBAddToBalanceMode.MANUAL))

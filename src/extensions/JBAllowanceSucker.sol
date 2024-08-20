@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
+import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/IJBPayoutTerminal.sol";
+import {IJBRedeemTerminal} from "@bananapus/core/src/interfaces/IJBRedeemTerminal.sol";
 import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {JBSucker} from "./../JBSucker.sol";
 import {IJBSuckerDeployerFeeless} from "../interfaces/IJBSuckerDeployerFeeless.sol";
@@ -16,7 +19,7 @@ abstract contract JBAllowanceSucker is JBSucker {
     error JBAllowanceSucker_TokenNotMapped();
 
     //*********************************************************************//
-    // ------------------------ internal views --------------------------- //
+    // ---------------------- internal functions ------------------------- //
     //*********************************************************************//
 
     /// @notice Redeems the project tokens for the redemption tokens.
@@ -25,9 +28,8 @@ abstract contract JBAllowanceSucker is JBSucker {
     /// @param token the token to redeem for.
     /// @param minReceivedTokens the minimum amount of tokens to receive.
     /// @return receivedAmount the amount of tokens received by redeeming.
-    function _getBackingAssets(IERC20 projectToken, uint256 amount, address token, uint256 minReceivedTokens)
+    function _pullBackingAssets(IERC20 projectToken, uint256 amount, address token, uint256 minReceivedTokens)
         internal
-        view
         virtual
         override
         returns (uint256 receivedAmount)
@@ -62,14 +64,14 @@ abstract contract JBAllowanceSucker is JBSucker {
 
         // Get the balance before we redeem.
         uint256 balanceBefore = _balanceOf(token, address(this));
-        receivedAmount = IJBSuckerDeployerFeeless(DEPLOYER).useAllowanceFeeless(
-            PROJECT_ID,
-            IJBPayoutTerminal(address(terminal)),
-            token,
-            accountingContext.currency,
-            backingAssets,
-            minReceivedTokens
-        );
+        receivedAmount = IJBSuckerDeployerFeeless(DEPLOYER).useAllowanceFeeless({
+            projectId: PROJECT_ID,
+            terminal: IJBPayoutTerminal(address(terminal)),
+            token: token,
+            currency: accountingContext.currency,
+            amount: backingAssets,
+            minReceivedTokens: minReceivedTokens
+        });
 
         // Sanity check to make sure we actually received the reported amount.
         // Prevents a malicious terminal from reporting a higher amount than it actually sent.

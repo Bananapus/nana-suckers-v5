@@ -8,13 +8,14 @@ import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 
 import {JBOptimismSucker} from "../JBOptimismSucker.sol";
 import {JBAddToBalanceMode} from "../enums/JBAddToBalanceMode.sol";
-import {IOPMessenger} from "../interfaces/IOPMessenger.sol";
-import {IOPStandardBridge} from "../interfaces/IOPStandardBridge.sol";
+import {IJBOpSuckerDeployer} from "./../interfaces/IJBOpSuckerDeployer.sol";
 import {IJBSucker} from "./../interfaces/IJBSucker.sol";
 import {IJBSuckerDeployer} from "./../interfaces/IJBSuckerDeployer.sol";
+import {IOPMessenger} from "../interfaces/IOPMessenger.sol";
+import {IOPStandardBridge} from "../interfaces/IOPStandardBridge.sol";
 
 /// @notice An `IJBSuckerDeployerFeeless` implementation to deploy `JBOptimismSucker` contracts.
-contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
+contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerDeployer  {
 
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
@@ -29,33 +30,29 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     //*********************************************************************//
 
     /// @notice The directory of terminals and controllers for projects.
-    IJBDirectory immutable override DIRECTORY;
+    IJBDirectory public immutable override DIRECTORY;
 
     /// @notice Only this address can configure this deployer, can only be used once.
-    address immutable override LAYER_SPECIFIC_CONFIGURATOR;
+    address public immutable override LAYER_SPECIFIC_CONFIGURATOR;
 
     /// @notice The contract that manages token minting and burning.
-    IJBTokens immutable override TOKENS;
+    IJBTokens public immutable override TOKENS;
 
     //*********************************************************************//
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
 
     /// @notice The messenger used to send messages between the local and remote sucker.
-    OPMessenger public override opMessenger;
+    IOPMessenger public override opMessenger;
 
     /// @notice The bridge used to bridge tokens between the local and remote chain.
-    OPStandardBridge public override opBridge;
+    IOPStandardBridge public override opBridge;
 
     /// @notice A mapping of suckers deployed by this contract.
-    mapping(address => bool) public isSucker;
-
-    //*********************************************************************//
-    // -------------------- internal stored properties ------------------- //
-    //*********************************************************************//
+    mapping(address => bool) public override isSucker;
 
     /// @notice A temporary storage slot used by suckers to maintain deterministic deploys.
-    uint256 internal _tempIdStore;
+    uint256 public override tempStoreId;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -64,7 +61,7 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     constructor(IJBDirectory directory, IJBTokens tokens, IJBPermissions permissions, address configurator)
         JBPermissioned(permissions)
     {
-        if (configurator == address(0)) revert ZERO_ADDRESS();
+        if (configurator == address(0)) revert JBOptimismSuckerDeployer_ZeroAddress();
         LAYER_SPECIFIC_CONFIGURATOR = configurator;
         DIRECTORY = directory;
         TOKENS = tokens;
@@ -77,9 +74,9 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment addresses would change.
     /// @notice messenger the OPMesssenger on this layer.
     /// @notice bridge the OPStandardBridge on this layer.
-    function configureLayerSpecific(OPMessenger messenger, OPStandardBridge bridge) external {
+    function configureLayerSpecific(IOPMessenger messenger, IOPStandardBridge bridge) external {
         if (address(opMessenger) != address(0) || address(opBridge) != address(0)) {
-            revert ALREADY_CONFIGURED();
+            revert JBOptimismSuckerDeployer_AlreadyConfigured();
         }
         // Configure these layer specific properties.
         // This is done in a separate call to make the deployment code chain agnostic.
@@ -96,11 +93,11 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
         salt = keccak256(abi.encodePacked(msg.sender, salt));
 
         // Set for a callback to this contract.
-        _tempIdStore = localProjectId;
+        tempStoreId = localProjectId;
 
         sucker = IJBSucker(
             address(
-                new JBOptimismSucker{salt: salt}(DIRECTORY, TOKENS, PERMISSIONS, address(0), JBAddToBalanceMode.MANUAL)
+                new JBOptimismSucker{salt: salt}(DIRECTORY, PERMISSIONS, TOKENS, address(0), JBAddToBalanceMode.MANUAL)
             )
         );
 
