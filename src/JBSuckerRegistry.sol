@@ -2,6 +2,8 @@
 pragma solidity ^0.8.21;
 
 import {JBOwnable, IJBProjects, IJBPermissions} from "@bananapus/ownable/src/JBOwnable.sol";
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBController, JBRulesetMetadata} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import {IJBSucker} from "./interfaces/IJBSucker.sol";
@@ -13,9 +15,13 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
     error INVALID_DEPLOYER(address deployer);
+    error RULESET_DOES_NOT_ALLOW_ADDING_SUCKER();
 
     /// @notice A constant indicating that this sucker exists and belongs to a specific project.
     uint256 constant SUCKER_EXISTS = 1;
+
+    /// @notice The juicebox directory.
+    IJBDirectory immutable DIRECTORY;
 
     /// @notice Tracks the suckers for the specified project.
     mapping(uint256 => EnumerableMap.AddressToUintMap) _suckersOf;
@@ -23,8 +29,8 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
     /// @notice Tracks whether the specified sucker deployer is approved by this registry.
     mapping(address deployer => bool) public suckerDeployerIsAllowed;
 
-    constructor(IJBProjects projects, IJBPermissions permissions, address _initialOwner)
-        JBOwnable(projects, permissions, address(_initialOwner), 0)
+    constructor(IJBDirectory directory, IJBPermissions permissions, address _initialOwner)
+        JBOwnable(directory.PROJECTS(), permissions, address(_initialOwner), 0)
     {}
 
     /// @notice Returns true if the specified sucker belongs to the specified project, and was deployed through this registry.
@@ -89,6 +95,8 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
             permissionId: JBPermissionIds.DEPLOY_SUCKERS
         });
 
+        _requireRulesetAllowsAddingSucker({projectId: projectId});
+
         // Create an array to store the suckers as they are deployed.
         suckers = new address[](configurations.length);
 
@@ -115,6 +123,18 @@ contract JBSuckerRegistry is JBOwnable, IJBSuckerRegistry {
         }
 
         emit SuckersDeployedFor(projectId, suckers, configurations, msg.sender);
+    }
+
+    /// @notice Checks if the current ruleset allows adding a sucker.
+    /// @dev Reverts if the ruleset does not allow adding a sucker.
+    /// @param projectId The ID of the project to check.
+    function _requireRulesetAllowsAddingSucker(uint256 projectId) internal view {
+        IJBController _controller = IJBController(address(DIRECTORY.controllerOf(projectId)));
+        (, JBRulesetMetadata memory metadata) = _controller.currentRulesetOf(projectId);
+
+        if (!metadata.allowCrosschainSuckerExtension) {
+            revert RULESET_DOES_NOT_ALLOW_ADDING_SUCKER();
+        }
     }
 
     function _emitTransferEvent(address previousOwner, address newOwner, uint88 newProjectId)
