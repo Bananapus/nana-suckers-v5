@@ -42,7 +42,6 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     //*********************************************************************//
 
     error JBArbitrumSucker_ChainNotSupported();
-    error JBArbitrumSucker_L1GatewayUnsupported();
     error JBArbitrumSucker_NotEnoughGas();
     error JBArbitrumSucker_TokenNotMapped();
 

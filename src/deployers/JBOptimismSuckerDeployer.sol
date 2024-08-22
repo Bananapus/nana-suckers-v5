@@ -20,7 +20,6 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBOptimismSuckerDeployer_OnlySuckers();
     error JBOptimismSuckerDeployer_AlreadyConfigured();
     error JBOptimismSuckerDeployer_ZeroAddress();
 

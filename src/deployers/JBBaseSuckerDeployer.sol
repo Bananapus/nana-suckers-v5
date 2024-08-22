@@ -19,7 +19,6 @@ contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerD
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBBaseSuckerDeployer_OnlySuckers();
     error JBBaseSuckerDeployer_AlreadyConfigured();
     error JBBaseSuckerDeployer_ZeroAddress();
 

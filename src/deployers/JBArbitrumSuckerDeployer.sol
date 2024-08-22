@@ -22,8 +22,6 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBArbitrumSuckerDeployer_OnlySuckers();
-    error JBArbitrumSuckerDeployer_AlreadyConfigured();
     error JBArbitrumSuckerDeployer_ZeroAddress();
 
     //*********************************************************************//
