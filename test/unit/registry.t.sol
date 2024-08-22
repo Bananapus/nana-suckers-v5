@@ -11,14 +11,16 @@ import {JBLeaf} from "../../src/structs/JBLeaf.sol";
 import {JBClaim} from "../../src/structs/JBClaim.sol";
 
 import {JBProjects} from "@bananapus/core/src/JBProjects.sol";
+import {JBDirectory} from "@bananapus/core/src/JBDirectory.sol";
 import {JBPermissions} from "@bananapus/core/src/JBPermissions.sol";
 
 import {JBSuckerRegistry} from "./../../src/JBSuckerRegistry.sol";
 
 contract RegistryUnitTest is Test {
     function testDeployNoProjectCheck() public {
-        JBProjects _projecs = new JBProjects(msg.sender, address(0));
+        JBProjects _projects = new JBProjects(msg.sender, address(0));
         JBPermissions _permissions = new JBPermissions();
-        new JBSuckerRegistry(_permissions, _projecs, address(100));
+        JBDirectory _directory = new JBDirectory(_permissions, _projects, address(100));
+        new JBSuckerRegistry(_directory, _permissions, address(100));
     }
 }

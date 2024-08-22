@@ -2,8 +2,11 @@
 pragma solidity ^0.8.23;
 
 import {JBPermissioned} from "@bananapus/core/src/abstract/JBPermissioned.sol";
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {IJBProjects} from "@bananapus/core/src/interfaces/IJBProjects.sol";
+import {JBRulesetMetadata} from "@bananapus/core/src/structs/JBRulesetMetadata.sol";
 import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
@@ -21,6 +24,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     //*********************************************************************//
 
     error JBSuckerRegistry_InvalidDeployer();
+    error JBSuckerRegistry_RulesetDoesNotAllowAddingSucker();
 
     //*********************************************************************//
     // ------------------------- internal constants ----------------------- //
@@ -32,6 +36,9 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
+
+    /// @notice The juicebox directory.
+    IJBDirectory public immutable override DIRECTORY;
 
     /// @notice A contract which mints ERC-721s that represent project ownership and transfers.
     IJBProjects public immutable override PROJECTS;
@@ -55,14 +62,15 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     // -------------------------- constructor ---------------------------- //
     //*********************************************************************//
 
+    /// @param directory The juicebox directory.
     /// @param permissions A contract storing permissions.
-    /// @param projects A contract which mints ERC-721s that represent project ownership and transfers.
     /// @param initialOwner The initial owner of this contract.
-    constructor(IJBPermissions permissions, IJBProjects projects, address initialOwner)
+    constructor(IJBDirectory directory, IJBPermissions permissions, address initialOwner)
         JBPermissioned(permissions)
         Ownable(initialOwner)
     {
-        PROJECTS = projects;
+        DIRECTORY = directory;
+        PROJECTS = directory.PROJECTS();
     }
 
     //*********************************************************************//
@@ -158,6 +166,9 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
             permissionId: JBPermissionIds.DEPLOY_SUCKERS
         });
 
+        // Check if the ruleset allows adding a sucker.  
+        _requireRulesetAllowsAddingSucker({projectId: projectId});
+
         // Create an array to store the suckers as they are deployed.
         suckers = new address[](configurations.length);
 
@@ -199,6 +210,26 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
                 configuration: configuration,
                 caller: msg.sender
             });
+        }
+    }
+
+    //*********************************************************************//
+    // --------------------- internal transactions ----------------------- //
+    //*********************************************************************//
+
+    /// @notice Checks if the current ruleset allows adding a sucker.
+    /// @dev Reverts if the ruleset does not allow adding a sucker.
+    /// @param projectId The ID of the project to check.
+    function _requireRulesetAllowsAddingSucker(uint256 projectId) internal view {
+        // Get the controller of the project.
+        IJBController controller = IJBController(address(DIRECTORY.controllerOf(projectId)));
+
+        // Get the ruleset metadata of the project.
+        (, JBRulesetMetadata memory metadata) = controller.currentRulesetOf(projectId);
+
+        // Check if the ruleset allows adding a sucker.
+        if (!metadata.allowCrosschainSuckerExtension) {
+            revert JBSuckerRegistry_RulesetDoesNotAllowAddingSucker();
         }
     }
 }
