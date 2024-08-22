@@ -166,7 +166,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
             permissionId: JBPermissionIds.DEPLOY_SUCKERS
         });
 
-        // Check if the ruleset allows adding a sucker.  
+        // Check if the ruleset allows adding a sucker.
         _requireRulesetAllowsAddingSucker({projectId: projectId});
 
         // Create an array to store the suckers as they are deployed.
