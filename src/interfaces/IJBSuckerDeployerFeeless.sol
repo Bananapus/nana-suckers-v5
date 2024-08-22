@@ -11,7 +11,7 @@ interface IJBSuckerDeployerFeeless is IJBSuckerDeployer {
         address token,
         uint32 currency,
         uint256 amount,
-        uint256 minReceivedTokens
+        uint256 minTokensReclaimed
     )
         external
         returns (uint256);

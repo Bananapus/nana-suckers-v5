@@ -23,15 +23,15 @@ abstract contract JBAllowanceSucker is JBSucker {
 
     /// @notice Redeems the project tokens for the redemption tokens.
     /// @param projectToken the token to redeem.
-    /// @param amount the amount of project tokens to redeem.
+    /// @param count the amount of project tokens to redeem.
     /// @param token the token to redeem for.
-    /// @param minReceivedTokens the minimum amount of tokens to receive.
+    /// @param minTokensReclaimed the minimum amount of tokens to receive.
     /// @return receivedAmount the amount of tokens received by redeeming.
     function _pullBackingAssets(
         IERC20 projectToken,
-        uint256 amount,
+        uint256 count,
         address token,
-        uint256 minReceivedTokens
+        uint256 minTokensReclaimed
     )
         internal
         virtual
@@ -43,7 +43,7 @@ abstract contract JBAllowanceSucker is JBSucker {
 
         // Burn the project tokens.
         IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).burnTokensOf(
-            address(this), PROJECT_ID, amount, string("")
+            address(this), PROJECT_ID, count, string("")
         );
 
         // Get the primary terminal of the project for the token.
@@ -63,7 +63,7 @@ abstract contract JBAllowanceSucker is JBSucker {
         uint256 surplus = terminal.currentSurplusOf(PROJECT_ID, accountingContext.decimals, accountingContext.currency);
 
         // TODO: replace with PRB-Math muldiv.
-        uint256 backingAssets = amount * surplus / totalSupply;
+        uint256 backingAssets = count * surplus / totalSupply;
 
         // Get the balance before we redeem.
         uint256 balanceBefore = _balanceOf(token, address(this));
@@ -73,7 +73,7 @@ abstract contract JBAllowanceSucker is JBSucker {
             token: token,
             currency: accountingContext.currency,
             amount: backingAssets,
-            minReceivedTokens: minReceivedTokens
+            minTokensReclaimed: minTokensReclaimed
         });
 
         // Sanity check to make sure we actually received the reported amount.

@@ -235,6 +235,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         IJBController controller = IJBController(address(DIRECTORY.controllerOf(projectId)));
 
         // Get the ruleset metadata of the project.
+        // slither-disable-next-line unused-return
         (, JBRulesetMetadata memory metadata) = controller.currentRulesetOf(projectId);
 
         // Check if the ruleset allows adding a sucker.
