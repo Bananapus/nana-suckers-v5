@@ -24,5 +24,6 @@ interface IOPStandardBridge {
         uint256 amount,
         uint32 minGasLimit,
         bytes calldata extraData
-    ) external;
+    )
+        external;
 }

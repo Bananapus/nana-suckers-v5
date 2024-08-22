@@ -11,7 +11,8 @@ interface IOPMessenger {
         uint256 amount,
         uint32 minGasLimit,
         bytes calldata extraData
-    ) external;
+    )
+        external;
 
     function sendMessage(address target, bytes memory message, uint32 gasLimit) external payable;
 }

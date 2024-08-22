@@ -10,5 +10,8 @@ interface IArbL1GatewayRouter {
         uint256 maxGas,
         uint256 gasPriceBid,
         bytes calldata data
-    ) external payable returns (bytes memory);
+    )
+        external
+        payable
+        returns (bytes memory);
 }

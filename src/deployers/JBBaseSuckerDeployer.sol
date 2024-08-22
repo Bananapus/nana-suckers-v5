@@ -59,7 +59,12 @@ contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerD
     /// @param permissions The permissions contract for the deployer.
     /// @param tokens The contract that manages token minting and burning.
     /// @param configurator The address of the configurator.
-    constructor(IJBDirectory directory, IJBPermissions permissions, IJBTokens tokens, address configurator)
+    constructor(
+        IJBDirectory directory,
+        IJBPermissions permissions,
+        IJBTokens tokens,
+        address configurator
+    )
         JBPermissioned(permissions)
     {
         if (configurator == address(0)) revert JBBaseSuckerDeployer_ZeroAddress();
@@ -72,7 +77,8 @@ contract JBBaseSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerD
     // --------------------- external transactions ----------------------- //
     //*********************************************************************//
 
-    /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment addresses would change.
+    /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment
+    /// addresses would change.
     /// @notice messenger the OPMesssenger on this layer.
     /// @notice bridge the OPStandardBridge on this layer.
     /// @param messenger the OPMesssenger on this layer.

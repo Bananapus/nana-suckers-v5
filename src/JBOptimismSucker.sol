@@ -59,7 +59,9 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
         IJBTokens tokens,
         address peer,
         JBAddToBalanceMode addToBalanceMode
-    ) JBSucker(directory, permissions, tokens, peer, addToBalanceMode, IJBSuckerDeployer(msg.sender).tempStoreId()) {
+    )
+        JBSucker(directory, permissions, tokens, peer, addToBalanceMode, IJBSuckerDeployer(msg.sender).tempStoreId())
+    {
         // Fetch the messenger and bridge by doing a callback to the deployer contract.
         OPBRIDGE = JBOptimismSuckerDeployer(msg.sender).opBridge();
         OPMESSENGER = JBOptimismSuckerDeployer(msg.sender).opMessenger();
@@ -75,8 +77,8 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
         uint256 chainId = block.chainid;
         if (chainId == 1) return 10;
         if (chainId == 10) return 1;
-        if (chainId == 11155111) return 11155420;
-        if (chainId == 11155420) return 11155111;
+        if (chainId == 11_155_111) return 11_155_420;
+        if (chainId == 11_155_420) return 11_155_111;
         return 0;
     }
 
@@ -90,7 +92,8 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
         return sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == PEER;
     }
 
-    /// @notice Use the `OPMESSENGER` to send the outbox tree for the `token` and the corresponding funds to the peer over the `OPBRIDGE`.
+    /// @notice Use the `OPMESSENGER` to send the outbox tree for the `token` and the corresponding funds to the peer
+    /// over the `OPBRIDGE`.
     /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message.
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.

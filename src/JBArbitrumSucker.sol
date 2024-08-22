@@ -73,7 +73,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         IJBTokens tokens,
         address peer,
         JBAddToBalanceMode addToBalanceMode
-    ) JBSucker(directory, permissions, tokens, peer, addToBalanceMode, IJBSuckerDeployer(msg.sender).tempStoreId()) {
+    )
+        JBSucker(directory, permissions, tokens, peer, addToBalanceMode, IJBSuckerDeployer(msg.sender).tempStoreId())
+    {
         // Layer specific properties
         uint256 chainId = block.chainid;
 
@@ -241,7 +243,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         uint256 amount,
         bytes memory data,
         JBRemoteToken memory /* remoteToken */
-    ) internal {
+    )
+        internal
+    {
         uint256 nativeValue;
         // slither-disable-next-line calls-loop
         uint256 maxSubmissionCost =
@@ -265,9 +269,12 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
                 refundTo: msg.sender,
                 to: address(PEER),
                 amount: amount,
-                maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk - MESSENGER_BASE_GAS_LIMIT = 300k here
-                gasPriceBid: 0.2 gwei, // sane enough for now - covers moderate congestion, maybe decide client side in the future
-                data: bytes(abi.encode(maxSubmissionCost, data)) // @note: maybe this is zero if we pay with msg.value? we'll see in testing
+                maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk -
+                    // MESSENGER_BASE_GAS_LIMIT = 300k here
+                gasPriceBid: 0.2 gwei, // sane enough for now - covers moderate congestion, maybe decide client side in
+                    // the future
+                data: bytes(abi.encode(maxSubmissionCost, data)) // @note: maybe this is zero if we pay with msg.value?
+                    // we'll see in testing
             });
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.

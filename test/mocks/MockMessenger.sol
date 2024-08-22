@@ -4,7 +4,8 @@ pragma solidity ^0.8.21;
 import {IOPMessenger} from "../../src/interfaces/IOPMessenger.sol";
 import "./ERC20Mock.sol";
 
-// FROM https://github.com/OpenZeppelin/openzeppelin-contracts/blob/d3ff81b37f3c773b44dcaf5fda212c7176eef0e2/contracts/mocks/ERC20Mock.sol
+// FROM
+// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/d3ff81b37f3c773b44dcaf5fda212c7176eef0e2/contracts/mocks/ERC20Mock.sol
 
 contract MockMessenger is IOPMessenger {
     address public xDomainMessageSender;
@@ -19,7 +20,14 @@ contract MockMessenger is IOPMessenger {
         require(_success);
     }
 
-    function bridgeERC20To(address localToken, address remoteToken, address to, uint256 amount, uint32, bytes calldata)
+    function bridgeERC20To(
+        address localToken,
+        address remoteToken,
+        address to,
+        uint256 amount,
+        uint32,
+        bytes calldata
+    )
         external
     {
         // TODO: implement mock.

@@ -18,7 +18,11 @@ interface IJBSuckerRegistry {
     function suckerDeployerIsAllowed(address deployer) external view returns (bool);
 
     function allowSuckerDeployer(address deployer) external;
-    function deploySuckersFor(uint256 projectId, bytes32 salt, JBSuckerDeployerConfig[] memory configurations)
+    function deploySuckersFor(
+        uint256 projectId,
+        bytes32 salt,
+        JBSuckerDeployerConfig[] memory configurations
+    )
         external
         returns (address[] memory suckers);
 }

@@ -58,7 +58,12 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
     /// @param permissions The permissions contract for the deployer.
     /// @param tokens The contract that manages token minting and burning.
     /// @param configurator The address of the configurator.
-    constructor(IJBDirectory directory, IJBPermissions permissions, IJBTokens tokens, address configurator)
+    constructor(
+        IJBDirectory directory,
+        IJBPermissions permissions,
+        IJBTokens tokens,
+        address configurator
+    )
         JBPermissioned(permissions)
     {
         if (configurator == address(0)) revert JBArbitrumSuckerDeployer_ZeroAddress();
@@ -115,7 +120,8 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
         isSucker[address(sucker)] = true;
     }
 
-    /* /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment addresses would change.
+    /* /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment
+    addresses would change.
     /// @notice messenger the OPMesssenger on this layer.
     /// @notice bridge the OPStandardBridge on this layer.
     function configureLayerSpecific(OPMessenger messenger, OPStandardBridge bridge) external {

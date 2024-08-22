@@ -65,7 +65,11 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     /// @param directory The juicebox directory.
     /// @param permissions A contract storing permissions.
     /// @param initialOwner The initial owner of this contract.
-    constructor(IJBDirectory directory, IJBPermissions permissions, address initialOwner)
+    constructor(
+        IJBDirectory directory,
+        IJBPermissions permissions,
+        address initialOwner
+    )
         JBPermissioned(permissions)
         Ownable(initialOwner)
     {
@@ -77,7 +81,8 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     // ------------------------- external views -------------------------- //
     //*********************************************************************//
 
-    /// @notice Returns true if the specified sucker belongs to the specified project, and was deployed through this registry.
+    /// @notice Returns true if the specified sucker belongs to the specified project, and was deployed through this
+    /// registry.
     /// @param projectId The ID of the project to check for.
     /// @param addr The address of the sucker to check.
     /// @return flag A flag indicating if the sucker belongs to the project, and was deployed through this registry.
@@ -152,10 +157,15 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     /// @notice Deploy one or more suckers for the specified project.
     /// @dev The caller must be the project's owner or have `JBPermissionIds.DEPLOY_SUCKERS` from the project's owner.
     /// @param projectId The ID of the project to deploy suckers for.
-    /// @param salt The salt used to deploy the contract. For the suckers to be peers, this must be the same value on each chain where suckers are deployed.
+    /// @param salt The salt used to deploy the contract. For the suckers to be peers, this must be the same value on
+    /// each chain where suckers are deployed.
     /// @param configurations The sucker deployer configs to use to deploy the suckers.
     /// @return suckers The addresses of the deployed suckers.
-    function deploySuckersFor(uint256 projectId, bytes32 salt, JBSuckerDeployerConfig[] calldata configurations)
+    function deploySuckersFor(
+        uint256 projectId,
+        bytes32 salt,
+        JBSuckerDeployerConfig[] calldata configurations
+    )
         public
         override
         returns (address[] memory suckers)

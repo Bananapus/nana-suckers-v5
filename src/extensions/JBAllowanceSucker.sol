@@ -27,7 +27,12 @@ abstract contract JBAllowanceSucker is JBSucker {
     /// @param token the token to redeem for.
     /// @param minReceivedTokens the minimum amount of tokens to receive.
     /// @return receivedAmount the amount of tokens received by redeeming.
-    function _pullBackingAssets(IERC20 projectToken, uint256 amount, address token, uint256 minReceivedTokens)
+    function _pullBackingAssets(
+        IERC20 projectToken,
+        uint256 amount,
+        address token,
+        uint256 minReceivedTokens
+    )
         internal
         virtual
         override

@@ -60,7 +60,12 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     /// @param permissions The permissions contract for the deployer.
     /// @param tokens The contract that manages token minting and burning.
     /// @param configurator The address of the configurator.
-    constructor(IJBDirectory directory, IJBTokens tokens, IJBPermissions permissions, address configurator)
+    constructor(
+        IJBDirectory directory,
+        IJBTokens tokens,
+        IJBPermissions permissions,
+        address configurator
+    )
         JBPermissioned(permissions)
     {
         if (configurator == address(0)) revert JBOptimismSuckerDeployer_ZeroAddress();
@@ -73,7 +78,8 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     // --------------------- external transactions ----------------------- //
     //*********************************************************************//
 
-    /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment addresses would change.
+    /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment
+    /// addresses would change.
     /// @notice messenger the OPMesssenger on this layer.
     /// @notice bridge the OPStandardBridge on this layer.
     function configureLayerSpecific(IOPMessenger messenger, IOPStandardBridge bridge) external {

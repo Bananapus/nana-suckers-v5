@@ -147,7 +147,11 @@ contract MerkleUnitTest is JBSucker, Test {
         return false;
     }
 
-    function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken)
+    function _sendRoot(
+        uint256 transportPayment,
+        address token,
+        JBRemoteToken memory remoteToken
+    )
         internal
         virtual
         override

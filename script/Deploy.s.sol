@@ -69,7 +69,8 @@ contract DeployScript is Script, Sphinx {
         }
     }
 
-    /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet configuration).
+    /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet
+    /// configuration).
     function _optimismSucker() internal {
         // Check if this sucker is already deployed on this chain,
         // if that is the case we don't need to do anything else for this chain.
@@ -83,7 +84,7 @@ contract DeployScript is Script, Sphinx {
 
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
-        if (block.chainid == 1 || block.chainid == 11155111) {
+        if (block.chainid == 1 || block.chainid == 11_155_111) {
             JBOptimismSuckerDeployer _opDeployer = new JBOptimismSuckerDeployer{salt: OP_SALT}(
                 core.directory, core.tokens, core.permissions, safeAddress()
             );
@@ -106,7 +107,7 @@ contract DeployScript is Script, Sphinx {
 
         // Check if we should do the L2 portion.
         // OP & OP Sepolia.
-        if (block.chainid == 10 || block.chainid == 11155420) {
+        if (block.chainid == 10 || block.chainid == 11_155_420) {
             JBOptimismSuckerDeployer _opDeployer = new JBOptimismSuckerDeployer{salt: OP_SALT}(
                 core.directory, core.tokens, core.permissions, safeAddress()
             );
@@ -134,7 +135,7 @@ contract DeployScript is Script, Sphinx {
 
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
-        if (block.chainid == 1 || block.chainid == 11155111) {
+        if (block.chainid == 1 || block.chainid == 11_155_111) {
             JBBaseSuckerDeployer _baseDeployer =
                 new JBBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.permissions, core.tokens, safeAddress());
 
@@ -156,7 +157,7 @@ contract DeployScript is Script, Sphinx {
 
         // Check if we should do the L2 portion.
         // BASE & BASE Sepolia.
-        if (block.chainid == 8453 || block.chainid == 84532) {
+        if (block.chainid == 8453 || block.chainid == 84_532) {
             JBBaseSuckerDeployer _baseDeployer =
                 new JBBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.permissions, core.tokens, safeAddress());
 
@@ -169,7 +170,8 @@ contract DeployScript is Script, Sphinx {
         }
     }
 
-    /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet configuration).
+    /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet
+    /// configuration).
     function _arbitrumSucker() internal {
         // Check if this sucker is already deployed on this chain,
         // if that is the case we don't need to do anything else for this chain.
@@ -183,7 +185,7 @@ contract DeployScript is Script, Sphinx {
 
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
-        if (block.chainid == 1 || block.chainid == 11155111) {
+        if (block.chainid == 1 || block.chainid == 11_155_111) {
             JBArbitrumSuckerDeployer _arbDeployer = new JBArbitrumSuckerDeployer{salt: ARB_SALT}(
                 core.directory, core.permissions, core.tokens, safeAddress()
             );
@@ -193,7 +195,7 @@ contract DeployScript is Script, Sphinx {
 
         // Check if we should do the L2 portion.
         // ARB & ARB Sepolia.
-        if (block.chainid == 10 || block.chainid == 421614) {
+        if (block.chainid == 10 || block.chainid == 421_614) {
             JBArbitrumSuckerDeployer _arbDeployer = new JBArbitrumSuckerDeployer{salt: ARB_SALT}(
                 core.directory, core.permissions, core.tokens, safeAddress()
             );
@@ -202,7 +204,11 @@ contract DeployScript is Script, Sphinx {
         }
     }
 
-    function _isDeployed(bytes32 salt, bytes memory creationCode, bytes memory arguments)
+    function _isDeployed(
+        bytes32 salt,
+        bytes memory creationCode,
+        bytes memory arguments
+    )
         internal
         view
         returns (bool)

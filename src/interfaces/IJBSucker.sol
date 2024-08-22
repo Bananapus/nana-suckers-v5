@@ -52,7 +52,12 @@ interface IJBSucker {
     function peerChainId() external view returns (uint256 chainId);
     function isMapped(address token) external view returns (bool);
 
-    function prepare(uint256 projectTokenAmount, address beneficiary, uint256 minTokensReclaimed, address token)
+    function prepare(
+        uint256 projectTokenAmount,
+        address beneficiary,
+        uint256 minTokensReclaimed,
+        address token
+    )
         external;
     function mapToken(JBTokenMapping calldata map) external;
     function mapTokens(JBTokenMapping[] calldata maps) external;

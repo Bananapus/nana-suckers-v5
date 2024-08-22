@@ -19,7 +19,9 @@ contract JBBaseSucker is JBOptimismSucker {
         IJBTokens tokens,
         address peer,
         JBAddToBalanceMode addToBalanceMode
-    ) JBOptimismSucker(directory, permissions, tokens, peer, addToBalanceMode) {}
+    )
+        JBOptimismSucker(directory, permissions, tokens, peer, addToBalanceMode)
+    {}
 
     //*********************************************************************//
     // ------------------------ external views --------------------------- //
@@ -31,8 +33,8 @@ contract JBBaseSucker is JBOptimismSucker {
         uint256 chainId = block.chainid;
         if (chainId == 1) return 8453;
         if (chainId == 8453) return 1;
-        if (chainId == 11155111) return 84532;
-        if (chainId == 84532) return 11155111;
+        if (chainId == 11_155_111) return 84_532;
+        if (chainId == 84_532) return 11_155_111;
         return 0;
     }
 }

@@ -25,8 +25,10 @@ import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
 import {JBTokenMapping} from "./structs/JBTokenMapping.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
-/// @notice An abstract contract for bridging a Juicebox project's tokens and the corresponding funds to and from a remote chain.
-/// @dev Beneficiaries and balances are tracked on two merkle trees: the outbox tree is used to send from the local chain to the remote chain, and the inbox tree is used to receive from the remote chain to the local chain.
+/// @notice An abstract contract for bridging a Juicebox project's tokens and the corresponding funds to and from a
+/// remote chain.
+/// @dev Beneficiaries and balances are tracked on two merkle trees: the outbox tree is used to send from the local
+/// chain to the remote chain, and the inbox tree is used to receive from the remote chain to the local chain.
 /// @dev Throughout this contract, "terminal token" refers to any token accepted by a project's terminal.
 /// @dev This contract does *NOT* support tokens that have a fee on regular transfers and rebasing tokens.
 abstract contract JBSucker is JBPermissioned, IJBSucker {
@@ -55,10 +57,12 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     // ------------------------- public constants ------------------------ //
     //*********************************************************************//
 
-    /// @notice A reasonable minimum gas limit for a basic cross-chain call. The minimum amount of gas required to call the `fromRemote` (successfully/safely) on the remote chain.
+    /// @notice A reasonable minimum gas limit for a basic cross-chain call. The minimum amount of gas required to call
+    /// the `fromRemote` (successfully/safely) on the remote chain.
     uint32 public constant override MESSENGER_BASE_GAS_LIMIT = 300_000;
 
-    /// @notice A reasonable minimum gas limit used when bridging ERC-20s. The minimum amount of gas required to (successfully/safely) perform a transfer on the remote chain.
+    /// @notice A reasonable minimum gas limit used when bridging ERC-20s. The minimum amount of gas required to
+    /// (successfully/safely) perform a transfer on the remote chain.
     uint32 public constant override MESSENGER_ERC20_MIN_GAS_LIMIT = 200_000;
 
     //*********************************************************************//
@@ -72,7 +76,8 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
 
-    /// @notice Whether the `amountToAddToBalance` gets added to the project's balance automatically when `claim` is called or manually by calling `addOutstandingAmountToBalance`.
+    /// @notice Whether the `amountToAddToBalance` gets added to the project's balance automatically when `claim` is
+    /// called or manually by calling `addOutstandingAmountToBalance`.
     JBAddToBalanceMode public immutable override ADD_TO_BALANCE_MODE;
 
     /// @notice The address of this contract's deployer.
@@ -94,7 +99,8 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
 
-    /// @notice The outstanding amount of tokens to be added to the project's balance by `claim` or `addOutstandingAmountToBalance`.
+    /// @notice The outstanding amount of tokens to be added to the project's balance by `claim` or
+    /// `addOutstandingAmountToBalance`.
     /// @custom:param token The local terminal token to get the amount to add to balance for.
     mapping(address token => uint256 amount) public override amountToAddToBalanceOf;
 
@@ -102,7 +108,8 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     // -------------------- internal stored properties ------------------- //
     //*********************************************************************//
 
-    /// @notice Tracks whether individual leaves in a given token's merkle tree have been executed (to prevent double-spending).
+    /// @notice Tracks whether individual leaves in a given token's merkle tree have been executed (to prevent
+    /// double-spending).
     /// @dev A leaf is "executed" when the tokens it represents are minted for its beneficiary.
     /// @custom:param token The token to get the executed bitmap of.
     mapping(address token => BitMaps.BitMap) internal _executedFor;
@@ -136,7 +143,9 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         address peer,
         JBAddToBalanceMode addToBalanceMode,
         uint256 projectId
-    ) JBPermissioned(permissions) {
+    )
+        JBPermissioned(permissions)
+    {
         DIRECTORY = directory;
         TOKENS = tokens;
         PEER = peer == address(0) ? address(this) : peer;
@@ -201,7 +210,11 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     /// @param projectTokenCount The number of project tokens being redeemed.
     /// @param terminalTokenAmount The amount of terminal tokens being reclaimed by the redemption.
     /// @param beneficiary The beneficiary which will receive the project tokens.
-    function _buildTreeHash(uint256 projectTokenCount, uint256 terminalTokenAmount, address beneficiary)
+    function _buildTreeHash(
+        uint256 projectTokenCount,
+        uint256 terminalTokenAmount,
+        address beneficiary
+    )
         internal
         pure
         returns (bytes32)
@@ -213,7 +226,8 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     // --------------------- external transactions ----------------------- //
     //*********************************************************************//
 
-    /// @notice Adds the redeemed `token` balance to the projects terminal. Can only be used if `ADD_TO_BALANCE_MODE` is `MANUAL`.
+    /// @notice Adds the redeemed `token` balance to the projects terminal. Can only be used if `ADD_TO_BALANCE_MODE` is
+    /// `MANUAL`.
     /// @param token The address of the terminal token to add to the project's balance.
     function addOutstandingAmountToBalance(address token) external {
         if (ADD_TO_BALANCE_MODE != JBAddToBalanceMode.MANUAL) {
@@ -225,7 +239,8 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     }
 
     /// @notice Performs multiple claims.
-    /// @param claims A list of claims to perform (including the terminal token, merkle tree leaf, and proof for each claim).
+    /// @param claims A list of claims to perform (including the terminal token, merkle tree leaf, and proof for each
+    /// claim).
     function claim(JBClaim[] calldata claims) external {
         // Get the number of claims to perform.
         uint256 numberOfClaims = claims.length;
@@ -291,7 +306,8 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         JBInboxTreeRoot storage inbox = _inboxOf[root.token];
 
         // If the received tree's nonce is greater than the current inbox tree's nonce, update the inbox tree.
-        // We can't revert because this could be a native token transfer. If we reverted, we would lose the native tokens.
+        // We can't revert because this could be a native token transfer. If we reverted, we would lose the native
+        // tokens.
         if (root.remoteRoot.nonce > inbox.nonce) {
             inbox.nonce = root.remoteRoot.nonce;
             inbox.root = root.remoteRoot.root;
@@ -304,8 +320,10 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         }
     }
 
-    /// @notice Map an ERC-20 token on the local chain to an ERC-20 token on the remote chain, allowing that token to be bridged.
-    /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging them.
+    /// @notice Map an ERC-20 token on the local chain to an ERC-20 token on the remote chain, allowing that token to be
+    /// bridged.
+    /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging
+    /// them.
     function mapToken(JBTokenMapping calldata map) public {
         address token = map.localToken;
         bool isNative = map.localToken == JBConstants.NATIVE_TOKEN;
@@ -316,7 +334,8 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
             revert JBSucker_InvalidNativeRemoteAddress();
         }
 
-        // Enforce a reasonable minimum gas limit for bridging. A minimum which is too low could lead to the loss of funds.
+        // Enforce a reasonable minimum gas limit for bridging. A minimum which is too low could lead to the loss of
+        // funds.
         if (map.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT && !isNative) {
             revert JBSucker_BelowMinGas();
         }
@@ -329,7 +348,8 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
             permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
         });
 
-        // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds to the remote chain.
+        // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds
+        // to the remote chain.
         if (map.remoteToken == address(0) && _outboxOf[token].balance != 0) {
             _sendRoot({transportPayment: 0, token: token, remoteToken: _remoteTokenFor[token]});
         }
@@ -339,8 +359,10 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
             JBRemoteToken({minGas: map.minGas, addr: map.remoteToken, minBridgeAmount: map.minBridgeAmount});
     }
 
-    /// @notice Map multiple ERC-20 tokens on the local chain to ERC-20 tokens on the remote chain, allowing those tokens to be bridged.
-    /// @param maps A list of local and remote terminal token addresses to map, and minimum amount/gas limits for bridging them.
+    /// @notice Map multiple ERC-20 tokens on the local chain to ERC-20 tokens on the remote chain, allowing those
+    /// tokens to be bridged.
+    /// @param maps A list of local and remote terminal token addresses to map, and minimum amount/gas limits for
+    /// bridging them.
     function mapTokens(JBTokenMapping[] calldata maps) external {
         // Keep a reference to the number of token mappings to perform.
         uint256 numberOfMaps = maps.length;
@@ -352,12 +374,19 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     }
 
     /// @notice Prepare project tokens and the redemption amount backing them to be bridged to the remote chain.
-    /// @dev This adds the tokens and funds to the outbox tree for the `token`. They will be bridged by the next call to `toRemote` for the same `token`.
+    /// @dev This adds the tokens and funds to the outbox tree for the `token`. They will be bridged by the next call to
+    /// `toRemote` for the same `token`.
     /// @param projectTokenCount The number of project tokens to prepare for bridging.
     /// @param beneficiary The address of the recipient of the tokens on the remote chain.
-    /// @param minTokensReclaimed The minimum amount of terminal tokens to redeem for. If the amount reclaimed is less than this, the transaction will revert.
+    /// @param minTokensReclaimed The minimum amount of terminal tokens to redeem for. If the amount reclaimed is less
+    /// than this, the transaction will revert.
     /// @param token The address of the terminal token to redeem for.
-    function prepare(uint256 projectTokenCount, address beneficiary, uint256 minTokensReclaimed, address token)
+    function prepare(
+        uint256 projectTokenCount,
+        address beneficiary,
+        uint256 minTokensReclaimed,
+        address token
+    )
         external
     {
         // Make sure the beneficiary is not the zero address, as this would revert when minting on the remote chain.
@@ -402,9 +431,15 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     /// @param projectToken The project token being redeemed.
     /// @param count The number of project tokens to redeem.
     /// @param token The terminal token to redeem for.
-    /// @param minTokensReclaimed The minimum amount of terminal tokens to reclaim. If the amount reclaimed is less than this, the transaction will revert.
+    /// @param minTokensReclaimed The minimum amount of terminal tokens to reclaim. If the amount reclaimed is less than
+    /// this, the transaction will revert.
     /// @return reclaimedAmount The amount of terminal tokens reclaimed by the redemption.
-    function _pullBackingAssets(IERC20 projectToken, uint256 count, address token, uint256 minTokensReclaimed)
+    function _pullBackingAssets(
+        IERC20 projectToken,
+        uint256 count,
+        address token,
+        uint256 minTokensReclaimed
+    )
         internal
         virtual
         returns (uint256 reclaimedAmount)
@@ -438,7 +473,8 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         assert(reclaimedAmount == _balanceOf({token: token, addr: address(this)}) - balanceBefore);
     }
 
-    /// @notice Bridge the project tokens, redeemed funds, and beneficiary information for a given `token` to the remote chain.
+    /// @notice Bridge the project tokens, redeemed funds, and beneficiary information for a given `token` to the remote
+    /// chain.
     /// @dev This sends the outbox root for the specified `token` to the remote chain.
     /// @param token The terminal token being bridged.
     function toRemote(address token) external payable {
@@ -526,7 +562,12 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     /// @param terminalTokenAmount The amount of terminal tokens reclaimed by redeeming.
     /// @param beneficiary The beneficiary of the project tokens on the remote chain.
 
-    function _insertIntoTree(uint256 projectTokenCount, address token, uint256 terminalTokenAmount, address beneficiary)
+    function _insertIntoTree(
+        uint256 projectTokenCount,
+        address token,
+        uint256 terminalTokenAmount,
+        address beneficiary
+    )
         internal
     {
         // Build a hash based on the token amounts and the beneficiary.
@@ -563,20 +604,24 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     function _isRemotePeer(address sender) internal virtual returns (bool valid);
 
     /// @notice Send the outbox root for the specified token to the remote peer.
-    /// @dev The call may have a `transportPayment` for bridging native tokens. Require it to be `0` if it is not needed. Make sure if a value being paid to the bridge is expected to revert if the given value is `0`.
-    /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message. (usually derived from `msg.value`)
+    /// @dev The call may have a `transportPayment` for bridging native tokens. Require it to be `0` if it is not
+    /// needed. Make sure if a value being paid to the bridge is expected to revert if the given value is `0`.
+    /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message. (usually
+    /// derived from `msg.value`)
     /// @param token The terminal token to bridge the merkle tree of.
     /// @param remoteToken The remote token which the `token` is mapped to.
     function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal virtual;
 
-    /// @notice Validates a leaf as being in the inbox merkle tree and registers the leaf as executed (to prevent double-spending).
+    /// @notice Validates a leaf as being in the inbox merkle tree and registers the leaf as executed (to prevent
+    /// double-spending).
     /// @dev Reverts if the leaf is invalid.
     /// @param projectTokenCount The number of project tokens which were redeemed.
     /// @param terminalToken The terminal token that the project tokens were redeemed for.
     /// @param terminalTokenAmount The amount of terminal tokens reclaimed by the redemption.
     /// @param beneficiary The beneficiary which will receive the project tokens.
     /// @param index The index of the leaf being proved in the terminal token's inbox tree.
-    /// @param leaves The leaves that prove that the leaf at the `index` is in the tree (i.e. the merkle branch that the leaf is on).
+    /// @param leaves The leaves that prove that the leaf at the `index` is in the tree (i.e. the merkle branch that the
+    /// leaf is on).
     function _validate(
         uint256 projectTokenCount,
         address terminalToken,
@@ -584,7 +629,9 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         address beneficiary,
         uint256 index,
         bytes32[_TREE_DEPTH] calldata leaves
-    ) internal {
+    )
+        internal
+    {
         // Make sure the leaf has not already been executed.
         if (_executedFor[terminalToken].get(index)) {
             revert JBSucker_LeafAlreadyExecuted();

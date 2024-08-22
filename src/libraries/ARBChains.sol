@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 library ARBChains {
     /// @notice Arbitrum relevant chains and their respective ids.
     uint256 public constant ETH_CHAINID = 1;
-    uint256 public constant ETH_SEP_CHAINID = 11155111;
-    uint256 public constant ARB_CHAINID = 42161;
-    uint256 public constant ARB_SEP_CHAINID = 421614;
+    uint256 public constant ETH_SEP_CHAINID = 11_155_111;
+    uint256 public constant ARB_CHAINID = 42_161;
+    uint256 public constant ARB_SEP_CHAINID = 421_614;
 }
