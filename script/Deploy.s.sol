@@ -52,12 +52,12 @@ contract DeployScript is Script, Sphinx {
             !_isDeployed(
                 REGISTRY_SALT,
                 type(JBSuckerRegistry).creationCode,
-                abi.encode(core.projects, core.permissions, safeAddress())
+                abi.encode(core.directory, core.permissions, safeAddress())
             )
         ) {
             // Deploy the registry and pre-aprove the deployers we just deployed.
             JBSuckerRegistry _registry =
-                new JBSuckerRegistry{salt: REGISTRY_SALT}(core.projects, core.permissions, safeAddress());
+                new JBSuckerRegistry{salt: REGISTRY_SALT}(core.directory, core.permissions, safeAddress());
 
             // Before transferring ownership to JBDAO we approve the deployers.
             if (PRE_APPROVED_DEPLOYERS.length != 0) {
