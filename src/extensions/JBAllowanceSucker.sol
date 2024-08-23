@@ -6,6 +6,7 @@ import "./../JBSucker.sol";
 import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/IJBPayoutTerminal.sol";
 import {IJBSuckerDeployerFeeless} from "../interfaces/IJBSuckerDeployerFeeless.sol";
 import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
+import {mulDiv} from "@prb/math/src/Common.sol";
 
 abstract contract JBAllowanceSucker is JBSucker {
     /// @notice Redeems the project tokens for the redemption tokens.
@@ -45,8 +46,7 @@ abstract contract JBAllowanceSucker is JBSucker {
         uint256 _surplus =
             _terminal.currentSurplusOf(PROJECT_ID, _accountingContext.decimals, _accountingContext.currency);
 
-        // TODO: replace with PRB-Math muldiv.
-        uint256 _backingAssets = _amount * _surplus / _totalSupply;
+        uint256 _backingAssets = mulDiv(_amount, _surplus, _totalSupply);
 
         // Get the balance before we redeem.
         uint256 _balanceBefore = _balanceOf(_token, address(this));
