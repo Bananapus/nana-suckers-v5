@@ -31,7 +31,6 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBOptimismSucker_TokenNotMapped();
     error JBOptimismSucker_UnexpectedMsgValue();
 
     //*********************************************************************//
@@ -117,7 +116,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
 
         // Ensure the token is mapped to an address on the remote chain.
         if (remoteToken.addr == address(0)) {
-            revert JBOptimismSucker_TokenNotMapped();
+            revert JBSucker_TokenNotMapped();
         }
 
         // If the token is an ERC20, bridge it to the peer.

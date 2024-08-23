@@ -43,7 +43,6 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
 
     error JBArbitrumSucker_ChainNotSupported();
     error JBArbitrumSucker_NotEnoughGas();
-    error JBArbitrumSucker_TokenNotMapped();
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -163,7 +162,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         uint64 nonce = ++outbox.nonce;
 
         if (remoteToken.addr == address(0)) {
-            revert JBArbitrumSucker_TokenNotMapped();
+            revert JBSucker_TokenNotMapped();
         }
 
         // Build the calldata that will be send to the peer. This will call `JBSucker.fromRemote` on the remote peer.
