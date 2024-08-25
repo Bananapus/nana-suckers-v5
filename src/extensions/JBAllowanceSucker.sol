@@ -15,7 +15,8 @@ abstract contract JBAllowanceSucker is JBSucker {
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBAllowanceSucker_TokenNotMapped();
+    error JBAllowanceSucker_NoTerminalForToken(uint256 projectId, address token);
+    error JBAllowanceSucker_TokenNotAccepted(uint256 projectId, address token);
 
     //*********************************************************************//
     // ---------------------- internal functions ------------------------- //
@@ -51,13 +52,13 @@ abstract contract JBAllowanceSucker is JBSucker {
 
         // Make sure a terminal is configured for the token.
         if (address(terminal) == address(0)) {
-            revert JBAllowanceSucker_TokenNotMapped();
+            revert JBAllowanceSucker_NoTerminalForToken(PROJECT_ID, token);
         }
 
         // Get the accounting context for the token.
         JBAccountingContext memory accountingContext = terminal.accountingContextForTokenOf(PROJECT_ID, token);
-        if (accountingContext.decimals == 0 && accountingContext.currency == 0) {
-            revert JBAllowanceSucker_TokenNotMapped();
+        if (accountingContext.currency == 0) {
+            revert JBAllowanceSucker_TokenNotAccepted(PROJECT_ID, token);
         }
 
         uint256 surplus = terminal.currentSurplusOf(PROJECT_ID, accountingContext.decimals, accountingContext.currency);

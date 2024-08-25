@@ -20,8 +20,8 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBOptimismSuckerDeployer_AlreadyConfigured();
-    error JBOptimismSuckerDeployer_ZeroAddress();
+    error JBOptimismSuckerDeployer_AlreadyConfigured(IOPMessenger messenger, IOPStandardBridge bridge);
+    error JBArbitrumSuckerDeployer_ZeroConfiguratorAddress();
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -68,7 +68,7 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     )
         JBPermissioned(permissions)
     {
-        if (configurator == address(0)) revert JBOptimismSuckerDeployer_ZeroAddress();
+        if (configurator == address(0)) revert JBArbitrumSuckerDeployer_ZeroConfiguratorAddress();
         LAYER_SPECIFIC_CONFIGURATOR = configurator;
         DIRECTORY = directory;
         TOKENS = tokens;
@@ -84,7 +84,7 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     /// @notice bridge the OPStandardBridge on this layer.
     function configureLayerSpecific(IOPMessenger messenger, IOPStandardBridge bridge) external {
         if (address(opMessenger) != address(0) || address(opBridge) != address(0)) {
-            revert JBOptimismSuckerDeployer_AlreadyConfigured();
+            revert JBOptimismSuckerDeployer_AlreadyConfigured(opMessenger, opBridge);
         }
         // Configure these layer specific properties.
         // This is done in a separate call to make the deployment code chain agnostic.

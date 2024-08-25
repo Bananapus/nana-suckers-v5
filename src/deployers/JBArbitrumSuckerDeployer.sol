@@ -22,7 +22,7 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBArbitrumSuckerDeployer_ZeroAddress();
+    error JBArbitrumSuckerDeployer_ZeroConfiguratorAddress();
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -66,7 +66,7 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
     )
         JBPermissioned(permissions)
     {
-        if (configurator == address(0)) revert JBArbitrumSuckerDeployer_ZeroAddress();
+        if (configurator == address(0)) revert JBArbitrumSuckerDeployer_ZeroConfiguratorAddress();
         DIRECTORY = directory;
         TOKENS = tokens;
         LAYER_SPECIFIC_CONFIGURATOR = configurator;

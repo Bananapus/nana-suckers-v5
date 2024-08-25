@@ -41,8 +41,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBArbitrumSucker_ChainNotSupported();
-    error JBArbitrumSucker_NotEnoughGas();
+    error JBArbitrumSucker_ChainNotSupported(uint256 chainId);
+    error JBArbitrumSucker_NotEnoughGas(uint256 payment, uint256 cost);
+    error JBArbitrumSucker_UnexpectedMsgValue(uint256 value);
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -79,7 +80,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         uint256 chainId = block.chainid;
 
         // If LAYER is left uninitialized, the chain is not currently supported.
-        if (!_isSupportedChain(chainId)) revert JBArbitrumSucker_ChainNotSupported();
+        if (!_isSupportedChain(chainId)) revert JBArbitrumSucker_ChainNotSupported(chainId);
 
         // Set LAYER based on the chain ID.
         if (chainId == ARBChains.ETH_CHAINID || chainId == ARBChains.ETH_SEP_CHAINID) {
@@ -162,7 +163,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         uint64 nonce = ++outbox.nonce;
 
         if (remoteToken.addr == address(0)) {
-            revert JBSucker_TokenNotMapped();
+            revert JBSucker_TokenNotMapped(token);
         }
 
         // Build the calldata that will be send to the peer. This will call `JBSucker.fromRemote` on the remote peer.
@@ -206,7 +207,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
 
         // Revert if there's a `msg.value`. Sending a message to L1 does not require any payment.
         if (msg.value != 0) {
-            revert JBArbitrumSucker_NotEnoughGas();
+            revert JBArbitrumSucker_UnexpectedMsgValue(msg.value);
         }
 
         // If the token is an ERC-20, bridge it to the peer.
@@ -252,7 +253,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         uint256 feeTotal = maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * 0.2 gwei);
 
         // Ensure we bridge enough for gas costs on L2 side
-        if (transportPayment < feeTotal) revert JBArbitrumSucker_NotEnoughGas();
+        if (transportPayment < feeTotal) revert JBArbitrumSucker_NotEnoughGas(transportPayment, feeTotal);
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
@@ -282,7 +283,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
 
         // Ensure we bridge enough for gas costs on L2 side
         // transportPayment is ref of msg.value
-        if (nativeValue + feeTotal > transportPayment) revert JBArbitrumSucker_NotEnoughGas();
+        if (nativeValue + feeTotal > transportPayment) revert JBArbitrumSucker_NotEnoughGas(transportPayment < nativeValue ? 0 : transportPayment - nativeValue, feeTotal);
 
         // Create the retryable ticket containing the merkleRoot.
         // TODO: We could even make this unsafe.

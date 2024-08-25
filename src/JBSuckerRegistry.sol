@@ -12,6 +12,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 import {IJBSucker} from "./interfaces/IJBSucker.sol";
+import {IJBSuckerDeployer} from "./interfaces/IJBSuckerDeployer.sol";
 import {IJBSuckerRegistry} from "./interfaces/IJBSuckerRegistry.sol";
 import {JBSuckerDeployerConfig} from "./structs/JBSuckerDeployerConfig.sol";
 import {JBSuckersPair} from "./structs/JBSuckersPair.sol";
@@ -23,7 +24,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBSuckerRegistry_InvalidDeployer();
+    error JBSuckerRegistry_InvalidDeployer(IJBSuckerDeployer deployer);
     error JBSuckerRegistry_RulesetDoesNotAllowAddingSucker();
 
     //*********************************************************************//
@@ -140,13 +141,10 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         // Keep a reference to the number of deployers.
         uint256 numberOfDeployers = deployers.length;
 
-        // Keep a reference to the deployer being iterated over.
-        address deployer;
-
         // Iterate through the deployers and allow them.
         for (uint256 i; i < numberOfDeployers; i++) {
             // Get the deployer being iterated over.
-            deployer = deployers[i];
+            address deployer = deployers[i];
 
             // Allow the deployer.
             suckerDeployerIsAllowed[deployer] = true;
@@ -189,17 +187,14 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         // Keep a reference to the number of configurations.
         uint256 numberOfConfigurations = configurations.length;
 
-        // Keep a reference to the configuration being iterated over.
-        JBSuckerDeployerConfig memory configuration;
-
         // Iterate through the configurations and deploy the suckers.
         for (uint256 i; i < numberOfConfigurations; i++) {
             // Get the configuration being iterated over.
-            configuration = configurations[i];
+            JBSuckerDeployerConfig memory configuration = configurations[i];
 
             // Make sure the deployer is allowed.
             if (!suckerDeployerIsAllowed[address(configuration.deployer)]) {
-                revert JBSuckerRegistry_InvalidDeployer();
+                revert JBSuckerRegistry_InvalidDeployer(configuration.deployer);
             }
 
             // Create the sucker.

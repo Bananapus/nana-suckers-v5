@@ -31,7 +31,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBOptimismSucker_UnexpectedMsgValue();
+    error JBOptimismSucker_UnexpectedMsgValue(uint256 value);
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -101,7 +101,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
 
         // Revert if there's a `msg.value`. The OP bridge does not expect to be paid.
         if (transportPayment != 0) {
-            revert JBOptimismSucker_UnexpectedMsgValue();
+            revert JBOptimismSucker_UnexpectedMsgValue(transportPayment);
         }
 
         // Get the outbox in storage.
@@ -116,7 +116,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
 
         // Ensure the token is mapped to an address on the remote chain.
         if (remoteToken.addr == address(0)) {
-            revert JBSucker_TokenNotMapped();
+            revert JBSucker_TokenNotMapped(token);
         }
 
         // If the token is an ERC20, bridge it to the peer.

@@ -40,18 +40,18 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     // --------------------------- custom errors ------------------------- //
     //*********************************************************************//
 
-    error JBSucker_BelowMinGas();
-    error JBSucker_BeneficiaryNotAllowed();
-    error JBSucker_ERC20TokenRequired();
-    error JBSucker_InsufficientBalance();
-    error JBSucker_InvalidNativeRemoteAddress();
-    error JBSucker_InvalidProof();
-    error JBSucker_LeafAlreadyExecuted();
-    error JBSucker_ManualNotAllowed();
-    error JBSucker_NoTerminalForToken();
-    error JBSucker_NotPeer();
-    error JBSucker_QueueInsufficientSize();
-    error JBSucker_TokenNotMapped();
+    error JBSucker_BelowMinGas(uint256 minGas, uint256 minGasLimit);
+    error JBSucker_InsufficientBalance(uint256 amount, uint256 balance);
+    error JBSucker_InvalidNativeRemoteAddress(address remoteToken);
+    error JBSucker_InvalidProof(bytes32 root, bytes32 inboxRoot);
+    error JBSucker_LeafAlreadyExecuted(address token, uint256 index);
+    error JBSucker_ManualNotAllowed(JBAddToBalanceMode mode);
+    error JBSucker_NoTerminalForToken(uint256 projectId, address token);
+    error JBSucker_NotPeer(address caller);
+    error JBSucker_QueueInsufficientSize(uint256 amount, uint256 minimumAmount);
+    error JBSucker_TokenNotMapped(address token);
+    error JBSucker_ZeroBeneficiary();
+    error JBSucker_ZeroERC20Token();
 
     //*********************************************************************//
     // ------------------------- public constants ------------------------ //
@@ -231,7 +231,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     /// @param token The address of the terminal token to add to the project's balance.
     function addOutstandingAmountToBalance(address token) external {
         if (ADD_TO_BALANCE_MODE != JBAddToBalanceMode.MANUAL) {
-            revert JBSucker_ManualNotAllowed();
+            revert JBSucker_ManualNotAllowed(ADD_TO_BALANCE_MODE);
         }
 
         // Add entire outstanding amount to the project's balance.
@@ -296,7 +296,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     function fromRemote(JBMessageRoot calldata root) external payable {
         // Make sure that the message came from our peer.
         if (!_isRemotePeer(msg.sender)) {
-            revert JBSucker_NotPeer();
+            revert JBSucker_NotPeer(msg.sender);
         }
 
         // Increase the outstanding amount to be added to the project's balance by the amount being received.
@@ -331,13 +331,13 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         // If the token being mapped is the native token, the `remoteToken` must also be the native token.
         // The native token can also be mapped to the 0 address, which is used to disable native token bridging.
         if (isNative && map.remoteToken != JBConstants.NATIVE_TOKEN && map.remoteToken != address(0)) {
-            revert JBSucker_InvalidNativeRemoteAddress();
+            revert JBSucker_InvalidNativeRemoteAddress(map.remoteToken);
         }
 
         // Enforce a reasonable minimum gas limit for bridging. A minimum which is too low could lead to the loss of
         // funds.
         if (map.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT && !isNative) {
-            revert JBSucker_BelowMinGas();
+            revert JBSucker_BelowMinGas(map.minGas, MESSENGER_ERC20_MIN_GAS_LIMIT);
         }
 
         // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
@@ -391,18 +391,18 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     {
         // Make sure the beneficiary is not the zero address, as this would revert when minting on the remote chain.
         if (beneficiary == address(0)) {
-            revert JBSucker_BeneficiaryNotAllowed();
+            revert JBSucker_ZeroBeneficiary();
         }
 
         // Get the project's token.
         IERC20 projectToken = IERC20(address(TOKENS.tokenOf(PROJECT_ID)));
         if (address(projectToken) == address(0)) {
-            revert JBSucker_ERC20TokenRequired();
+            revert JBSucker_ZeroERC20Token();
         }
 
         // Make sure that the token is mapped to a remote token.
         if (_remoteTokenFor[token].addr == address(0)) {
-            revert JBSucker_TokenNotMapped();
+            revert JBSucker_TokenNotMapped(token);
         }
 
         // Transfer the tokens to this contract.
@@ -452,7 +452,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
         // If the project doesn't have a primary terminal for `token`, revert.
         if (address(terminal) == address(0)) {
-            revert JBSucker_NoTerminalForToken();
+            revert JBSucker_NoTerminalForToken(PROJECT_ID, token);
         }
 
         // Redeem the tokens.
@@ -482,7 +482,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
         // Ensure that the amount being bridged exceeds the minimum bridge amount.
         if (_outboxOf[token].balance < remoteToken.minBridgeAmount) {
-            revert JBSucker_QueueInsufficientSize();
+            revert JBSucker_QueueInsufficientSize(_outboxOf[token].balance, remoteToken.minBridgeAmount);
         }
 
         // Send the merkle root to the remote chain.
@@ -507,7 +507,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         // Make sure that the current `amountToAddToBalance` is greater than or equal to the amount being added.
         uint256 addableAmount = amountToAddToBalanceOf[token];
         if (amount > addableAmount) {
-            revert JBSucker_InsufficientBalance();
+            revert JBSucker_InsufficientBalance(amount, addableAmount);
         }
 
         // Update the outstanding amount of tokens which can be added to the project's balance.
@@ -521,7 +521,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
         IJBTerminal terminal = DIRECTORY.primaryTerminalOf({projectId: PROJECT_ID, token: token});
 
         // slither-disable-next-line incorrect-equality
-        if (address(terminal) == address(0)) revert JBSucker_NoTerminalForToken();
+        if (address(terminal) == address(0)) revert JBSucker_NoTerminalForToken(PROJECT_ID, token);
 
         // Perform the `addToBalance`.
         if (token != JBConstants.NATIVE_TOKEN) {
@@ -634,7 +634,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     {
         // Make sure the leaf has not already been executed.
         if (_executedFor[terminalToken].get(index)) {
-            revert JBSucker_LeafAlreadyExecuted();
+            revert JBSucker_LeafAlreadyExecuted(terminalToken, index);
         }
 
         // Register the leaf as executed to prevent double-spending.
@@ -653,7 +653,7 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
         // Compare the calculated root to the terminal token's inbox root. Revert if they do not match.
         if (root != _inboxOf[terminalToken].root) {
-            revert JBSucker_InvalidProof();
+            revert JBSucker_InvalidProof(root, _inboxOf[terminalToken].root);
         }
     }
 }
