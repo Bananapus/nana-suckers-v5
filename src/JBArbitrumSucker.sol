@@ -147,10 +147,8 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
-        // TODO: Handle the `transportPayment`
-        // if (transportPayment == 0) {
-        //     revert JBArbitrumSucker_NotEnoughGas();
-        // }
+        // Bridge expects to be paid
+        if (transportPayment == 0 && LAYER == JBLayer.L1) revert JBArbitrumSucker_UnexpectedMsgValue(transportPayment);
 
         // Get the outbox in storage.
         JBOutboxTree storage outbox = _outboxOf[token];

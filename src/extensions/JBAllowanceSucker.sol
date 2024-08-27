@@ -6,6 +6,7 @@ import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/IJBPayoutTermina
 import {IJBRedeemTerminal} from "@bananapus/core/src/interfaces/IJBRedeemTerminal.sol";
 import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {mulDiv} from "@prb/math/src/Common.sol";
 
 import {JBSucker} from "./../JBSucker.sol";
 import {IJBSuckerDeployerFeeless} from "../interfaces/IJBSuckerDeployerFeeless.sol";
@@ -63,8 +64,7 @@ abstract contract JBAllowanceSucker is JBSucker {
 
         uint256 surplus = terminal.currentSurplusOf(PROJECT_ID, accountingContext.decimals, accountingContext.currency);
 
-        // TODO: replace with PRB-Math muldiv.
-        uint256 backingAssets = count * surplus / totalSupply;
+        uint256 backingAssets = mulDiv(count, surplus, totalSupply);
 
         // Get the balance before we redeem.
         uint256 balanceBefore = _balanceOf(token, address(this));
