@@ -65,11 +65,12 @@ contract DeployScript is Script, Sphinx {
             }
 
             // Transfer ownership to JBDAO.
-            _registry.transferOwnershipToProject(1);
+            _registry.transferOwnership(core.projects.ownerOf(1));
         }
     }
 
-    /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet configuration).
+    /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet
+    /// configuration).
     function _optimismSucker() internal {
         // Check if this sucker is already deployed on this chain,
         // if that is the case we don't need to do anything else for this chain.
@@ -77,24 +78,24 @@ contract DeployScript is Script, Sphinx {
             _isDeployed(
                 OP_SALT,
                 type(JBOptimismSuckerDeployer).creationCode,
-                abi.encode(core.directory, core.tokens, core.permissions, safeAddress())
+                abi.encode(core.directory, core.permissions, core.tokens, safeAddress())
             )
         ) return;
 
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
-        if (block.chainid == 1 || block.chainid == 11155111) {
+        if (block.chainid == 1 || block.chainid == 11_155_111) {
             JBOptimismSuckerDeployer _opDeployer = new JBOptimismSuckerDeployer{salt: OP_SALT}(
-                core.directory, core.tokens, core.permissions, safeAddress()
+                core.directory, core.permissions, core.tokens, safeAddress()
             );
 
             _opDeployer.configureLayerSpecific(
-                OPMessenger(
+                IOPMessenger(
                     block.chainid == 1
                         ? address(0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1)
                         : address(0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef)
                 ),
-                OPStandardBridge(
+                IOPStandardBridge(
                     block.chainid == 1
                         ? address(0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1)
                         : address(0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1)
@@ -106,14 +107,14 @@ contract DeployScript is Script, Sphinx {
 
         // Check if we should do the L2 portion.
         // OP & OP Sepolia.
-        if (block.chainid == 10 || block.chainid == 11155420) {
+        if (block.chainid == 10 || block.chainid == 11_155_420) {
             JBOptimismSuckerDeployer _opDeployer = new JBOptimismSuckerDeployer{salt: OP_SALT}(
-                core.directory, core.tokens, core.permissions, safeAddress()
+                core.directory, core.permissions, core.tokens, safeAddress()
             );
 
             _opDeployer.configureLayerSpecific(
-                OPMessenger(0x4200000000000000000000000000000000000007),
-                OPStandardBridge(0x4200000000000000000000000000000000000010)
+                IOPMessenger(0x4200000000000000000000000000000000000007),
+                IOPStandardBridge(0x4200000000000000000000000000000000000010)
             );
 
             PRE_APPROVED_DEPLOYERS.push(address(_opDeployer));
@@ -128,23 +129,23 @@ contract DeployScript is Script, Sphinx {
             _isDeployed(
                 BASE_SALT,
                 type(JBBaseSuckerDeployer).creationCode,
-                abi.encode(core.directory, core.tokens, core.permissions, safeAddress())
+                abi.encode(core.directory, core.permissions, core.tokens, safeAddress())
             )
         ) return;
 
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
-        if (block.chainid == 1 || block.chainid == 11155111) {
+        if (block.chainid == 1 || block.chainid == 11_155_111) {
             JBBaseSuckerDeployer _baseDeployer =
-                new JBBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.tokens, core.permissions, safeAddress());
+                new JBBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.permissions, core.tokens, safeAddress());
 
             _baseDeployer.configureLayerSpecific(
-                OPMessenger(
+                IOPMessenger(
                     block.chainid == 1
                         ? address(0x866E82a600A1414e583f7F13623F1aC5d58b0Afa)
                         : address(0xC34855F4De64F1840e5686e64278da901e261f20)
                 ),
-                OPStandardBridge(
+                IOPStandardBridge(
                     block.chainid == 1
                         ? address(0x3154Cf16ccdb4C6d922629664174b904d80F2C35)
                         : address(0xfd0Bf71F60660E2f608ed56e1659C450eB113120)
@@ -156,20 +157,21 @@ contract DeployScript is Script, Sphinx {
 
         // Check if we should do the L2 portion.
         // BASE & BASE Sepolia.
-        if (block.chainid == 8453 || block.chainid == 84532) {
+        if (block.chainid == 8453 || block.chainid == 84_532) {
             JBBaseSuckerDeployer _baseDeployer =
-                new JBBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.tokens, core.permissions, safeAddress());
+                new JBBaseSuckerDeployer{salt: BASE_SALT}(core.directory, core.permissions, core.tokens, safeAddress());
 
             _baseDeployer.configureLayerSpecific(
-                OPMessenger(0x4200000000000000000000000000000000000007),
-                OPStandardBridge(0x4200000000000000000000000000000000000010)
+                IOPMessenger(0x4200000000000000000000000000000000000007),
+                IOPStandardBridge(0x4200000000000000000000000000000000000010)
             );
 
             PRE_APPROVED_DEPLOYERS.push(address(_baseDeployer));
         }
     }
 
-    /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet configuration).
+    /// @notice handles the deployment and configuration regarding optimism (this also includes the mainnet
+    /// configuration).
     function _arbitrumSucker() internal {
         // Check if this sucker is already deployed on this chain,
         // if that is the case we don't need to do anything else for this chain.
@@ -177,15 +179,15 @@ contract DeployScript is Script, Sphinx {
             _isDeployed(
                 ARB_SALT,
                 type(JBArbitrumSuckerDeployer).creationCode,
-                abi.encode(core.directory, core.tokens, core.permissions, safeAddress())
+                abi.encode(core.directory, core.permissions, core.tokens, safeAddress())
             )
         ) return;
 
         // Check if we should do the L1 portion.
         // ETH Mainnet and ETH Sepolia.
-        if (block.chainid == 1 || block.chainid == 11155111) {
+        if (block.chainid == 1 || block.chainid == 11_155_111) {
             JBArbitrumSuckerDeployer _arbDeployer = new JBArbitrumSuckerDeployer{salt: ARB_SALT}(
-                core.directory, core.tokens, core.permissions, safeAddress()
+                core.directory, core.permissions, core.tokens, safeAddress()
             );
 
             PRE_APPROVED_DEPLOYERS.push(address(_arbDeployer));
@@ -193,16 +195,20 @@ contract DeployScript is Script, Sphinx {
 
         // Check if we should do the L2 portion.
         // ARB & ARB Sepolia.
-        if (block.chainid == 10 || block.chainid == 421614) {
+        if (block.chainid == 10 || block.chainid == 421_614) {
             JBArbitrumSuckerDeployer _arbDeployer = new JBArbitrumSuckerDeployer{salt: ARB_SALT}(
-                core.directory, core.tokens, core.permissions, safeAddress()
+                core.directory, core.permissions, core.tokens, safeAddress()
             );
 
             PRE_APPROVED_DEPLOYERS.push(address(_arbDeployer));
         }
     }
 
-    function _isDeployed(bytes32 salt, bytes memory creationCode, bytes memory arguments)
+    function _isDeployed(
+        bytes32 salt,
+        bytes memory creationCode,
+        bytes memory arguments
+    )
         internal
         view
         returns (bool)

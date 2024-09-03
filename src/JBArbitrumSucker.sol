@@ -1,84 +1,98 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
-import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
-import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
-import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
-import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 import {IBridge} from "@arbitrum/nitro-contracts/src/bridge/IBridge.sol";
-import {IOutbox} from "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
-import {ArbSys} from "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
-import {AddressAliasHelper} from "@arbitrum/nitro-contracts/src/libraries/AddressAliasHelper.sol";
 import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
+import {IOutbox} from "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
+import {AddressAliasHelper} from "@arbitrum/nitro-contracts/src/libraries/AddressAliasHelper.sol";
+import {ArbSys} from "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
+import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
+import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
-import {ArbL1GatewayRouter} from "./interfaces/ArbL1GatewayRouter.sol";
-import {ArbL2GatewayRouter} from "./interfaces/ArbL2GatewayRouter.sol";
-import {IArbGatewayRouter} from "./interfaces/IArbGatewayRouter.sol";
-import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
-import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
-import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
-import {JBLayer} from "./enums/JBLayer.sol";
-import {JBSucker, IJBSuckerDeployer, JBAddToBalanceMode} from "./JBSucker.sol";
+import {JBSucker} from "./JBSucker.sol";
 import {JBArbitrumSuckerDeployer} from "./deployers/JBArbitrumSuckerDeployer.sol";
-import {MerkleLib} from "./utils/MerkleLib.sol";
-
+import {JBAddToBalanceMode} from "./enums/JBAddToBalanceMode.sol";
+import {JBLayer} from "./enums/JBLayer.sol";
+import {IArbGatewayRouter} from "./interfaces/IArbGatewayRouter.sol";
+import {IArbL1GatewayRouter} from "./interfaces/IArbL1GatewayRouter.sol";
+import {IArbL2GatewayRouter} from "./interfaces/IArbL2GatewayRouter.sol";
+import {IJBArbitrumSucker} from "./interfaces/IJBArbitrumSucker.sol";
+import {IJBSuckerDeployer} from "./interfaces/IJBSuckerDeployer.sol";
 import {ARBAddresses} from "./libraries/ARBAddresses.sol";
 import {ARBChains} from "./libraries/ARBChains.sol";
+import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
+import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
+import {JBOutboxTree} from "./structs/JBOutboxTree.sol";
+import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
+import {MerkleLib} from "./utils/MerkleLib.sol";
 
 /// @notice A `JBSucker` implementation to suck tokens between two chains connected by an Arbitrum bridge.
 // NOTICE: UNFINISHED!
-contract JBArbitrumSucker is JBSucker {
-    error L1GatewayUnsupported();
-    error ChainNotSupported();
-    error NotEnoughGas();
-
-    using MerkleLib for MerkleLib.Tree;
+contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     using BitMaps for BitMaps.BitMap;
+    using MerkleLib for MerkleLib.Tree;
+
+    //*********************************************************************//
+    // --------------------------- custom errors ------------------------- //
+    //*********************************************************************//
+
+    error JBArbitrumSucker_ChainNotSupported(uint256 chainId);
+    error JBArbitrumSucker_NotEnoughGas(uint256 payment, uint256 cost);
+    error JBArbitrumSucker_UnexpectedMsgValue(uint256 value);
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
 
-    /// @notice The layer that this contract is on.
-    JBLayer public immutable LAYER;
+    /// @notice The inbox used to send messages between the local and remote sucker.
+    IInbox public immutable override ARBINBOX;
 
     /// @notice The gateway router for the specific chain
-    IArbGatewayRouter public immutable GATEWAYROUTER;
+    IArbGatewayRouter public immutable override GATEWAYROUTER;
 
-    /// @notice The inbox used to send messages between the local and remote sucker.
-    IInbox public immutable ARBINBOX;
+    /// @notice The layer that this contract is on.
+    JBLayer public immutable override LAYER;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
+
+    /// @param directory A contract storing directories of terminals and controllers for each project.
+    /// @param permissions A contract storing permissions.
+    /// @param tokens A contract that manages token minting and burning.
+    /// @param peer The address of the peer sucker on the remote chain.
+    /// @param addToBalanceMode The mode of adding tokens to balance.
     constructor(
         IJBDirectory directory,
-        IJBTokens tokens,
         IJBPermissions permissions,
+        IJBTokens tokens,
         address peer,
-        JBAddToBalanceMode atbMode
-    ) JBSucker(directory, tokens, permissions, peer, atbMode, IJBSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
+        JBAddToBalanceMode addToBalanceMode
+    )
+        JBSucker(directory, permissions, tokens, peer, addToBalanceMode, IJBSuckerDeployer(msg.sender).tempStoreId())
+    {
         // Layer specific properties
-        uint256 _chainId = block.chainid;
+        uint256 chainId = block.chainid;
 
         // If LAYER is left uninitialized, the chain is not currently supported.
-        if (!isSupportedChain(_chainId)) revert ChainNotSupported();
+        if (!_isSupportedChain(chainId)) revert JBArbitrumSucker_ChainNotSupported(chainId);
 
         // Set LAYER based on the chain ID.
-        if (_chainId == ARBChains.ETH_CHAINID || _chainId == ARBChains.ETH_SEP_CHAINID) {
+        if (chainId == ARBChains.ETH_CHAINID || chainId == ARBChains.ETH_SEP_CHAINID) {
             // Set the layer
             LAYER = JBLayer.L1;
 
             // Set the inbox depending on the chain
-            _chainId == ARBChains.ETH_CHAINID
+            chainId == ARBChains.ETH_CHAINID
                 ? ARBINBOX = IInbox(ARBAddresses.L1_ETH_INBOX)
                 : ARBINBOX = IInbox(ARBAddresses.L1_SEP_INBOX);
         }
-        if (_chainId == ARBChains.ARB_CHAINID || _chainId == ARBChains.ARB_SEP_CHAINID) LAYER = JBLayer.L2;
+        if (chainId == ARBChains.ARB_CHAINID || chainId == ARBChains.ARB_SEP_CHAINID) LAYER = JBLayer.L2;
 
         GATEWAYROUTER = JBArbitrumSuckerDeployer(msg.sender).gatewayRouter();
     }
@@ -89,21 +103,37 @@ contract JBArbitrumSucker is JBSucker {
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
-    function peerChainID() external view virtual override returns (uint256 chainId) {
-        uint256 _chainId = block.chainid;
-        if (_chainId == ARBChains.ETH_CHAINID) return ARBChains.ARB_CHAINID;
-        if (_chainId == ARBChains.ARB_CHAINID) return ARBChains.ETH_CHAINID;
-        if (_chainId == ARBChains.ETH_SEP_CHAINID) return ARBChains.ARB_SEP_CHAINID;
-        if (_chainId == ARBChains.ARB_SEP_CHAINID) return ARBChains.ETH_SEP_CHAINID;
+    function peerChainId() external view virtual override returns (uint256) {
+        uint256 chainId = block.chainid;
+        if (chainId == ARBChains.ETH_CHAINID) return ARBChains.ARB_CHAINID;
+        if (chainId == ARBChains.ARB_CHAINID) return ARBChains.ETH_CHAINID;
+        if (chainId == ARBChains.ETH_SEP_CHAINID) return ARBChains.ARB_SEP_CHAINID;
+        if (chainId == ARBChains.ARB_SEP_CHAINID) return ARBChains.ETH_SEP_CHAINID;
+        return 0;
     }
 
     //*********************************************************************//
-    // ------------------------ private views ---------------------------- //
+    // ------------------------ internal views --------------------------- //
     //*********************************************************************//
+
+    /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
+    /// @param sender The message's sender.
+    /// @return valid A flag if the sender is a valid representative of the remote peer.
+    function _isRemotePeer(address sender) internal view override returns (bool) {
+        // If we are the L1 peer,
+        if (LAYER == JBLayer.L1) {
+            IBridge bridge = ARBINBOX.bridge();
+            // Check that the sender is the bridge and that the outbox has our peer as the sender.
+            return sender == address(bridge) && address(PEER) == IOutbox(bridge.activeOutbox()).l2ToL1Sender();
+        }
+
+        // If we are the L2 peer, check using the `AddressAliasHelper`.
+        return sender == AddressAliasHelper.applyL1ToL2Alias(address(PEER));
+    }
 
     /// @notice Returns true if the chainId is supported.
     /// @return supported false/true if this is deployed on a supported chain.
-    function isSupportedChain(uint256 chainId) private pure returns (bool supported) {
+    function _isSupportedChain(uint256 chainId) internal pure returns (bool supported) {
         return chainId == ARBChains.ETH_CHAINID || chainId == ARBChains.ETH_SEP_CHAINID
             || chainId == ARBChains.ARB_CHAINID || chainId == ARBChains.ARB_SEP_CHAINID;
     }
@@ -118,17 +148,20 @@ contract JBArbitrumSucker is JBSucker {
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
         // Bridge expects to be paid
-        if (transportPayment == 0 && LAYER == JBLayer.L1) revert UNEXPECTED_MSG_VALUE();
+        if (transportPayment == 0 && LAYER == JBLayer.L1) revert JBArbitrumSucker_UnexpectedMsgValue(transportPayment);
+
+        // Get the outbox in storage.
+        JBOutboxTree storage outbox = _outboxOf[token];
 
         // Get the amount to send and then clear it.
-        uint256 amount = outbox[token].balance;
-        delete outbox[token].balance;
+        uint256 amount = outbox.balance;
+        delete outbox.balance;
 
         // Increment the outbox tree's nonce.
-        uint64 nonce = ++outbox[token].nonce;
+        uint64 nonce = ++outbox.nonce;
 
         if (remoteToken.addr == address(0)) {
-            revert TOKEN_NOT_MAPPED(token);
+            revert JBSucker_TokenNotMapped(token);
         }
 
         // Build the calldata that will be send to the peer. This will call `JBSucker.fromRemote` on the remote peer.
@@ -138,20 +171,28 @@ contract JBArbitrumSucker is JBSucker {
                 JBMessageRoot({
                     token: remoteToken.addr,
                     amount: amount,
-                    remoteRoot: JBInboxTreeRoot({nonce: nonce, root: outbox[token].tree.root()})
+                    remoteRoot: JBInboxTreeRoot({nonce: nonce, root: outbox.tree.root()})
                 })
             )
         );
 
+        // Emit an event for the relayers to watch for.
+        emit RootToRemote({
+            root: outbox.tree.root(),
+            token: token,
+            index: outbox.tree.count - 1,
+            nonce: nonce,
+            caller: msg.sender
+        });
+
         // Depending on which layer we are on, send the call to the other layer.
+        // slither-disable-start out-of-order-retryable
         if (LAYER == JBLayer.L1) {
             _toL2(token, transportPayment, amount, data, remoteToken);
         } else {
             _toL1(token, amount, data, remoteToken);
         }
-
-        // Emit an event for the relayers to watch for.
-        emit RootToRemote(outbox[token].tree.root(), token, outbox[token].tree.count - 1, nonce);
+        // slither-disable-end out-of-order-retryable
     }
 
     /// @notice Bridge the `token` and data to the remote L1 chain.
@@ -164,16 +205,21 @@ contract JBArbitrumSucker is JBSucker {
 
         // Revert if there's a `msg.value`. Sending a message to L1 does not require any payment.
         if (msg.value != 0) {
-            revert UNEXPECTED_MSG_VALUE();
+            revert JBArbitrumSucker_UnexpectedMsgValue(msg.value);
         }
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
-            SafeERC20.forceApprove(IERC20(token), GATEWAYROUTER.getGateway(token), amount);
+            // slither-disable-next-line calls-loop
+            SafeERC20.forceApprove({token: IERC20(token), spender: GATEWAYROUTER.getGateway(token), value: amount});
 
-            ArbL2GatewayRouter(address(GATEWAYROUTER)).outboundTransfer(
-                remoteToken.addr, address(PEER), amount, bytes("")
-            );
+            // slither-disable-next-line calls-loop,unused-return
+            IArbL2GatewayRouter(address(GATEWAYROUTER)).outboundTransfer({
+                l1Token: remoteToken.addr,
+                to: address(PEER),
+                amount: amount,
+                data: bytes("")
+            });
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
@@ -181,6 +227,7 @@ contract JBArbitrumSucker is JBSucker {
 
         // Send the message to the peer with the redeemed ETH.
         // Address `100` is the ArbSys precompile address.
+        // slither-disable-next-line calls-loop,unused-return
         ArbSys(address(100)).sendTxToL1{value: nativeValue}(address(PEER), data);
     }
 
@@ -194,28 +241,38 @@ contract JBArbitrumSucker is JBSucker {
         uint256 amount,
         bytes memory data,
         JBRemoteToken memory /* remoteToken */
-    ) internal {
+    )
+        internal
+    {
         uint256 nativeValue;
-        uint256 _maxSubmissionCost = ARBINBOX.calculateRetryableSubmissionFee(data.length, 0.2 gwei);
-        uint256 _feeTotal = _maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * 0.2 gwei);
+        // slither-disable-next-line calls-loop
+        uint256 maxSubmissionCost =
+            ARBINBOX.calculateRetryableSubmissionFee({dataLength: data.length, baseFee: 0.2 gwei});
+        uint256 feeTotal = maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * 0.2 gwei);
 
         // Ensure we bridge enough for gas costs on L2 side
-        if (transportPayment < _feeTotal) revert NotEnoughGas();
+        if (transportPayment < feeTotal) revert JBArbitrumSucker_NotEnoughGas(transportPayment, feeTotal);
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
             // Approve the tokens to be bridged.
-            SafeERC20.forceApprove(IERC20(token), GATEWAYROUTER.getGateway(token), amount);
+            // slither-disable-next-line calls-loop
+            SafeERC20.forceApprove({token: IERC20(token), spender: GATEWAYROUTER.getGateway(token), value: amount});
 
             // Perform the ERC-20 bridge transfer.
-            ArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: transportPayment}({
-                _token: token,
-                _refundTo: msg.sender,
-                _to: address(PEER),
-                _amount: amount,
-                _maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk - MESSENGER_BASE_GAS_LIMIT = 300k here
-                _gasPriceBid: 0.2 gwei, // sane enough for now - covers moderate congestion, maybe decide client side in the future
-                _data: bytes(abi.encode(_maxSubmissionCost, data)) // @note: maybe this is zero if we pay with msg.value? we'll see in testing
+            // slither-disable-start out-of-order-retryable
+            // slither-disable-next-line calls-loop,unused-return
+            IArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: transportPayment}({
+                token: token,
+                refundTo: msg.sender,
+                to: address(PEER),
+                amount: amount,
+                maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk -
+                    // MESSENGER_BASE_GAS_LIMIT = 300k here
+                gasPriceBid: 0.2 gwei, // sane enough for now - covers moderate congestion, maybe decide client side in
+                    // the future
+                data: bytes(abi.encode(maxSubmissionCost, data)) // @note: maybe this is zero if we pay with msg.value?
+                    // we'll see in testing
             });
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
@@ -224,33 +281,25 @@ contract JBArbitrumSucker is JBSucker {
 
         // Ensure we bridge enough for gas costs on L2 side
         // transportPayment is ref of msg.value
-        if (nativeValue + _feeTotal > transportPayment) revert NotEnoughGas();
+        if (nativeValue + feeTotal > transportPayment) {
+            revert JBArbitrumSucker_NotEnoughGas(
+                transportPayment < nativeValue ? 0 : transportPayment - nativeValue, feeTotal
+            );
+        }
 
         // Create the retryable ticket containing the merkleRoot.
         // TODO: We could even make this unsafe.
+        // slither-disable-next-line calls-loop,unused-return
         ARBINBOX.createRetryableTicket{value: transportPayment}({
             to: address(PEER),
             l2CallValue: nativeValue,
-            maxSubmissionCost: _maxSubmissionCost,
+            maxSubmissionCost: maxSubmissionCost,
             excessFeeRefundAddress: msg.sender,
             callValueRefundAddress: msg.sender,
             gasLimit: MESSENGER_BASE_GAS_LIMIT,
             maxFeePerGas: 0.2 gwei,
             data: data
         });
-    }
-
-    /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
-    /// @param sender The message's sender.
-    function _isRemotePeer(address sender) internal view override returns (bool _valid) {
-        // If we are the L1 peer,
-        if (LAYER == JBLayer.L1) {
-            IBridge bridge = ARBINBOX.bridge();
-            // Check that the sender is the bridge and that the outbox has our peer as the sender.
-            return sender == address(bridge) && address(PEER) == IOutbox(bridge.activeOutbox()).l2ToL1Sender();
-        }
-
-        // If we are the L2 peer, check using the `AddressAliasHelper`.
-        return sender == AddressAliasHelper.applyL1ToL2Alias(address(PEER));
+        // slither-disable-end out-of-order-retryable
     }
 }

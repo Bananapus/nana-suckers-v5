@@ -23,16 +23,4 @@ contract RegistryUnitTest is Test {
         JBDirectory _directory = new JBDirectory(_permissions, _projects, address(100));
         new JBSuckerRegistry(_directory, _permissions, address(100));
     }
-
-    function testTransferWithProjectCheck() public {
-        JBProjects _projects = new JBProjects(msg.sender, address(0));
-        JBPermissions _permissions = new JBPermissions();
-        JBDirectory _directory = new JBDirectory(_permissions, _projects, address(100));
-
-        JBSuckerRegistry _registry = new JBSuckerRegistry(_directory, _permissions, address(100));
-
-        vm.expectRevert();
-        vm.prank(address(100));
-        _registry.transferOwnershipToProject(1);
-    }
 }

@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface OPMessenger {
+interface IOPMessenger {
     function xDomainMessageSender() external returns (address);
-
-    function sendMessage(address _target, bytes memory _message, uint32 _gasLimit) external payable;
 
     function bridgeERC20To(
         address localToken,
@@ -13,5 +11,8 @@ interface OPMessenger {
         uint256 amount,
         uint32 minGasLimit,
         bytes calldata extraData
-    ) external;
+    )
+        external;
+
+    function sendMessage(address target, bytes memory message, uint32 gasLimit) external payable;
 }

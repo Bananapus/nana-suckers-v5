@@ -379,10 +379,12 @@ library MerkleLib {
                         mstore(0, sload(add(TREE_SLOT, 31)))
                         mstore(0x20, Z_31)
                         _current := keccak256(0, 0x40)
+                        // slither-disable-next-line write-after-write
                         i := 31
                         break
                     }
 
+                    // slither-disable-next-line write-after-write
                     _current := Z_32
                     i := 32
                     break
@@ -840,7 +842,11 @@ library MerkleLib {
      * @return _current Calculated merkle root
      *
      */
-    function branchRoot(bytes32 _item, bytes32[TREE_DEPTH] memory _branch, uint256 _index)
+    function branchRoot(
+        bytes32 _item,
+        bytes32[TREE_DEPTH] memory _branch,
+        uint256 _index
+    )
         internal
         pure
         returns (bytes32 _current)

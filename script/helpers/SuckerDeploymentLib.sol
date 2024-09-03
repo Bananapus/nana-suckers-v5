@@ -39,7 +39,10 @@ library SuckerDeploymentLib {
         revert("ChainID is not (currently) supported by Sphinx.");
     }
 
-    function getDeployment(string memory path, string memory network_name)
+    function getDeployment(
+        string memory path,
+        string memory network_name
+    )
         internal
         view
         returns (SuckerDeployment memory deployment)
@@ -83,7 +86,11 @@ library SuckerDeploymentLib {
         string memory project_name,
         string memory network_name,
         string memory contractName
-    ) internal view returns (address) {
+    )
+        internal
+        view
+        returns (address)
+    {
         string memory deploymentJson =
             vm.readFile(string.concat(path, project_name, "/", network_name, "/", contractName, ".json"));
         return stdJson.readAddress(deploymentJson, ".address");
