@@ -162,7 +162,7 @@ contract MerkleUnitTest is JBSucker, Test {
 contract DeployerUnitTest is Test {
     function testDoesntRevert() public {
         JBOptimismSuckerDeployer _deployer = new JBOptimismSuckerDeployer(
-            IJBDirectory(address(0)), IJBTokens(address(0)), IJBPermissions(address(0)), msg.sender
+            IJBDirectory(address(0)), IJBPermissions(address(0)), IJBTokens(address(0)), msg.sender
         );
         _deployer.createForSender(1, bytes32(0));
     }
