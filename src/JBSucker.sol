@@ -642,13 +642,13 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
 
         // Calculate the root based on the leaf, the branch, and the index.
         bytes32 root = MerkleLib.branchRoot({
-            item: _buildTreeHash({
+            _item: _buildTreeHash({
                 projectTokenCount: projectTokenCount,
                 terminalTokenAmount: terminalTokenAmount,
                 beneficiary: beneficiary
             }),
-            branch: leaves,
-            index: index
+            _branch: leaves,
+            _index: index
         });
 
         // Compare the calculated root to the terminal token's inbox root. Revert if they do not match.
