@@ -840,7 +840,11 @@ library MerkleLib {
      * @return _current Calculated merkle root
      *
      */
-    function branchRoot(bytes32 _item, bytes32[TREE_DEPTH] memory _branch, uint256 _index)
+    function branchRoot(
+        bytes32 _item,
+        bytes32[TREE_DEPTH] memory _branch,
+        uint256 _index
+    )
         internal
         pure
         returns (bytes32 _current)

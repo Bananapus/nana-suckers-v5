@@ -281,7 +281,11 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
 
         // Ensure we bridge enough for gas costs on L2 side
         // transportPayment is ref of msg.value
-        if (nativeValue + feeTotal > transportPayment) revert JBArbitrumSucker_NotEnoughGas(transportPayment < nativeValue ? 0 : transportPayment - nativeValue, feeTotal);
+        if (nativeValue + feeTotal > transportPayment) {
+            revert JBArbitrumSucker_NotEnoughGas(
+                transportPayment < nativeValue ? 0 : transportPayment - nativeValue, feeTotal
+            );
+        }
 
         // Create the retryable ticket containing the merkleRoot.
         // TODO: We could even make this unsafe.
