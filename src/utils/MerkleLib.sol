@@ -379,10 +379,12 @@ library MerkleLib {
                         mstore(0, sload(add(TREE_SLOT, 31)))
                         mstore(0x20, Z_31)
                         _current := keccak256(0, 0x40)
+                        // slither-disable-next-line write-after-write
                         i := 31
                         break
                     }
 
+                    // slither-disable-next-line write-after-write
                     _current := Z_32
                     i := 32
                     break
