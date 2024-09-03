@@ -62,8 +62,8 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     /// @param configurator The address of the configurator.
     constructor(
         IJBDirectory directory,
-        IJBTokens tokens,
         IJBPermissions permissions,
+        IJBTokens tokens,
         address configurator
     )
         JBPermissioned(permissions)

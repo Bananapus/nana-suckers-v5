@@ -78,7 +78,7 @@ contract DeployScript is Script, Sphinx {
             _isDeployed(
                 OP_SALT,
                 type(JBOptimismSuckerDeployer).creationCode,
-                abi.encode(core.directory, core.tokens, core.permissions, safeAddress())
+                abi.encode(core.directory, core.permissions, core.tokens, safeAddress())
             )
         ) return;
 
@@ -86,7 +86,7 @@ contract DeployScript is Script, Sphinx {
         // ETH Mainnet and ETH Sepolia.
         if (block.chainid == 1 || block.chainid == 11_155_111) {
             JBOptimismSuckerDeployer _opDeployer = new JBOptimismSuckerDeployer{salt: OP_SALT}(
-                core.directory, core.tokens, core.permissions, safeAddress()
+                core.directory, core.permissions, core.tokens, safeAddress()
             );
 
             _opDeployer.configureLayerSpecific(
@@ -109,7 +109,7 @@ contract DeployScript is Script, Sphinx {
         // OP & OP Sepolia.
         if (block.chainid == 10 || block.chainid == 11_155_420) {
             JBOptimismSuckerDeployer _opDeployer = new JBOptimismSuckerDeployer{salt: OP_SALT}(
-                core.directory, core.tokens, core.permissions, safeAddress()
+                core.directory, core.permissions, core.tokens, safeAddress()
             );
 
             _opDeployer.configureLayerSpecific(
@@ -129,7 +129,7 @@ contract DeployScript is Script, Sphinx {
             _isDeployed(
                 BASE_SALT,
                 type(JBBaseSuckerDeployer).creationCode,
-                abi.encode(core.directory, core.tokens, core.permissions, safeAddress())
+                abi.encode(core.directory, core.permissions, core.tokens, safeAddress())
             )
         ) return;
 
@@ -179,7 +179,7 @@ contract DeployScript is Script, Sphinx {
             _isDeployed(
                 ARB_SALT,
                 type(JBArbitrumSuckerDeployer).creationCode,
-                abi.encode(core.directory, core.tokens, core.permissions, safeAddress())
+                abi.encode(core.directory, core.permissions, core.tokens, safeAddress())
             )
         ) return;
 
