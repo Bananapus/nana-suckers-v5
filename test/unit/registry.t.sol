@@ -11,16 +11,25 @@ import {JBLeaf} from "../../src/structs/JBLeaf.sol";
 import {JBClaim} from "../../src/structs/JBClaim.sol";
 
 import {JBProjects} from "@bananapus/core/src/JBProjects.sol";
-import {JBDirectory} from "@bananapus/core/src/JBDirectory.sol";
 import {JBPermissions} from "@bananapus/core/src/JBPermissions.sol";
 
 import {JBSuckerRegistry} from "./../../src/JBSuckerRegistry.sol";
 
 contract RegistryUnitTest is Test {
     function testDeployNoProjectCheck() public {
-        JBProjects _projects = new JBProjects(msg.sender, address(0));
+        JBProjects _projecs = new JBProjects(msg.sender, address(0));
         JBPermissions _permissions = new JBPermissions();
-        JBDirectory _directory = new JBDirectory(_permissions, _projects, address(100));
-        new JBSuckerRegistry(_directory, _permissions, address(100));
+        new JBSuckerRegistry(_projecs, _permissions, address(100));
+    }
+
+    function testTransferWithProjectCheck() public {
+        JBProjects _projecs = new JBProjects(msg.sender, address(0));
+        JBPermissions _permissions = new JBPermissions();
+
+        JBSuckerRegistry _registry = new JBSuckerRegistry(_projecs, _permissions, address(100));
+
+        vm.expectRevert();
+        vm.prank(address(100));
+        _registry.transferOwnershipToProject(1);
     }
 }

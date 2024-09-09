@@ -20,8 +20,8 @@ contract MerkleUnitTest is JBSucker, Test {
         // OPStandardBridge(address(550)),
         JBSucker(
             IJBDirectory(address(600)),
-            IJBPermissions(address(800)),
             IJBTokens(address(700)),
+            IJBPermissions(address(800)),
             address(0),
             JBAddToBalanceMode.MANUAL,
             1
@@ -79,8 +79,8 @@ contract MerkleUnitTest is JBSucker, Test {
 
     function test_validate() public {
         // Move outbound root to inbound root.
-        _inboxOf[JBConstants.NATIVE_TOKEN] =
-            JBInboxTreeRoot({nonce: 0, root: _outboxOf[JBConstants.NATIVE_TOKEN].tree.root()});
+        inbox[JBConstants.NATIVE_TOKEN] =
+            JBInboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 
@@ -99,7 +99,12 @@ contract MerkleUnitTest is JBSucker, Test {
         JBSucker(this).claim(
             JBClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: JBLeaf({index: 2, beneficiary: address(120), projectTokenCount: 5 ether, terminalTokenAmount: 5 ether}),
+                leaf: JBLeaf({
+                    index: 2,
+                    beneficiary: address(120),
+                    projectTokenAmount: 5 ether,
+                    terminalTokenAmount: 5 ether
+                }),
                 proof: __proof
             })
         );
@@ -107,8 +112,8 @@ contract MerkleUnitTest is JBSucker, Test {
 
     function test_validate_only_once() public {
         // Move outbound root to inbound root.
-        _inboxOf[JBConstants.NATIVE_TOKEN] =
-            JBInboxTreeRoot({nonce: 0, root: _outboxOf[JBConstants.NATIVE_TOKEN].tree.root()});
+        inbox[JBConstants.NATIVE_TOKEN] =
+            JBInboxTreeRoot({nonce: 0, root: outbox[JBConstants.NATIVE_TOKEN].tree.root()});
 
         bytes32[32] memory __proof = _proof;
 
@@ -127,7 +132,12 @@ contract MerkleUnitTest is JBSucker, Test {
         JBSucker(this).claim(
             JBClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: JBLeaf({index: 2, beneficiary: address(120), projectTokenCount: 5 ether, terminalTokenAmount: 5 ether}),
+                leaf: JBLeaf({
+                    index: 2,
+                    beneficiary: address(120),
+                    projectTokenAmount: 5 ether,
+                    terminalTokenAmount: 5 ether
+                }),
                 proof: __proof
             })
         );
@@ -137,32 +147,33 @@ contract MerkleUnitTest is JBSucker, Test {
         JBSucker(this).claim(
             JBClaim({
                 token: JBConstants.NATIVE_TOKEN,
-                leaf: JBLeaf({index: 2, beneficiary: address(120), projectTokenCount: 5 ether, terminalTokenAmount: 5 ether}),
+                leaf: JBLeaf({
+                    index: 2,
+                    beneficiary: address(120),
+                    projectTokenAmount: 5 ether,
+                    terminalTokenAmount: 5 ether
+                }),
                 proof: __proof
             })
         );
     }
 
-    function _isRemotePeer(address) internal view virtual override returns (bool valid) {
+    function _isRemotePeer(address) internal virtual override returns (bool valid) {
         return false;
     }
 
-    function _sendRoot(
-        uint256 transportPayment,
-        address token,
-        JBRemoteToken memory remoteToken
-    )
+    function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken)
         internal
         virtual
         override
     {}
-    function peerChainId() external view override returns (uint256 chainId) {}
+    function peerChainID() external view override returns (uint256 chainId) {}
 }
 
 contract DeployerUnitTest is Test {
     function testDoesntRevert() public {
         JBOptimismSuckerDeployer _deployer = new JBOptimismSuckerDeployer(
-            IJBDirectory(address(0)), IJBPermissions(address(0)), IJBTokens(address(0)), msg.sender
+            IJBDirectory(address(0)), IJBTokens(address(0)), IJBPermissions(address(0)), msg.sender
         );
         _deployer.createForSender(1, bytes32(0));
     }
