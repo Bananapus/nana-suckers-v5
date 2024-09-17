@@ -6,6 +6,7 @@ import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {IJBProjects} from "@bananapus/core/src/interfaces/IJBProjects.sol";
+import {JBRuleset} from "@bananapus/core/src/structs/JBRuleset.sol";
 import {JBRulesetMetadata} from "@bananapus/core/src/structs/JBRulesetMetadata.sol";
 import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -231,10 +232,21 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
 
         // Get the ruleset metadata of the project.
         // slither-disable-next-line unused-return
-        (, JBRulesetMetadata memory metadata) = controller.currentRulesetOf(projectId);
+        (JBRuleset memory ruleset, JBRulesetMetadata memory metadata) = controller.currentRulesetOf(projectId);
 
-        // Check if the ruleset allows adding a sucker.
-        if (!metadata.allowCrosschainSuckerExtension) {
+        // Check if this transaction is a deployment.
+        // TODO: Reconsider if we should handle it this way before the first ruleset.j
+        bool isDeployment = false;
+        if (ruleset.id == 0) {
+            (ruleset,) = controller.upcomingRulesetOf(projectId);
+
+            if (ruleset.id == block.timestamp) {
+                isDeployment = true;
+            }
+        }
+
+        // Check if the ruleset allows adding a sucker and that this is *not* the deployment transaction.
+        if (!isDeployment && !metadata.allowCrosschainSuckerExtension) {
             revert JBSuckerRegistry_RulesetDoesNotAllowAddingSucker();
         }
     }
