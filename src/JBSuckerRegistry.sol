@@ -235,7 +235,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         (JBRuleset memory ruleset, JBRulesetMetadata memory metadata) = controller.currentRulesetOf(projectId);
 
         // Check if this transaction is a deployment.
-        // TODO: Reconsider if we should handle it this way before the first ruleset.j
+        // TODO: Reconsider if we should handle it this way before the first ruleset.
         bool isDeployment = false;
         if (ruleset.id == 0) {
             (ruleset,) = controller.upcomingRulesetOf(projectId);
