@@ -18,9 +18,9 @@ contract DeployScript is Script, Sphinx {
     address[] PRE_APPROVED_DEPLOYERS;
 
     /// @notice the nonces that are used to deploy the contracts.
-    bytes32 OP_SALT = "SUCKER_ETH_OP";
-    bytes32 BASE_SALT = "SUCKER_ETH_BASE";
-    bytes32 ARB_SALT = "SUCKER_ETH_ARB";
+    bytes32 OP_SALT = "_SUCKER_ETH_OP_";
+    bytes32 BASE_SALT = "_SUCKER_ETH_BASE_";
+    bytes32 ARB_SALT = "_SUCKER_ETH_ARB_";
     bytes32 REGISTRY_SALT = "REGISTRY";
 
     function configureSphinx() public override {
