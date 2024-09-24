@@ -13,6 +13,7 @@ import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
+import {ERC165, IERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import {JBAddToBalanceMode} from "./enums/JBAddToBalanceMode.sol";
 import {IJBSucker} from "./interfaces/IJBSucker.sol";
@@ -31,7 +32,7 @@ import {MerkleLib} from "./utils/MerkleLib.sol";
 /// chain to the remote chain, and the inbox tree is used to receive from the remote chain to the local chain.
 /// @dev Throughout this contract, "terminal token" refers to any token accepted by a project's terminal.
 /// @dev This contract does *NOT* support tokens that have a fee on regular transfers and rebasing tokens.
-abstract contract JBSucker is JBPermissioned, IJBSucker {
+abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
     using BitMaps for BitMaps.BitMap;
     using MerkleLib for MerkleLib.Tree;
     using SafeERC20 for IERC20;
@@ -188,6 +189,10 @@ abstract contract JBSucker is JBPermissioned, IJBSucker {
     /// @param token The local terminal token to get the remote token for.
     function remoteTokenFor(address token) external view returns (JBRemoteToken memory) {
         return _remoteTokenFor[token];
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
+        return interfaceId == type(IJBSucker).interfaceId || super.supportsInterface(interfaceId);
     }
 
     //*********************************************************************//
