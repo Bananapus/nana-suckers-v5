@@ -410,6 +410,12 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
             revert JBSucker_TokenNotMapped(token);
         }
 
+        // TODO: Handle the edge-edge-case where the PEER has briged us assets before we were deployed,
+        // We need to check that we have never received a nonce and that we have never send a nonce, but we do have
+        // a balance of the token. To handle this edge-case we should either have both peers message each other to
+        // verify they can talk or we add the balance we had to the `amountToAddToBalanceOf` and wait for us to recieve
+        // the next root with the next nonce, as that contains all the depositors from the prev batch as well.
+
         // Transfer the tokens to this contract.
         // slither-disable-next-line reentrancy-events,reentrancy-benign
         projectToken.safeTransferFrom({from: msg.sender, to: address(this), value: projectTokenCount});
