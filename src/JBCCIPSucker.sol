@@ -23,7 +23,7 @@ import {ModifiedReceiver} from "./utils/ModifiedReceiver.sol";
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
-import {IWETH9} from "./interfaces/IWETH9.sol";
+import {IWrappedNativeToken} from "./interfaces/IWrappedNativeToken.sol";
 
 /// @notice A `JBSucker` implementation to suck tokens between chains with Chainlink CCIP
 contract JBCCIPSucker is JBSucker, ModifiedReceiver {
@@ -53,7 +53,9 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         IJBPermissions permissions,
         address peer,
         JBAddToBalanceMode atbMode
-    ) JBSucker(directory, tokens, permissions, peer, atbMode, IJBCCIPSuckerDeployer(msg.sender).TEMP_ID_STORE()) {
+    )
+        JBSucker(directory, permissions, tokens, peer, atbMode, IJBCCIPSuckerDeployer(msg.sender).TEMP_ID_STORE())
+    {
         remoteChainId = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_ID();
         remoteChainSelector = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_SELECTOR();
     }
@@ -75,7 +77,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         if (transportPayment == 0) revert MUST_PAY_BRIDGE();
 
         // Ensure the token is mapped to an address on the remote chain.
-        if (remoteTokenAddress == address(0)) revert TOKEN_NOT_MAPPED(token);
+        if (remoteTokenAddress == address(0)) revert JBSucker_TokenNotMapped(token);
 
         // Only support native backing token (and wrapping) if on Ethereum
         if (block.chainid != 1 && localIsNative) revert NATIVE_ON_ETH_ONLY();
@@ -84,17 +86,17 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         if (remoteTokenAddress == JBConstants.NATIVE_TOKEN) revert REMOTE_OF_NATIVE_MUST_BE_WETH();
 
         // Get the amount to send and then clear it from the outbox tree.
-        uint256 amount = outbox[token].balance;
-        delete outbox[token].balance;
+        uint256 amount = _outboxOf[token].balance;
+        delete _outboxOf[token].balance;
 
         // Increment the outbox tree's nonce.
-        uint64 nonce = ++outbox[token].nonce;
+        uint64 nonce = ++_outboxOf[token].nonce;
 
-        bytes32 root = outbox[token].tree.root();
-        uint256 index = outbox[token].tree.count - 1;
+        bytes32 root = _outboxOf[token].tree.root();
+        uint256 index = _outboxOf[token].tree.count - 1;
 
         // Wrap the token if it's native
-        if (willSendWeth) IWETH9(CCIPHelper.wethOfChain(block.chainid)).deposit{value: amount}();
+        if (willSendWeth) IWrappedNativeToken(CCIPHelper.wethOfChain(block.chainid)).deposit{value: amount}();
 
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage({
@@ -129,7 +131,7 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         router.ccipSend{value: fees}({destinationChainSelector: remoteChainSelector, message: evm2AnyMessage});
 
         // Emit an event for the relayers to watch for.
-        emit RootToRemote(root, token, index, nonce);
+        emit RootToRemote(root, token, index, nonce, msg.sender);
 
         // Refund remaining balance.
         (bool sent,) = msg.sender.call{value: msg.value - fees}("");
@@ -137,13 +139,15 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
     }
 
     /// @notice Construct a CCIP message.
-    /// @dev This function will create an EVM2AnyMessage struct with all the necessary information for programmable tokens transfer.
+    /// @dev This function will create an EVM2AnyMessage struct with all the necessary information for programmable
+    /// tokens transfer.
     /// @param _receiver The address of the receiver.
     /// @param _root The root to be sent.
     /// @param _token The token to be transferred.
     /// @param _amount The amount of the token to be transferred.
     /// @param _feeTokenAddress The address of the token used for fees. Set address(0) for native gas.
-    /// @return Client.EVM2AnyMessage Returns an EVM2AnyMessage struct which contains information for sending a CCIP message.
+    /// @return Client.EVM2AnyMessage Returns an EVM2AnyMessage struct which contains information for sending a CCIP
+    /// message.
     function _buildCCIPMessage(
         address _receiver,
         JBMessageRoot memory _root,
@@ -151,7 +155,11 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         uint256 _amount,
         address _feeTokenAddress,
         uint256 _minGas
-    ) private pure returns (Client.EVM2AnyMessage memory) {
+    )
+        private
+        pure
+        returns (Client.EVM2AnyMessage memory)
+    {
         // Set the token amounts
         Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({token: _token, amount: _amount});
@@ -183,31 +191,30 @@ contract JBCCIPSucker is JBSucker, ModifiedReceiver {
         address origin = abi.decode(any2EvmMessage.sender, (address));
 
         // Make sure that the message came from our peer.
-        if (origin != PEER) revert NOT_PEER();
+        if (origin != PEER) revert JBSucker_NotPeer(origin);
 
         // Increase the outstanding amount to be added to the project's balance by the amount being received.
-        amountToAddToBalance[root.token] += root.amount;
+        amountToAddToBalanceOf[root.token] += root.amount;
 
         // TODO: Is this necessary anymore?
         // If the received tree's nonce is greater than the current inbox tree's nonce, update the inbox tree.
-        // We can't revert because this could be a native token transfer. If we reverted, we would lose the native tokens.
-        if (root.remoteRoot.nonce > inbox[root.token].nonce) {
-            inbox[root.token] = root.remoteRoot;
-            emit NewInboxTreeRoot(root.token, root.remoteRoot.nonce, root.remoteRoot.root);
+        // We can't revert because this could be a native token transfer. If we reverted, we would lose the native
+        // tokens.
+        if (root.remoteRoot.nonce > _inboxOf[root.token].nonce) {
+            _inboxOf[root.token] = root.remoteRoot;
+            emit NewInboxTreeRoot(root.token, root.remoteRoot.nonce, root.remoteRoot.root, msg.sender);
         }
     }
 
     /// @notice Unused in this context.
-    function _isRemotePeer(address sender) internal view override returns (bool _valid) {}
-
-    /// @notice Unused in this context.
-    function fromRemote(JBMessageRoot calldata root) external payable override {
-        revert();
+    function _isRemotePeer(address sender) internal view override returns (bool _valid) {
+        // This disables the `fromRemote` functionality for now.
+        return false;
     }
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
-    function peerChainID() external view virtual override returns (uint256 chainId) {
+    function peerChainId() external view virtual override returns (uint256 chainId) {
         // Return the remote chain id
         return remoteChainId;
     }

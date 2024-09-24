@@ -55,8 +55,8 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
     // Chain ids and selectors
     uint256 sepoliaFork;
     uint256 arbSepoliaFork;
-    uint64 arbSepoliaChainSelector = 3478487238524512106;
-    uint64 ethSepoliaChainSelector = 16015286601757825753;
+    uint64 arbSepoliaChainSelector = 3_478_487_238_524_512_106;
+    uint64 ethSepoliaChainSelector = 16_015_286_601_757_825_753;
 
     // RPCs
     string ETHEREUM_SEPOLIA_RPC_URL = vm.envOr("RPC_ETHEREUM_SEPOLIA", string("https://1rpc.io/sepolia"));
@@ -94,6 +94,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             allowSetController: false,
             allowAddAccountingContext: true,
             allowAddPriceFeed: true,
+            allowCrosschainSuckerExtension: true,
             ownerMustSendPayouts: false,
             holdFees: false,
             useTotalSurplusForRedemptions: true,
@@ -176,7 +177,8 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             projectOneToken = jbController().deployERC20For(1, "SuckerToken", "SOOK", bytes32(0));
 
             // Add a price-feed to reconcile pays and redeems with our test token
-            MockPriceFeed _priceFeedNativeTest = new MockPriceFeed(100 * 10 ** 18, 18); // 2000 test token == 1 native token
+            MockPriceFeed _priceFeedNativeTest = new MockPriceFeed(100 * 10 ** 18, 18); // 2000 test token == 1 native
+                // token
             vm.label(address(_priceFeedNativeTest), "Mock Price Feed Native-ccipBnM");
 
             vm.startPrank(address(jbController()));
@@ -194,7 +196,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         arbSepoliaFork = vm.createSelectFork(ARBITRUM_SEPOLIA_RPC_URL);
 
         // Get the corresponding remote token and label it for convenience in reading any trace in console
-        Register.NetworkDetails memory arbSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(421614);
+        Register.NetworkDetails memory arbSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(421_614);
 
         // This is a faux token helper provided to emulate token bridges of the burn and mint type via CCIP
         ccipBnMArbSepolia = BurnMintERC677Helper(arbSepoliaNetworkDetails.ccipBnMAddress);
@@ -269,14 +271,15 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             new JBCCIPSuckerDeployer{salt: "salty"}(jbDirectory(), jbTokens(), jbPermissions(), address(this));
 
         // Set the remote chain as arb-sep, which also grabs the chain selector from CCIPHelper for deployer
-        suckerDeployer.configureLayerSpecific(421614);
+        suckerDeployer.configureLayerSpecific(421_614);
 
         // deploy our first sucker (on sepolia, the current fork, or "L1").
         suckerGlobal = suckerDeployer.createForSender(1, "salty");
         vm.label(address(suckerGlobal), "suckerGlobal");
 
         // In-memory vars needed for setup
-        // Allow the sucker to mint- This permission array is also used in second project config toward the end of this setup.
+        // Allow the sucker to mint- This permission array is also used in second project config toward the end of this
+        // setup.
         uint8[] memory ids = new uint8[](1);
         ids[0] = JBPermissionIds.MINT_TOKENS;
 
@@ -308,7 +311,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         vm.stopPrank();
         suckerDeployer2 =
             new JBCCIPSuckerDeployer{salt: "salty"}(jbDirectory(), jbTokens(), jbPermissions(), address(this));
-        suckerDeployer2.configureLayerSpecific(11155111);
+        suckerDeployer2.configureLayerSpecific(11_155_111);
 
         // Deploy the sucker on L2.
         vm.prank(address(suckerDeployer2));
@@ -390,7 +393,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
 
         // This is the most simple verification that messages are being sent and received though
         // Meaning CCIP transferred the data to our sucker on L2's inbox
-        (, bytes32 inboxRoot) = suckerGlobal.inbox(address(ccipBnMArbSepolia));
+        bytes32 inboxRoot = suckerGlobal.inboxOf(address(ccipBnMArbSepolia)).root;
         assertNotEq(inboxRoot, bytes32(0));
 
         // TODO: Maybe test claiming but it was working in previous version from another repo

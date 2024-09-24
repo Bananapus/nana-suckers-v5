@@ -21,13 +21,13 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     error NOT_CONFIGURED();
 
     /// @notice The directory of terminals and controllers for projects.
-    IJBDirectory immutable DIRECTORY;
+    IJBDirectory public immutable DIRECTORY;
 
     /// @notice The contract that manages token minting and burning.
-    IJBTokens immutable TOKENS;
+    IJBTokens public immutable TOKENS;
 
     /// @notice Only this address can configure this deployer, can only be used once.
-    address immutable LAYER_SPECIFIC_CONFIGURATOR;
+    address public immutable LAYER_SPECIFIC_CONFIGURATOR;
 
     /// @notice A mapping of suckers deployed by this contract.
     mapping(address => bool) public isSucker;
@@ -41,7 +41,12 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     /// @notice Store the remote chain id
     uint64 public REMOTE_CHAIN_SELECTOR;
 
-    constructor(IJBDirectory directory, IJBTokens tokens, IJBPermissions permissions, address _configurator)
+    constructor(
+        IJBDirectory directory,
+        IJBTokens tokens,
+        IJBPermissions permissions,
+        address _configurator
+    )
         JBPermissioned(permissions)
     {
         LAYER_SPECIFIC_CONFIGURATOR = _configurator;
@@ -74,12 +79,17 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
         isSucker[address(sucker)] = true;
     }
 
-    /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment addresses would change.
+    /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment
+    /// addresses would change.
     function configureLayerSpecific(uint256 remoteChainId) external {
         // Only allow configurator to set properties - notice we don't restrict reconfiguration here
         if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR) revert ONLY_ADMIN();
 
         REMOTE_CHAIN_ID = remoteChainId;
         REMOTE_CHAIN_SELECTOR = CCIPHelper.selectorOfChain(remoteChainId);
+    }
+
+    function tempStoreId() external view returns (uint256) {
+        return TEMP_ID_STORE;
     }
 }

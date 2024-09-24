@@ -10,6 +10,7 @@ import {JBInboxTreeRoot} from "../structs/JBInboxTreeRoot.sol";
 import {JBOutboxTree} from "../structs/JBOutboxTree.sol";
 import {JBRemoteToken} from "../structs/JBRemoteToken.sol";
 import {JBTokenMapping} from "../structs/JBTokenMapping.sol";
+import {JBMessageRoot} from "../structs/JBMessageRoot.sol";
 
 interface IJBSucker {
     event Claimed(
@@ -59,6 +60,10 @@ interface IJBSucker {
         address token
     )
         external;
+
+    function toRemote(address token) external payable;
+    function fromRemote(JBMessageRoot calldata root) external payable;
+
     function mapToken(JBTokenMapping calldata map) external;
     function mapTokens(JBTokenMapping[] calldata maps) external;
 }
