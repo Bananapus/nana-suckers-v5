@@ -31,6 +31,8 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     using BitMaps for BitMaps.BitMap;
 
     address internal immutable CCIP_ROUTER;
+    // TODO: The wrapped asset is not immutable on the CCIP router, perhaps we should fetch it every time we need it
+    IWrappedNativeToken internal immutable WRAPPED_NATIVE;
 
     uint256 public remoteChainId;
     uint64 public remoteChainSelector;
@@ -60,10 +62,8 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     {
         remoteChainId = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_ID();
         remoteChainSelector = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_SELECTOR();
-
-        address router = CCIPHelper.routerOfChain(block.chainid);
-        if (router == address(0)) revert JBCCIPSucker_InvalidRouter(address(0));
-        CCIP_ROUTER = router;
+        CCIP_ROUTER = CCIPHelper.routerOfChain(block.chainid);
+        WRAPPED_NATIVE = IWrappedNativeToken(CCIPHelper.wethOfChain(block.chainid));
     }
 
     //*********************************************************************//
@@ -75,8 +75,6 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
-        bool localIsNative = token == JBConstants.NATIVE_TOKEN;
-        bool willSendWeth = localIsNative && block.chainid == 1;
         address remoteTokenAddress = remoteToken.addr;
 
         // Make sure we are attempting to pay the bridge
@@ -84,9 +82,6 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
 
         // Ensure the token is mapped to an address on the remote chain.
         if (remoteTokenAddress == address(0)) revert JBSucker_TokenNotMapped(token);
-
-        // Only support native backing token (and wrapping) if on Ethereum
-        if (block.chainid != 1 && localIsNative) revert NATIVE_ON_ETH_ONLY();
 
         // Cannot bridge native tokens unless wrapped
         if (remoteTokenAddress == JBConstants.NATIVE_TOKEN) revert REMOTE_OF_NATIVE_MUST_BE_WETH();
@@ -105,13 +100,11 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         uint256 index = outbox.tree.count - 1;
 
         // Wrap the token if it's native
-        if (willSendWeth) {
-            // Get the wrapped native asset.
-            IWrappedNativeToken wNATIVE = IWrappedNativeToken(CCIPHelper.wethOfChain(block.chainid));
+        if (token == JBConstants.NATIVE_TOKEN) {
             // Deposit the wrapped native asset.
-            wNATIVE.deposit{value: amount}();
+            WRAPPED_NATIVE.deposit{value: amount}();
             // Update the token to be the wrapped native asset.
-            token = address(wNATIVE);
+            token = address(WRAPPED_NATIVE);
         }
 
         // Set the token amounts
@@ -139,7 +132,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         });
 
         // Initialize a router client instance to interact with cross-chain router
-        IRouterClient router = IRouterClient(this.getRouter());
+        IRouterClient router = IRouterClient(CCIP_ROUTER);
 
         // Get the fee required to send the CCIP message
         uint256 fees = router.getFee({destinationChainSelector: remoteChainSelector, message: message});
@@ -177,7 +170,29 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         address origin = abi.decode(any2EvmMessage.sender, (address));
 
         // Make sure that the message came from our peer.
-        if (origin != PEER) revert JBSucker_NotPeer(origin);
+        if (origin != PEER || any2EvmMessage.sourceChainSelector != remoteChainSelector) {
+            revert JBSucker_NotPeer(origin);
+        }
+
+        // As far as the sucker contracts are aware wrapped natives are not a thing, we only handle ERC20s or native.
+        if (any2EvmMessage.destTokenAmounts.length != 1) {
+            // This should never happen, we *always* send a tokenAmount.
+            // TODO: Better error message.
+            revert();
+        }
+
+        Client.EVMTokenAmount memory tokenAmount = any2EvmMessage.destTokenAmounts[0];
+        if (root.token == JBConstants.NATIVE_TOKEN && tokenAmount.token == address(WRAPPED_NATIVE)) {
+            uint256 balanceBefore = _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)});
+
+            // Withdraw the wrapped native asset.
+            WRAPPED_NATIVE.withdraw(tokenAmount.amount);
+
+            // Sanity check the unwrapping of the native asset.
+            assert(
+                balanceBefore + tokenAmount.amount == _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)})
+            );
+        }
 
         // Call ourselves to process the root.
         this.fromRemote(root);
