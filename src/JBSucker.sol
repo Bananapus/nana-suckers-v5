@@ -51,6 +51,7 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
     error JBSucker_NotPeer(address caller);
     error JBSucker_QueueInsufficientSize(uint256 amount, uint256 minimumAmount);
     error JBSucker_TokenNotMapped(address token);
+    error JBSucker_TokenAlreadyMapped(address localToken, address mappedTo);
     error JBSucker_ZeroBeneficiary();
     error JBSucker_ZeroERC20Token();
 
@@ -348,6 +349,7 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
     /// them.
     function mapToken(JBTokenMapping calldata map) public {
         address token = map.localToken;
+        JBRemoteToken memory currentMapping = _remoteTokenFor[token];
 
         // Validate the token mapping according to the rules of the sucker.
         _validateTokenMapping(map);
@@ -360,15 +362,32 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
             permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
         });
 
+        // Make sure that the token does not get remapped to another remote token.
+        // As this would cause the funds for this token to be double spendable on the other side.
+        // It should not be possible to cause any issues even without this check
+        // a bridge *should* never accept such a request. This is mostly a sanity check.
+        if (
+            currentMapping.addr != address(0) && currentMapping.addr != map.remoteToken && map.remoteToken != address(0)
+                && _outboxOf[token].tree.count != 0
+        ) {
+            revert JBSucker_TokenAlreadyMapped(token, currentMapping.addr);
+        }
+
         // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds
         // to the remote chain.
         if (map.remoteToken == address(0) && _outboxOf[token].balance != 0) {
-            _sendRoot({transportPayment: 0, token: token, remoteToken: _remoteTokenFor[token]});
+            _sendRoot({transportPayment: 0, token: token, remoteToken: currentMapping});
         }
 
         // Update the token mapping.
-        _remoteTokenFor[token] =
-            JBRemoteToken({minGas: map.minGas, addr: map.remoteToken, minBridgeAmount: map.minBridgeAmount});
+        _remoteTokenFor[token] = JBRemoteToken({
+            enabled: map.remoteToken != address(0),
+            minGas: map.minGas,
+            // This is done so that a token can be disabled and then enabled again
+            // while ensuring the remoteToken never changes (unless it hasn't been used yet)
+            addr: map.remoteToken == address(0) ? currentMapping.addr : map.remoteToken,
+            minBridgeAmount: map.minBridgeAmount
+        });
     }
 
     /// @notice Map multiple ERC-20 tokens on the local chain to ERC-20 tokens on the remote chain, allowing those
@@ -413,7 +432,7 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
         }
 
         // Make sure that the token is mapped to a remote token.
-        if (_remoteTokenFor[token].addr == address(0)) {
+        if (!_remoteTokenFor[token].enabled) {
             revert JBSucker_TokenNotMapped(token);
         }
 
