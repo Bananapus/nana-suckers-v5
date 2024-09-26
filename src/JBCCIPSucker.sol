@@ -12,7 +12,7 @@ import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol"
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 
 import {IJBCCIPSuckerDeployer} from "src/interfaces/IJBCCIPSuckerDeployer.sol";
-import {JBSucker, IJBSuckerDeployer, JBAddToBalanceMode, JBOutboxTree} from "./JBSucker.sol";
+import "./JBSucker.sol";
 import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
 import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
 import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
@@ -75,16 +75,11 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
-        address remoteTokenAddress = remoteToken.addr;
-
         // Make sure we are attempting to pay the bridge
         if (transportPayment == 0) revert MUST_PAY_BRIDGE();
 
         // Ensure the token is mapped to an address on the remote chain.
-        if (remoteTokenAddress == address(0)) revert JBSucker_TokenNotMapped(token);
-
-        // Cannot bridge native tokens unless wrapped
-        if (remoteTokenAddress == JBConstants.NATIVE_TOKEN) revert REMOTE_OF_NATIVE_MUST_BE_WETH();
+        if (remoteToken.addr == address(0)) revert JBSucker_TokenNotMapped(token);
 
         // Get the outbox in storage.
         JBOutboxTree storage outbox = _outboxOf[token];
@@ -174,13 +169,13 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
             revert JBSucker_NotPeer(origin);
         }
 
-        // As far as the sucker contracts are aware wrapped natives are not a thing, we only handle ERC20s or native.
         if (any2EvmMessage.destTokenAmounts.length != 1) {
             // This should never happen, we *always* send a tokenAmount.
             // TODO: Better error message.
             revert();
         }
 
+        // As far as the sucker contract is aware wrapped natives are not a thing, it only handles ERC20s or native.
         Client.EVMTokenAmount memory tokenAmount = any2EvmMessage.destTokenAmounts[0];
         if (root.token == JBConstants.NATIVE_TOKEN && tokenAmount.token == address(WRAPPED_NATIVE)) {
             uint256 balanceBefore = _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)});
@@ -202,6 +197,18 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     function _isRemotePeer(address sender) internal view override returns (bool _valid) {
         // NOTICE: We do not check if its the `PEER` here, as this contract is supposed to be the caller *NOT* the PEER.
         return sender == address(this);
+    }
+
+    /// @notice Allow sucker implementations to add/override mapping rules to suite their specific needs.
+    function _validateTokenMapping(JBTokenMapping calldata map) internal pure virtual override {
+        // This sucker has an override since it could connect to a non-ETH chain, so we allow the `NATIVE_TOKEN` to map
+        // to a token that is not the wrapped token on the remote.
+
+        // Enforce a reasonable minimum gas limit for bridging. A minimum which is too low could lead to the loss of
+        // funds.
+        if (map.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT && map.localToken != JBConstants.NATIVE_TOKEN) {
+            revert JBSucker_BelowMinGas(map.minGas, MESSENGER_ERC20_MIN_GAS_LIMIT);
+        }
     }
 
     /// @notice Return the current router

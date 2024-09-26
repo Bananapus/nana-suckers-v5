@@ -227,6 +227,23 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
         return keccak256(abi.encode(projectTokenCount, terminalTokenAmount, beneficiary));
     }
 
+    /// @notice Allow sucker implementations to add/override mapping rules to suite their specific needs.
+    function _validateTokenMapping(JBTokenMapping calldata map) internal pure virtual {
+        bool isNative = map.localToken == JBConstants.NATIVE_TOKEN;
+
+        // If the token being mapped is the native token, the `remoteToken` must also be the native token.
+        // The native token can also be mapped to the 0 address, which is used to disable native token bridging.
+        if (isNative && map.remoteToken != JBConstants.NATIVE_TOKEN && map.remoteToken != address(0)) {
+            revert JBSucker_InvalidNativeRemoteAddress(map.remoteToken);
+        }
+
+        // Enforce a reasonable minimum gas limit for bridging. A minimum which is too low could lead to the loss of
+        // funds.
+        if (map.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT && !isNative) {
+            revert JBSucker_BelowMinGas(map.minGas, MESSENGER_ERC20_MIN_GAS_LIMIT);
+        }
+    }
+
     //*********************************************************************//
     // --------------------- external transactions ----------------------- //
     //*********************************************************************//
@@ -331,19 +348,9 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
     /// them.
     function mapToken(JBTokenMapping calldata map) public {
         address token = map.localToken;
-        bool isNative = map.localToken == JBConstants.NATIVE_TOKEN;
 
-        // If the token being mapped is the native token, the `remoteToken` must also be the native token.
-        // The native token can also be mapped to the 0 address, which is used to disable native token bridging.
-        if (isNative && map.remoteToken != JBConstants.NATIVE_TOKEN && map.remoteToken != address(0)) {
-            revert JBSucker_InvalidNativeRemoteAddress(map.remoteToken);
-        }
-
-        // Enforce a reasonable minimum gas limit for bridging. A minimum which is too low could lead to the loss of
-        // funds.
-        if (map.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT && !isNative) {
-            revert JBSucker_BelowMinGas(map.minGas, MESSENGER_ERC20_MIN_GAS_LIMIT);
-        }
+        // Validate the token mapping according to the rules of the sucker.
+        _validateTokenMapping(map);
 
         // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
         // slither-disable-next-line calls-loop

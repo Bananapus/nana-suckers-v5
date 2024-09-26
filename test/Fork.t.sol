@@ -111,9 +111,9 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         JBFundAccessLimitGroup[] memory _fundAccessLimitGroup = new JBFundAccessLimitGroup[](1);
         {
             // Specify a payout limit.
-            JBCurrencyAmount[] memory _payoutLimits = new JBCurrencyAmount[](1);
-            _payoutLimits[0] =
-                JBCurrencyAmount({amount: 10 * 10 ** 18, currency: uint32(uint160(JBConstants.NATIVE_TOKEN))});
+            JBCurrencyAmount[] memory _payoutLimits = new JBCurrencyAmount[](0);
+            // _payoutLimits[0] =
+            //     JBCurrencyAmount({amount: 10 * 10 ** 18, currency: uint32(uint160(JBConstants.NATIVE_TOKEN))});
 
             // Specify a surplus allowance.
             JBCurrencyAmount[] memory _surplusAllowances = new JBCurrencyAmount[](1);
@@ -335,6 +335,68 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
     //*********************************************************************//
     // ------------------------------- Tests ----------------------------- //
     //*********************************************************************//
+
+    function test_forkNativeTransfer() external {
+        // Declare test actors and parameters
+        address rootSender = makeAddr("rootSender");
+        address user = makeAddr("him");
+        uint256 amountToSend = 100;
+        uint256 maxRedeemed = amountToSend / 2;
+
+        // Select our L1 fork to begin this test.
+        vm.selectFork(sepoliaFork);
+
+        // Give ourselves test tokens
+        vm.deal(user, amountToSend);
+
+        // Map the token
+        JBTokenMapping memory map = JBTokenMapping({
+            localToken: JBConstants.NATIVE_TOKEN,
+            minGas: 200_000,
+            remoteToken: JBConstants.NATIVE_TOKEN,
+            minBridgeAmount: 1
+        });
+
+        vm.prank(multisig());
+        suckerGlobal.mapToken(map);
+
+        // Let the terminal spend our test tokens so we can pay and receive project tokens
+        vm.startPrank(user);
+        // ccipBnM.approve(address(jbMultiTerminal()), amountToSend);
+
+        // receive 500 project tokens as a result
+        uint256 projectTokenAmount =
+            jbMultiTerminal().pay{value: amountToSend}(1, JBConstants.NATIVE_TOKEN, amountToSend, user, 0, "", "");
+
+        // Approve the sucker to use those project tokens received by the user (we are still pranked as user)
+        IERC20(address(projectOneToken)).approve(address(suckerGlobal), projectTokenAmount);
+
+        // Call prepare which uses our project tokens to retrieve (redeem) for our backing tokens (test token)
+        suckerGlobal.prepare(projectTokenAmount, user, maxRedeemed, JBConstants.NATIVE_TOKEN);
+        vm.stopPrank();
+
+        // Give the root sender some eth to pay the fees
+        vm.deal(rootSender, 1 ether);
+
+        // Initiates the bridging
+        vm.prank(rootSender);
+        suckerGlobal.toRemote{value: 1 ether}(JBConstants.NATIVE_TOKEN);
+
+        // Fees are paid but balance isn't zero (excess msg.value is returned)
+        assert(rootSender.balance < 1 ether);
+        assert(rootSender.balance > 0);
+
+        // Use CCIP local to initiate the transfer on the L2
+        ccipLocalSimulatorFork.switchChainAndRouteMessage(arbSepoliaFork);
+
+        // Check that the tokens were transferred
+        assertEq(address(suckerGlobal).balance, maxRedeemed);
+
+        // This is the most simple verification that messages are being sent and received though
+        // Meaning CCIP transferred the data to our sucker on L2's inbox
+        bytes32 inboxRoot = suckerGlobal.inboxOf(JBConstants.NATIVE_TOKEN).root;
+        assertNotEq(inboxRoot, bytes32(0));
+    }
 
     function test_forkTokenTransfer() external {
         // Declare test actors and parameters
