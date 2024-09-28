@@ -52,6 +52,9 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
     error JBSucker_QueueInsufficientSize(uint256 amount, uint256 minimumAmount);
     error JBSucker_TokenNotMapped(address token);
     error JBSucker_TokenAlreadyMapped(address localToken, address mappedTo);
+    error JBSucker_UnexpectedMsgValue(uint256 value);
+    error JBSucker_ExpectedMsgValue();
+    error JBSucker_InsufficientMsgValue(uint256 received, uint256 expected);
     error JBSucker_ZeroBeneficiary();
     error JBSucker_ZeroERC20Token();
 

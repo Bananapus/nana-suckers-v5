@@ -11,8 +11,9 @@ import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 
-import {IJBCCIPSuckerDeployer} from "src/interfaces/IJBCCIPSuckerDeployer.sol";
 import "./JBSucker.sol";
+import {IJBCCIPSuckerDeployer} from "src/interfaces/IJBCCIPSuckerDeployer.sol";
+import {ICCIPRouter, IWrappedNativeToken} from "src/interfaces/ICCIPRouter.sol";
 import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
 import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
 import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
@@ -20,9 +21,7 @@ import {JBCCIPSuckerDeployer} from "./deployers/JBCCIPSuckerDeployer.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
-import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
-import {IWrappedNativeToken} from "./interfaces/IWrappedNativeToken.sol";
 import {IAny2EVMMessageReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
 
 /// @notice A `JBSucker` implementation to suck tokens between chains with Chainlink CCIP
@@ -30,22 +29,17 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
-    address internal immutable CCIP_ROUTER;
-    // TODO: The wrapped asset is not immutable on the CCIP router, perhaps we should fetch it every time we need it
-    IWrappedNativeToken internal immutable WRAPPED_NATIVE;
-
+    ICCIPRouter internal immutable CCIP_ROUTER;
     uint256 public remoteChainId;
     uint64 public remoteChainSelector;
 
-    event SuckingToRemote(address token, uint64 nonce);
+    //*********************************************************************//
+    // --------------------------- custom errors ------------------------- //
+    //*********************************************************************//
 
-    error MUST_PAY_BRIDGE();
-    error NATIVE_ON_ETH_ONLY();
-    error REMOTE_OF_NATIVE_MUST_BE_WETH();
-    error NotEnoughBalance(uint256 balance, uint256 fees);
-    error FailedToRefundFee();
-
+    error JBCCIPSucker_FailedToRefundFee();
     error JBCCIPSucker_InvalidRouter(address router);
+    error JBCCIPSucker_UnexpectedAmountOfTokens(uint256 nOfTokens);
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -62,8 +56,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     {
         remoteChainId = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_ID();
         remoteChainSelector = IJBCCIPSuckerDeployer(msg.sender).REMOTE_CHAIN_SELECTOR();
-        CCIP_ROUTER = CCIPHelper.routerOfChain(block.chainid);
-        WRAPPED_NATIVE = IWrappedNativeToken(CCIPHelper.wethOfChain(block.chainid));
+        CCIP_ROUTER = ICCIPRouter(CCIPHelper.routerOfChain(block.chainid));
     }
 
     //*********************************************************************//
@@ -76,7 +69,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     /// @param remoteToken Information about the remote token being bridged to.
     function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
         // Make sure we are attempting to pay the bridge
-        if (transportPayment == 0) revert MUST_PAY_BRIDGE();
+        if (transportPayment == 0) revert JBSucker_ExpectedMsgValue();
 
         // Ensure the token is mapped to an address on the remote chain.
         if (remoteToken.addr == address(0)) revert JBSucker_TokenNotMapped(token);
@@ -94,12 +87,18 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         bytes32 root = outbox.tree.root();
         uint256 index = outbox.tree.count - 1;
 
+        // Emit an event for the relayers to watch for.
+        // We do this before changing the `token` in the case where it is the native asset.
+        emit RootToRemote({root: root, token: token, index: index, nonce: nonce, caller: msg.sender});
+
         // Wrap the token if it's native
         if (token == JBConstants.NATIVE_TOKEN) {
+            // Get the wrapped native token.
+            IWrappedNativeToken wrapped_native = CCIP_ROUTER.getWrappedNative();
             // Deposit the wrapped native asset.
-            WRAPPED_NATIVE.deposit{value: amount}();
+            wrapped_native.deposit{value: amount}();
             // Update the token to be the wrapped native asset.
-            token = address(WRAPPED_NATIVE);
+            token = address(wrapped_native);
         }
 
         // Set the token amounts
@@ -126,30 +125,24 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
             feeToken: address(0)
         });
 
-        // Initialize a router client instance to interact with cross-chain router
-        IRouterClient router = IRouterClient(CCIP_ROUTER);
-
         // Get the fee required to send the CCIP message
-        uint256 fees = router.getFee({destinationChainSelector: remoteChainSelector, message: message});
+        uint256 fees = CCIP_ROUTER.getFee({destinationChainSelector: remoteChainSelector, message: message});
 
         if (fees > transportPayment) {
-            revert NotEnoughBalance(transportPayment, fees);
+            revert JBSucker_InsufficientMsgValue(transportPayment, fees);
         }
 
         // approve the Router to spend tokens on contract's behalf. It will spend the amount of the given token
-        SafeERC20.forceApprove(IERC20(token), address(router), amount);
+        SafeERC20.forceApprove(IERC20(token), address(CCIP_ROUTER), amount);
 
         // TODO: Handle this messageId- for later version with message retries
         // Send the message through the router and store the returned message ID
         /* messageId =  */
-        router.ccipSend{value: fees}({destinationChainSelector: remoteChainSelector, message: message});
-
-        // Emit an event for the relayers to watch for.
-        emit RootToRemote(root, token, index, nonce, msg.sender);
+        CCIP_ROUTER.ccipSend{value: fees}({destinationChainSelector: remoteChainSelector, message: message});
 
         // Refund remaining balance.
         (bool sent,) = msg.sender.call{value: msg.value - fees}("");
-        if (!sent) revert FailedToRefundFee();
+        if (!sent) revert JBCCIPSucker_FailedToRefundFee();
     }
 
     /// @notice The entrypoint for the CCIP router to call. This function should
@@ -158,7 +151,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     /// @dev Extremely important to ensure only router calls this.
     function ccipReceive(Client.Any2EVMMessage calldata any2EvmMessage) external override {
         // only calls from the set router are accepted.
-        if (msg.sender != CCIP_ROUTER) revert JBSucker_NotPeer(msg.sender);
+        if (msg.sender != address(CCIP_ROUTER)) revert JBSucker_NotPeer(msg.sender);
 
         // Decode the message root from the peer
         JBMessageRoot memory root = abi.decode(any2EvmMessage.data, (JBMessageRoot));
@@ -171,17 +164,20 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
 
         if (any2EvmMessage.destTokenAmounts.length != 1) {
             // This should never happen, we *always* send a tokenAmount.
-            // TODO: Better error message.
-            revert();
+            revert JBCCIPSucker_UnexpectedAmountOfTokens(any2EvmMessage.destTokenAmounts.length);
         }
 
         // As far as the sucker contract is aware wrapped natives are not a thing, it only handles ERC20s or native.
         Client.EVMTokenAmount memory tokenAmount = any2EvmMessage.destTokenAmounts[0];
-        if (root.token == JBConstants.NATIVE_TOKEN && tokenAmount.token == address(WRAPPED_NATIVE)) {
+        if (root.token == JBConstants.NATIVE_TOKEN) {
+            // We can (safely) assume that the token that is set in the `destTokenAmounts` is a valid wrapped native.
+            // If this ends up not being the case then our sanity check to see if we unwrapped the native asset will
+            // fail.
+            IWrappedNativeToken wrapped_native = IWrappedNativeToken(tokenAmount.token);
             uint256 balanceBefore = _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)});
 
             // Withdraw the wrapped native asset.
-            WRAPPED_NATIVE.withdraw(tokenAmount.amount);
+            wrapped_native.withdraw(tokenAmount.amount);
 
             // Sanity check the unwrapping of the native asset.
             assert(
