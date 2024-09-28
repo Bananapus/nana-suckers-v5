@@ -16,25 +16,25 @@ library CCIPHelper {
 
     /// @notice The respective chain ids per network
     uint256 public constant ETH_ID = 1;
-    uint256 public constant ETH_SEP_ID = 11155111;
+    uint256 public constant ETH_SEP_ID = 11_155_111;
     uint256 public constant OP_ID = 10;
-    uint256 public constant ARB_ID = 42161;
-    uint256 public constant ARB_SEP_ID = 421614;
+    uint256 public constant ARB_ID = 42_161;
+    uint256 public constant ARB_SEP_ID = 421_614;
     uint256 public constant POLY_ID = 137;
-    uint256 public constant AVA_ID = 43114;
+    uint256 public constant AVA_ID = 43_114;
     uint256 public constant BNB_ID = 56;
     uint256 public constant BASE_ID = 8453;
 
     /// @notice The chain selector per network
-    uint64 public constant ETH_SEL = 5009297550715157269;
-    uint64 public constant ETH_SEP_SEL = 16015286601757825753;
-    uint64 public constant OP_SEL = 3734403246176062136;
-    uint64 public constant ARB_SEL = 4949039107694359620;
-    uint64 public constant ARB_SEP_SEL = 3478487238524512106;
-    uint64 public constant POLY_SEL = 4051577828743386545;
-    uint64 public constant AVA_SEL = 6433500567565415381;
-    uint64 public constant BNB_SEL = 11344663589394136015;
-    uint64 public constant BASE_SEL = 15971525489660198786;
+    uint64 public constant ETH_SEL = 5_009_297_550_715_157_269;
+    uint64 public constant ETH_SEP_SEL = 16_015_286_601_757_825_753;
+    uint64 public constant OP_SEL = 3_734_403_246_176_062_136;
+    uint64 public constant ARB_SEL = 4_949_039_107_694_359_620;
+    uint64 public constant ARB_SEP_SEL = 3_478_487_238_524_512_106;
+    uint64 public constant POLY_SEL = 4_051_577_828_743_386_545;
+    uint64 public constant AVA_SEL = 6_433_500_567_565_415_381;
+    uint64 public constant BNB_SEL = 11_344_663_589_394_136_015;
+    uint64 public constant BASE_SEL = 15_971_525_489_660_198_786;
 
     /// @notice The WETH address of each chain
     address public constant ETH_WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
