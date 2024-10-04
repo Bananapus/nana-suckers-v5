@@ -145,44 +145,22 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message.
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
-    function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
+    function _sendRootOverAMB(
+        uint256 transportPayment,
+        uint256,
+        address token,
+        uint256 amount,
+        JBRemoteToken memory remoteToken,
+        JBMessageRoot memory message
+    )
+        internal
+        override
+    {
         // Bridge expects to be paid
         if (transportPayment == 0 && LAYER == JBLayer.L1) revert JBSucker_ExpectedMsgValue();
 
-        // Get the outbox in storage.
-        JBOutboxTree storage outbox = _outboxOf[token];
-
-        // Get the amount to send and then clear it.
-        uint256 amount = outbox.balance;
-        delete outbox.balance;
-
-        // Increment the outbox tree's nonce.
-        uint64 nonce = ++outbox.nonce;
-
-        if (remoteToken.addr == address(0)) {
-            revert JBSucker_TokenNotMapped(token);
-        }
-
         // Build the calldata that will be send to the peer. This will call `JBSucker.fromRemote` on the remote peer.
-        bytes memory data = abi.encodeCall(
-            JBSucker.fromRemote,
-            (
-                JBMessageRoot({
-                    token: remoteToken.addr,
-                    amount: amount,
-                    remoteRoot: JBInboxTreeRoot({nonce: nonce, root: outbox.tree.root()})
-                })
-            )
-        );
-
-        // Emit an event for the relayers to watch for.
-        emit RootToRemote({
-            root: outbox.tree.root(),
-            token: token,
-            index: outbox.tree.count - 1,
-            nonce: nonce,
-            caller: msg.sender
-        });
+        bytes memory data = abi.encodeCall(JBSucker.fromRemote, (message));
 
         // Depending on which layer we are on, send the call to the other layer.
         // slither-disable-start out-of-order-retryable

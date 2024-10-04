@@ -94,27 +94,22 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
     /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message.
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
-    function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
+    function _sendRootOverAMB(
+        uint256 transportPayment,
+        uint256,
+        address token,
+        uint256 amount,
+        JBRemoteToken memory remoteToken,
+        JBMessageRoot memory message
+    )
+        internal
+        override
+    {
         uint256 nativeValue;
 
         // Revert if there's a `msg.value`. The OP bridge does not expect to be paid.
         if (transportPayment != 0) {
             revert JBSucker_UnexpectedMsgValue(transportPayment);
-        }
-
-        // Get the outbox in storage.
-        JBOutboxTree storage outbox = _outboxOf[token];
-
-        // Get the amount to send and then clear it from the outbox tree.
-        uint256 amount = outbox.balance;
-        delete outbox.balance;
-
-        // Increment the outbox tree's nonce.
-        uint64 nonce = ++outbox.nonce;
-
-        // Ensure the token is mapped to an address on the remote chain.
-        if (remoteToken.addr == address(0)) {
-            revert JBSucker_TokenNotMapped(token);
         }
 
         // If the token is an ERC20, bridge it to the peer.
@@ -138,27 +133,10 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
             nativeValue = amount;
         }
 
-        bytes32 root = outbox.tree.root();
-        uint256 index = outbox.tree.count - 1;
-
         // Send the message to the peer with the redeemed ETH.
         // slither-disable-next-line arbitrary-send-eth,reentrency-events,calls-loop
         OPMESSENGER.sendMessage{value: nativeValue}(
-            PEER,
-            abi.encodeCall(
-                JBSucker.fromRemote,
-                (
-                    JBMessageRoot({
-                        token: remoteToken.addr,
-                        amount: amount,
-                        remoteRoot: JBInboxTreeRoot({nonce: nonce, root: root})
-                    })
-                )
-            ),
-            MESSENGER_BASE_GAS_LIMIT
+            PEER, abi.encodeCall(JBSucker.fromRemote, (message)), MESSENGER_BASE_GAS_LIMIT
         );
-
-        // Emit an event for the relayers to watch for.
-        emit RootToRemote({root: root, token: token, index: index, nonce: nonce, caller: msg.sender});
     }
 }

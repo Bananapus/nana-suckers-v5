@@ -67,29 +67,22 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message.
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
-    function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal override {
+
+    function _sendRootOverAMB(
+        uint256 transportPayment,
+        uint256,
+        address token,
+        uint256 amount,
+        JBRemoteToken memory remoteToken,
+        JBMessageRoot memory sucker_message
+    )
+        internal
+        override
+    {
+        // function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal
+        // override {
         // Make sure we are attempting to pay the bridge
         if (transportPayment == 0) revert JBSucker_ExpectedMsgValue();
-
-        // Ensure the token is mapped to an address on the remote chain.
-        if (remoteToken.addr == address(0)) revert JBSucker_TokenNotMapped(token);
-
-        // Get the outbox in storage.
-        JBOutboxTree storage outbox = _outboxOf[token];
-
-        // Get the amount to send and then clear it from the outbox tree.
-        uint256 amount = outbox.balance;
-        delete outbox.balance;
-
-        // Increment the outbox tree's nonce.
-        uint64 nonce = ++outbox.nonce;
-
-        bytes32 root = outbox.tree.root();
-        uint256 index = outbox.tree.count - 1;
-
-        // Emit an event for the relayers to watch for.
-        // We do this before changing the `token` in the case where it is the native asset.
-        emit RootToRemote({root: root, token: token, index: index, nonce: nonce, caller: msg.sender});
 
         // Wrap the token if it's native
         if (token == JBConstants.NATIVE_TOKEN) {
@@ -108,13 +101,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
             receiver: abi.encode(PEER),
-            data: abi.encode(
-                JBMessageRoot({
-                    token: remoteToken.addr,
-                    amount: amount,
-                    remoteRoot: JBInboxTreeRoot({nonce: nonce, root: root})
-                })
-            ),
+            data: abi.encode(sucker_message),
             tokenAmounts: tokenAmounts,
             extraArgs: Client._argsToBytes(
                 // Additional arguments, setting gas limit

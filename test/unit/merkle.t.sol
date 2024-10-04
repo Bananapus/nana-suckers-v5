@@ -147,10 +147,13 @@ contract MerkleUnitTest is JBSucker, Test {
         return false;
     }
 
-    function _sendRoot(
+    function _sendRootOverAMB(
         uint256 transportPayment,
+        uint256 index,
         address token,
-        JBRemoteToken memory remoteToken
+        uint256 amount,
+        JBRemoteToken memory remoteToken,
+        JBMessageRoot memory message
     )
         internal
         virtual
