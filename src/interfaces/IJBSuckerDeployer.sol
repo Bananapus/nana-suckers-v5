@@ -12,7 +12,5 @@ interface IJBSuckerDeployer {
     function LAYER_SPECIFIC_CONFIGURATOR() external view returns (address);
 
     function isSucker(address sucker) external view returns (bool);
-    function tempStoreId() external view returns (uint256);
-
     function createForSender(uint256 localProjectId, bytes32 salt) external returns (IJBSucker sucker);
 }

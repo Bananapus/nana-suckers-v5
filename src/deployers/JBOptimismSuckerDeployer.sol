@@ -6,6 +6,7 @@ import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 
+import {LibClone} from "solady/src/utils/LibClone.sol";
 import {JBOptimismSucker} from "../JBOptimismSucker.sol";
 import {JBAddToBalanceMode} from "../enums/JBAddToBalanceMode.sol";
 import {IJBOpSuckerDeployer} from "./../interfaces/IJBOpSuckerDeployer.sol";
@@ -21,7 +22,9 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     //*********************************************************************//
 
     error JBOptimismSuckerDeployer_AlreadyConfigured(IOPMessenger messenger, IOPStandardBridge bridge);
-    error JBArbitrumSuckerDeployer_ZeroConfiguratorAddress();
+    error JBOptimismSuckerDeployer_DeployerIsNotConfigured();
+    error JBOptimismSuckerDeployer_ZeroConfiguratorAddress();
+    error JBOptimismSuckerDeployer_Unauthorized();
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -40,6 +43,9 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
 
+    /// @notice The singleton used to clone suckers.
+    JBOptimismSucker public singleton;
+
     /// @notice The messenger used to send messages between the local and remote sucker.
     IOPMessenger public override opMessenger;
 
@@ -48,9 +54,6 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
 
     /// @notice A mapping of suckers deployed by this contract.
     mapping(address => bool) public override isSucker;
-
-    /// @notice A temporary storage slot used by suckers to maintain deterministic deploys.
-    uint256 public override tempStoreId;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -68,7 +71,7 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     )
         JBPermissioned(permissions)
     {
-        if (configurator == address(0)) revert JBArbitrumSuckerDeployer_ZeroConfiguratorAddress();
+        if (configurator == address(0)) revert JBOptimismSuckerDeployer_ZeroConfiguratorAddress();
         LAYER_SPECIFIC_CONFIGURATOR = configurator;
         DIRECTORY = directory;
         TOKENS = tokens;
@@ -86,10 +89,22 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
         if (address(opMessenger) != address(0) || address(opBridge) != address(0)) {
             revert JBOptimismSuckerDeployer_AlreadyConfigured(opMessenger, opBridge);
         }
+
+        if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR) {
+            revert JBOptimismSuckerDeployer_Unauthorized();
+        }
+
         // Configure these layer specific properties.
         // This is done in a separate call to make the deployment code chain agnostic.
         opMessenger = messenger;
         opBridge = bridge;
+
+        singleton = new JBOptimismSucker({
+            directory: DIRECTORY,
+            permissions: PERMISSIONS,
+            tokens: TOKENS,
+            addToBalanceMode: JBAddToBalanceMode.MANUAL
+        });
     }
 
     /// @notice Create a new `JBSucker` for a specific project.
@@ -98,27 +113,21 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     /// @param salt The salt to use for the `create2` address.
     /// @return sucker The address of the new sucker.
     function createForSender(uint256 localProjectId, bytes32 salt) external returns (IJBSucker sucker) {
+        // Make sure that this deployer is configured properly.
+        if (address(singleton) == address(0)) {
+            revert JBOptimismSuckerDeployer_DeployerIsNotConfigured();
+        }
+
+        // Hash the salt with the sender address to ensure only a specific sender can create this sucker.
         salt = keccak256(abi.encodePacked(msg.sender, salt));
 
-        // Set for a callback to this contract.
-        tempStoreId = localProjectId;
+        // Clone the singleton.
+        sucker = IJBSucker(LibClone.cloneDeterministic(address(singleton), salt));
 
-        sucker = IJBSucker(
-            address(
-                new JBOptimismSucker{salt: salt}({
-                    directory: DIRECTORY,
-                    permissions: PERMISSIONS,
-                    tokens: TOKENS,
-                    peer: address(0),
-                    addToBalanceMode: JBAddToBalanceMode.MANUAL
-                })
-            )
-        );
+        // Initialize the clone.
+        JBOptimismSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
 
-        // TODO: See if resetting this value is cheaper than deletion
-        // Delete after callback should complete.
-        /* delete TEMP_ID_STORE; */
-
+        // Mark it as a sucker that was deployed by this deployer.
         isSucker[address(sucker)] = true;
     }
 }

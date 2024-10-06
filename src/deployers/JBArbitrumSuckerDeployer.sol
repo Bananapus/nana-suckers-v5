@@ -6,6 +6,7 @@ import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 
+import {LibClone} from "solady/src/utils/LibClone.sol";
 import {JBArbitrumSucker} from "../JBArbitrumSucker.sol";
 import {JBAddToBalanceMode} from "../enums/JBAddToBalanceMode.sol";
 import {JBLayer} from "../enums/JBLayer.sol";
@@ -28,6 +29,9 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
 
+    /// @notice The singleton used to clone suckers.
+    JBArbitrumSucker public immutable SINGLETON;
+
     /// @notice The directory of terminals and controllers for projects.
     IJBDirectory public immutable override DIRECTORY;
 
@@ -46,9 +50,6 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
 
     /// @notice A mapping of suckers deployed by this contract.
     mapping(address => bool) public override isSucker;
-
-    /// @notice A temporary storage slot used by suckers to maintain deterministic deploys.
-    uint256 public override tempStoreId;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -70,6 +71,13 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
         DIRECTORY = directory;
         TOKENS = tokens;
         LAYER_SPECIFIC_CONFIGURATOR = configurator;
+
+        SINGLETON = new JBArbitrumSucker({
+            directory: DIRECTORY,
+            permissions: PERMISSIONS,
+            tokens: TOKENS,
+            addToBalanceMode: JBAddToBalanceMode.MANUAL
+        });
     }
 
     //*********************************************************************//
@@ -95,42 +103,17 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
     /// @param localProjectId The project's ID on the local chain.
     /// @param salt The salt to use for the `create2` address.
     /// @return sucker The address of the new sucker.
-    function createForSender(uint256 localProjectId, bytes32 salt) external override returns (IJBSucker sucker) {
+    function createForSender(uint256 localProjectId, bytes32 salt) external returns (IJBSucker sucker) {
+        // Hash the salt with the sender address to ensure only a specific sender can create this sucker.
         salt = keccak256(abi.encodePacked(msg.sender, salt));
 
-        // Set for a callback to this contract.
-        tempStoreId = localProjectId;
+        // Clone the singleton.
+        sucker = IJBSucker(LibClone.cloneDeterministic(address(SINGLETON), salt));
 
-        sucker = IJBSucker(
-            address(
-                new JBArbitrumSucker{salt: salt}({
-                    directory: DIRECTORY,
-                    permissions: PERMISSIONS,
-                    tokens: TOKENS,
-                    peer: address(0),
-                    addToBalanceMode: JBAddToBalanceMode.MANUAL
-                })
-            )
-        );
+        // Initialize the clone.
+        JBArbitrumSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
 
-        // TODO: See if resetting this value is cheaper than deletion
-        // Delete after callback should complete.
-        /* delete TEMP_ID_STORE; */
-
+        // Mark it as a sucker that was deployed by this deployer.
         isSucker[address(sucker)] = true;
     }
-
-    /* /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment
-    addresses would change.
-    /// @notice messenger the OPMesssenger on this layer.
-    /// @notice bridge the OPStandardBridge on this layer.
-    function configureLayerSpecific(OPMessenger messenger, OPStandardBridge bridge) external {
-        if (address(MESSENGER) != address(0) || address(BRIDGE) != address(0)) {
-            revert ALREADY_CONFIGURED();
-        }
-        // Configure these layer specific properties.
-        // This is done in a separate call to make the deployment code chain agnostic.
-        MESSENGER = messenger;
-        BRIDGE = INBOX.bridge();
-    } */
 }
