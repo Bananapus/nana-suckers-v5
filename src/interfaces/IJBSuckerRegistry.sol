@@ -9,6 +9,8 @@ import {JBSuckerDeployerConfig} from "../structs/JBSuckerDeployerConfig.sol";
 interface IJBSuckerRegistry {
     event SuckerDeployedFor(uint256 projectId, address sucker, JBSuckerDeployerConfig configuration, address caller);
     event SuckerDeployerAllowed(address deployer, address caller);
+    event SuckerDeployerRemoved(address deployer, address caller);
+    event SuckerDeprecated(uint256 projectId, address sucker, address caller);
 
     function DIRECTORY() external view returns (IJBDirectory);
     function PROJECTS() external view returns (IJBProjects);
@@ -18,6 +20,8 @@ interface IJBSuckerRegistry {
     function suckerDeployerIsAllowed(address deployer) external view returns (bool);
 
     function allowSuckerDeployer(address deployer) external;
+    function removeSuckerDeployer(address deployer) external;
+
     function deploySuckersFor(
         uint256 projectId,
         bytes32 salt,
