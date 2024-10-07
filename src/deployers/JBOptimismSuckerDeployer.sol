@@ -18,15 +18,6 @@ import {IOPStandardBridge} from "../interfaces/IOPStandardBridge.sol";
 /// @notice An `IJBSuckerDeployerFeeless` implementation to deploy `JBOptimismSucker` contracts.
 contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerDeployer {
     //*********************************************************************//
-    // --------------------------- custom errors ------------------------- //
-    //*********************************************************************//
-
-    error JBOptimismSuckerDeployer_AlreadyConfigured(IOPMessenger messenger, IOPStandardBridge bridge);
-    error JBOptimismSuckerDeployer_DeployerIsNotConfigured();
-    error JBOptimismSuckerDeployer_ZeroConfiguratorAddress();
-    error JBOptimismSuckerDeployer_Unauthorized();
-
-    //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
 
@@ -71,7 +62,7 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     )
         JBPermissioned(permissions)
     {
-        if (configurator == address(0)) revert JBOptimismSuckerDeployer_ZeroConfiguratorAddress();
+        if (configurator == address(0)) revert JBSuckerDeployer_ZeroConfiguratorAddress();
         LAYER_SPECIFIC_CONFIGURATOR = configurator;
         DIRECTORY = directory;
         TOKENS = tokens;
@@ -87,11 +78,11 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     /// @notice bridge the OPStandardBridge on this layer.
     function configureLayerSpecific(IOPMessenger messenger, IOPStandardBridge bridge) external {
         if (address(opMessenger) != address(0) || address(opBridge) != address(0)) {
-            revert JBOptimismSuckerDeployer_AlreadyConfigured(opMessenger, opBridge);
+            revert JBSuckerDeployer_AlreadyConfigured();
         }
 
         if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR) {
-            revert JBOptimismSuckerDeployer_Unauthorized();
+            revert JBSuckerDeployer_Unauthorized(msg.sender, LAYER_SPECIFIC_CONFIGURATOR);
         }
 
         // Configure these layer specific properties.
@@ -115,7 +106,7 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     function createForSender(uint256 localProjectId, bytes32 salt) external returns (IJBSucker sucker) {
         // Make sure that this deployer is configured properly.
         if (address(singleton) == address(0)) {
-            revert JBOptimismSuckerDeployer_DeployerIsNotConfigured();
+            revert JBSuckerDeployer_DeployerIsNotConfigured();
         }
 
         // Hash the salt with the sender address to ensure only a specific sender can create this sucker.

@@ -7,6 +7,11 @@ import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IJBSucker} from "./IJBSucker.sol";
 
 interface IJBSuckerDeployer {
+    error JBSuckerDeployer_Unauthorized(address caller, address expected);
+    error JBSuckerDeployer_AlreadyConfigured();
+    error JBSuckerDeployer_ZeroConfiguratorAddress();
+    error JBSuckerDeployer_DeployerIsNotConfigured();
+
     function DIRECTORY() external view returns (IJBDirectory);
     function TOKENS() external view returns (IJBTokens);
     function LAYER_SPECIFIC_CONFIGURATOR() external view returns (address);

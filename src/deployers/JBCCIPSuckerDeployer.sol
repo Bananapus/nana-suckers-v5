@@ -64,11 +64,11 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBCCIPSuckerDeployer, IJBSucke
         IJBDirectory directory,
         IJBTokens tokens,
         IJBPermissions permissions,
-        address _configurator
+        address configurator
     )
         JBPermissioned(permissions)
     {
-        LAYER_SPECIFIC_CONFIGURATOR = _configurator;
+        LAYER_SPECIFIC_CONFIGURATOR = configurator;
         DIRECTORY = directory;
         TOKENS = tokens;
     }

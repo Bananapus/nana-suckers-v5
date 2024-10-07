@@ -32,7 +32,6 @@ import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 /// @notice A `JBSucker` implementation to suck tokens between two chains connected by an Arbitrum bridge.
-// NOTICE: UNFINISHED!
 contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     using BitMaps for BitMaps.BitMap;
     using MerkleLib for MerkleLib.Tree;
@@ -73,25 +72,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     )
         JBSucker(directory, permissions, tokens, addToBalanceMode)
     {
-        // Layer specific properties
-        uint256 chainId = block.chainid;
-
-        // If LAYER is left uninitialized, the chain is not currently supported.
-        if (!_isSupportedChain(chainId)) revert JBArbitrumSucker_ChainNotSupported(chainId);
-
-        // Set LAYER based on the chain ID.
-        if (chainId == ARBChains.ETH_CHAINID || chainId == ARBChains.ETH_SEP_CHAINID) {
-            // Set the layer
-            LAYER = JBLayer.L1;
-
-            // Set the inbox depending on the chain
-            chainId == ARBChains.ETH_CHAINID
-                ? ARBINBOX = IInbox(ARBAddresses.L1_ETH_INBOX)
-                : ARBINBOX = IInbox(ARBAddresses.L1_SEP_INBOX);
-        }
-        if (chainId == ARBChains.ARB_CHAINID || chainId == ARBChains.ARB_SEP_CHAINID) LAYER = JBLayer.L2;
-
         GATEWAYROUTER = JBArbitrumSuckerDeployer(msg.sender).gatewayRouter();
+        ARBINBOX = JBArbitrumSuckerDeployer(msg.sender).inbox();
+        LAYER = JBArbitrumSuckerDeployer(msg.sender).layer();
     }
 
     //*********************************************************************//
@@ -126,13 +109,6 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
 
         // If we are the L2 peer, check using the `AddressAliasHelper`.
         return sender == AddressAliasHelper.applyL1ToL2Alias(PEER());
-    }
-
-    /// @notice Returns true if the chainId is supported.
-    /// @return supported false/true if this is deployed on a supported chain.
-    function _isSupportedChain(uint256 chainId) internal pure returns (bool supported) {
-        return chainId == ARBChains.ETH_CHAINID || chainId == ARBChains.ETH_SEP_CHAINID
-            || chainId == ARBChains.ARB_CHAINID || chainId == ARBChains.ARB_SEP_CHAINID;
     }
 
     //*********************************************************************//

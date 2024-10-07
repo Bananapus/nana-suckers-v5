@@ -29,11 +29,11 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
 
-    ICCIPRouter internal immutable CCIP_ROUTER;
+    ICCIPRouter public immutable CCIP_ROUTER;
 
-    uint256 internal immutable REMOTE_CHAIN_ID;
+    uint256 public immutable REMOTE_CHAIN_ID;
 
-    uint64 internal immutable REMOTE_CHAIN_SELECTOR;
+    uint64 public immutable REMOTE_CHAIN_SELECTOR;
 
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
