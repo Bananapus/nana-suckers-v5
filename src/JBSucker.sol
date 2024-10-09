@@ -112,14 +112,14 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     // -------------------- internal stored properties ------------------- //
     //*********************************************************************//
 
-    /// @notice The peer sucker on the remote chain.
-    address private remotePeer;
+    /// @notice The timestamp after which the sucker is entirely deprecated.
+    uint40 internal deprecatedAfter;
 
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
     uint256 private localProjectId;
 
-    /// @notice The timestamp after which the sucker is entirely deprecated.
-    uint40 internal deprecatedAfter;
+    /// @notice The peer sucker on the remote chain.
+    address private remotePeer;
 
     /// @notice Tracks whether individual leaves in a given token's merkle tree have been executed (to prevent
     /// double-spending).
