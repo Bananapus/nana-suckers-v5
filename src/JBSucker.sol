@@ -14,6 +14,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 import {ERC165, IERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import {JBAddToBalanceMode} from "./enums/JBAddToBalanceMode.sol";
 import {IJBSucker} from "./interfaces/IJBSucker.sol";
@@ -33,7 +34,7 @@ import {JBSuckerDeprecationState} from "./enums/JBSuckerDeprecationState.sol";
 /// chain to the remote chain, and the inbox tree is used to receive from the remote chain to the local chain.
 /// @dev Throughout this contract, "terminal token" refers to any token accepted by a project's terminal.
 /// @dev This contract does *NOT* support tokens that have a fee on regular transfers and rebasing tokens.
-abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
+abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     using BitMaps for BitMaps.BitMap;
     using MerkleLib for MerkleLib.Tree;
     using SafeERC20 for IERC20;
@@ -95,12 +96,6 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
     /// @notice The directory of terminals and controllers for projects.
     IJBDirectory public immutable override DIRECTORY;
 
-    /// @notice The peer sucker on the remote chain.
-    address public immutable override PEER;
-
-    /// @notice The ID of the project (on the local chain) that this sucker is associated with.
-    uint256 public immutable override PROJECT_ID;
-
     /// @notice The contract that manages token minting and burning.
     IJBTokens public immutable override TOKENS;
 
@@ -119,6 +114,12 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
 
     /// @notice The timestamp after which the sucker is entirely deprecated.
     uint40 internal deprecatedAfter;
+
+    /// @notice The ID of the project (on the local chain) that this sucker is associated with.
+    uint256 private localProjectId;
+
+    /// @notice The peer sucker on the remote chain.
+    address private remotePeer;
 
     /// @notice Tracks whether individual leaves in a given token's merkle tree have been executed (to prevent
     /// double-spending).
@@ -145,33 +146,48 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
     /// @param directory A contract storing directories of terminals and controllers for each project.
     /// @param permissions A contract storing permissions.
     /// @param tokens A contract that manages token minting and burning.
-    /// @param peer The address of the peer sucker on the remote chain.
     /// @param addToBalanceMode The mode of adding tokens to balance.
-    /// @param projectId The ID of the project (on the local chain) that this sucker is associated with.
     constructor(
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
-        address peer,
-        JBAddToBalanceMode addToBalanceMode,
-        uint256 projectId
+        JBAddToBalanceMode addToBalanceMode
     )
         JBPermissioned(permissions)
     {
         DIRECTORY = directory;
         TOKENS = tokens;
-        PEER = peer == address(0) ? address(this) : peer;
         DEPLOYER = msg.sender;
         ADD_TO_BALANCE_MODE = addToBalanceMode;
-        PROJECT_ID = projectId;
+
+        // Make it so the singleton can't be initialized.
+        _disableInitializers();
 
         // Sanity check: make sure the merkle lib uses the same tree depth.
         assert(MerkleLib.TREE_DEPTH == _TREE_DEPTH);
     }
 
+    /// @notice Initializes the sucker with the project ID and peer address.
+    /// @param projectId The ID of the project (on the local chain) that this sucker is associated with.
+    /// @param peer The peer sucker on the remote chain.
+    function initialize(uint256 projectId, address peer) public initializer {
+        localProjectId = projectId;
+        remotePeer = peer;
+    }
+
     //*********************************************************************//
     // ------------------------ external views --------------------------- //
     //*********************************************************************//
+
+    /// @notice The ID of the project (on the local chain) that this sucker is associated with.
+    function PROJECT_ID() public view returns (uint256) {
+        return localProjectId;
+    }
+
+    /// @notice The peer sucker on the remote chain.
+    function PEER() public view returns (address) {
+        return remotePeer;
+    }
 
     /// @notice The inbox merkle tree root for a given token.
     /// @param token The local terminal token to get the inbox for.
@@ -389,9 +405,10 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
 
         // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
         // slither-disable-next-line calls-loop
+        uint256 projectId = PROJECT_ID();
         _requirePermissionFrom({
-            account: DIRECTORY.PROJECTS().ownerOf(PROJECT_ID),
-            projectId: PROJECT_ID,
+            account: DIRECTORY.PROJECTS().ownerOf(projectId),
+            projectId: projectId,
             permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
         });
 
@@ -452,9 +469,10 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
     function enableEmergencyHatchForTokens(address[] calldata tokens) external {
         // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
         // slither-disable-next-line calls-loop
+        uint256 projectId = PROJECT_ID();
         _requirePermissionFrom({
-            account: DIRECTORY.PROJECTS().ownerOf(PROJECT_ID),
-            projectId: PROJECT_ID,
+            account: DIRECTORY.PROJECTS().ownerOf(projectId),
+            projectId: projectId,
             permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
         });
 
@@ -490,7 +508,7 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
         }
 
         // Get the project's token.
-        IERC20 projectToken = IERC20(address(TOKENS.tokenOf(PROJECT_ID)));
+        IERC20 projectToken = IERC20(address(TOKENS.tokenOf(PROJECT_ID())));
         if (address(projectToken) == address(0)) {
             revert JBSucker_ZeroERC20Token();
         }
@@ -550,20 +568,22 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
     {
         projectToken;
 
+        uint256 projectId = PROJECT_ID();
+
         // Get the project's primary terminal for `token`. We will redeem from this terminal.
         IJBRedeemTerminal terminal =
-            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf({projectId: PROJECT_ID, token: token})));
+            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf({projectId: projectId, token: token})));
 
         // If the project doesn't have a primary terminal for `token`, revert.
         if (address(terminal) == address(0)) {
-            revert JBSucker_NoTerminalForToken(PROJECT_ID, token);
+            revert JBSucker_NoTerminalForToken(projectId, token);
         }
 
         // Redeem the tokens.
         uint256 balanceBefore = _balanceOf(token, address(this));
         reclaimedAmount = terminal.redeemTokensOf({
             holder: address(this),
-            projectId: PROJECT_ID,
+            projectId: projectId,
             tokenToReclaim: token,
             redeemCount: count,
             minTokensReclaimed: minTokensReclaimed,
@@ -629,9 +649,10 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
 
         // slither-disable-next-line calls-loop
         // TODO: Change permissionId?
+        uint256 projectId = PROJECT_ID();
         _requirePermissionFrom({
-            account: DIRECTORY.PROJECTS().ownerOf(PROJECT_ID),
-            projectId: PROJECT_ID,
+            account: DIRECTORY.PROJECTS().ownerOf(projectId),
+            projectId: projectId,
             permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
         });
 
@@ -675,13 +696,15 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
             amountToAddToBalanceOf[token] = addableAmount - amount;
         }
 
+        uint256 projectId = PROJECT_ID();
+
         // Get the project's primary terminal for the token.
         // slither
         // slither-disable-next-line calls-loop
-        IJBTerminal terminal = DIRECTORY.primaryTerminalOf({projectId: PROJECT_ID, token: token});
+        IJBTerminal terminal = DIRECTORY.primaryTerminalOf({projectId: projectId, token: token});
 
         // slither-disable-next-line incorrect-equality
-        if (address(terminal) == address(0)) revert JBSucker_NoTerminalForToken(PROJECT_ID, token);
+        if (address(terminal) == address(0)) revert JBSucker_NoTerminalForToken(projectId, token);
 
         // Perform the `addToBalance`.
         if (token != JBConstants.NATIVE_TOKEN) {
@@ -692,7 +715,7 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
 
             // slither-disable-next-line calls-loop
             terminal.addToBalanceOf({
-                projectId: PROJECT_ID,
+                projectId: projectId,
                 token: token,
                 amount: amount,
                 shouldReturnHeldFees: false,
@@ -707,7 +730,7 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
             // If the token is the native token, use `msg.value`.
             // slither-disable-next-line arbitrary-send-eth,calls-loop
             terminal.addToBalanceOf({
-                projectId: PROJECT_ID,
+                projectId: projectId,
                 token: token,
                 amount: amount,
                 shouldReturnHeldFees: false,
@@ -735,10 +758,12 @@ abstract contract JBSucker is JBPermissioned, ERC165, IJBSucker {
             _addToBalance({token: terminalToken, amount: terminalTokenAmount});
         }
 
+        uint256 projectId = PROJECT_ID();
+
         // Mint the project tokens for the beneficiary.
         // slither-disable-next-line calls-loop,unused-return
-        IJBController(address(DIRECTORY.controllerOf(PROJECT_ID))).mintTokensOf({
-            projectId: PROJECT_ID,
+        IJBController(address(DIRECTORY.controllerOf(projectId))).mintTokensOf({
+            projectId: projectId,
             tokenCount: projectTokenAmount,
             beneficiary: beneficiary,
             memo: "",

@@ -32,7 +32,6 @@ import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 /// @notice A `JBSucker` implementation to suck tokens between two chains connected by an Arbitrum bridge.
-// NOTICE: UNFINISHED!
 contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     using BitMaps for BitMaps.BitMap;
     using MerkleLib for MerkleLib.Tree;
@@ -64,36 +63,18 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     /// @param directory A contract storing directories of terminals and controllers for each project.
     /// @param permissions A contract storing permissions.
     /// @param tokens A contract that manages token minting and burning.
-    /// @param peer The address of the peer sucker on the remote chain.
     /// @param addToBalanceMode The mode of adding tokens to balance.
     constructor(
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
-        address peer,
         JBAddToBalanceMode addToBalanceMode
     )
-        JBSucker(directory, permissions, tokens, peer, addToBalanceMode, IJBSuckerDeployer(msg.sender).tempStoreId())
+        JBSucker(directory, permissions, tokens, addToBalanceMode)
     {
-        // Layer specific properties
-        uint256 chainId = block.chainid;
-
-        // If LAYER is left uninitialized, the chain is not currently supported.
-        if (!_isSupportedChain(chainId)) revert JBArbitrumSucker_ChainNotSupported(chainId);
-
-        // Set LAYER based on the chain ID.
-        if (chainId == ARBChains.ETH_CHAINID || chainId == ARBChains.ETH_SEP_CHAINID) {
-            // Set the layer
-            LAYER = JBLayer.L1;
-
-            // Set the inbox depending on the chain
-            chainId == ARBChains.ETH_CHAINID
-                ? ARBINBOX = IInbox(ARBAddresses.L1_ETH_INBOX)
-                : ARBINBOX = IInbox(ARBAddresses.L1_SEP_INBOX);
-        }
-        if (chainId == ARBChains.ARB_CHAINID || chainId == ARBChains.ARB_SEP_CHAINID) LAYER = JBLayer.L2;
-
         GATEWAYROUTER = JBArbitrumSuckerDeployer(msg.sender).gatewayRouter();
+        ARBINBOX = JBArbitrumSuckerDeployer(msg.sender).inbox();
+        LAYER = JBArbitrumSuckerDeployer(msg.sender).layer();
     }
 
     //*********************************************************************//
@@ -123,18 +104,11 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         if (LAYER == JBLayer.L1) {
             IBridge bridge = ARBINBOX.bridge();
             // Check that the sender is the bridge and that the outbox has our peer as the sender.
-            return sender == address(bridge) && address(PEER) == IOutbox(bridge.activeOutbox()).l2ToL1Sender();
+            return sender == address(bridge) && PEER() == IOutbox(bridge.activeOutbox()).l2ToL1Sender();
         }
 
         // If we are the L2 peer, check using the `AddressAliasHelper`.
-        return sender == AddressAliasHelper.applyL1ToL2Alias(address(PEER));
-    }
-
-    /// @notice Returns true if the chainId is supported.
-    /// @return supported false/true if this is deployed on a supported chain.
-    function _isSupportedChain(uint256 chainId) internal pure returns (bool supported) {
-        return chainId == ARBChains.ETH_CHAINID || chainId == ARBChains.ETH_SEP_CHAINID
-            || chainId == ARBChains.ARB_CHAINID || chainId == ARBChains.ARB_SEP_CHAINID;
+        return sender == AddressAliasHelper.applyL1ToL2Alias(PEER());
     }
 
     //*********************************************************************//
@@ -193,7 +167,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             // slither-disable-next-line calls-loop,unused-return
             IArbL2GatewayRouter(address(GATEWAYROUTER)).outboundTransfer({
                 l1Token: remoteToken.addr,
-                to: address(PEER),
+                to: PEER(),
                 amount: amount,
                 data: bytes("")
             });
@@ -205,7 +179,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         // Send the message to the peer with the redeemed ETH.
         // Address `100` is the ArbSys precompile address.
         // slither-disable-next-line calls-loop,unused-return
-        ArbSys(address(100)).sendTxToL1{value: nativeValue}(address(PEER), data);
+        ArbSys(address(100)).sendTxToL1{value: nativeValue}(PEER(), data);
     }
 
     /// @notice Bridge the `token` and data to the remote L2 chain.
@@ -242,7 +216,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             IArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: transportPayment}({
                 token: token,
                 refundTo: msg.sender,
-                to: address(PEER),
+                to: PEER(),
                 amount: amount,
                 maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk -
                     // MESSENGER_BASE_GAS_LIMIT = 300k here
@@ -268,7 +242,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         // TODO: We could even make this unsafe.
         // slither-disable-next-line calls-loop,unused-return
         ARBINBOX.createRetryableTicket{value: transportPayment}({
-            to: address(PEER),
+            to: PEER(),
             l2CallValue: nativeValue,
             maxSubmissionCost: maxSubmissionCost,
             excessFeeRefundAddress: msg.sender,
