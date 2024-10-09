@@ -49,7 +49,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     error JBSucker_InvalidProof(bytes32 root, bytes32 inboxRoot);
     error JBSucker_LeafAlreadyExecuted(address token, uint256 index);
     error JBSucker_ManualNotAllowed(JBAddToBalanceMode mode);
-    error JBSucker_DeprecationTimestampTooSoon(uint40 givenTime, uint40 minimumTime);
+    error JBSucker_DeprecationTimestampTooSoon(uint256 givenTime, uint256 minimumTime);
     error JBSucker_NoTerminalForToken(uint256 projectId, address token);
     error JBSucker_NotPeer(address caller);
     error JBSucker_QueueInsufficientSize(uint256 amount, uint256 minimumAmount);
@@ -113,7 +113,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     //*********************************************************************//
 
     /// @notice The timestamp after which the sucker is entirely deprecated.
-    uint40 internal deprecatedAfter;
+    uint256 internal deprecatedAfter;
 
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
     uint256 private localProjectId;
@@ -221,7 +221,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     /// @notice Reports the deprecation state of the sucker.
     /// @return state The current deprecation state
     function deprecated() public view override returns (JBSuckerDeprecationState state) {
-        uint40 _deprecatedAfter = deprecatedAfter;
+        uint256 _deprecatedAfter = deprecatedAfter;
 
         // The sucker is fully functional, no deprecation has been set yet.
         if (_deprecatedAfter == 0) {
@@ -477,10 +477,10 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         });
 
         // Enable the emergency hatch for each token.
-        for (uint256 _i; _i < tokens.length; _i++) {
+        for (uint256 i; i < tokens.length; i++) {
             // We have an invariant where if emergencyHatch is true, enabled should be false.
-            _remoteTokenFor[tokens[_i]].enabled = false;
-            _remoteTokenFor[tokens[_i]].emergencyHatch = true;
+            _remoteTokenFor[tokens[i]].enabled = false;
+            _remoteTokenFor[tokens[i]].emergencyHatch = true;
         }
 
         // TODO: Emit event
@@ -659,7 +659,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         // This is the earliest time for when the sucker can be considered deprecated.
         // There is a mandatory delay to allow for remaining messages to be received.
         // This should be called on both sides of the suckers, preferably with a matching timestamp.
-        uint40 nextEarliestDeprecationTime = uint40(block.timestamp) + _maxMessagingDelay();
+        uint256 nextEarliestDeprecationTime = block.timestamp + _maxMessagingDelay();
 
         // The deprecation can be entirely disabled *or* it has to be later than the earliest possible time.
         if (timestamp == 0 || timestamp < nextEarliestDeprecationTime) {
@@ -882,7 +882,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
 
     /// @notice What is the maximum time it takes for a message to be received on the other side.
     /// @dev Be sure to keep in mind if a message fails having to retry and the time it takes to retry.
-    function _maxMessagingDelay() internal view virtual returns (uint40) {
+    function _maxMessagingDelay() internal pure virtual returns (uint40) {
         return 14 days;
     }
 

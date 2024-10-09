@@ -27,8 +27,8 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     //*********************************************************************//
 
     error JBSuckerRegistry_InvalidDeployer(IJBSuckerDeployer deployer);
-    error JBSuckerRegistry_RulesetDoesNotAllowAddingSucker();
-    error JBSuckerRegistry_SuckerDoesNotBelongToProject();
+    error JBSuckerRegistry_RulesetDoesNotAllowAddingSucker(uint256 projectId);
+    error JBSuckerRegistry_SuckerDoesNotBelongToProject(uint256 projectId, address sucker);
     error JBSuckerRegistry_SuckerIsNotDeprecated(address sucker, JBSuckerDeprecationState suckerState);
 
     //*********************************************************************//
@@ -238,7 +238,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         // Sanity check, make sure that the sucker does actually belong to the project.
         (bool belongsToProject, uint256 val) = _suckersOf[projectId].tryGet(address(sucker));
         if (!belongsToProject || val != _SUCKER_EXISTS) {
-            revert JBSuckerRegistry_SuckerDoesNotBelongToProject();
+            revert JBSuckerRegistry_SuckerDoesNotBelongToProject(projectId, address(sucker));
         }
 
         // Check if the sucker is deprecated.
@@ -280,7 +280,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
 
         // Check if the ruleset allows adding a sucker and that this is *not* the deployment transaction.
         if (!isDeployment && !metadata.allowCrosschainSuckerExtension) {
-            revert JBSuckerRegistry_RulesetDoesNotAllowAddingSucker();
+            revert JBSuckerRegistry_RulesetDoesNotAllowAddingSucker(projectId);
         }
     }
 }
