@@ -466,14 +466,14 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     /// @notice Enables the emergency hatch for a list of tokens, allowing users to exit on the chain they deposited on.
     /// @dev For use when a token or a few tokens are no longer compatible with a bridge.
     /// @param tokens The terminal tokens to enable the emergency hatch for.
-    function enableEmergencyHatchForTokens(address[] calldata tokens) external {
+    function enableEmergencyHatchFor(address[] calldata tokens) external {
         // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
         // slither-disable-next-line calls-loop
         uint256 projectId = PROJECT_ID();
         _requirePermissionFrom({
             account: DIRECTORY.PROJECTS().ownerOf(projectId),
             projectId: projectId,
-            permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
+            permissionId: JBPermissionIds.ENABLE_EMERGENCY_HATCH
         });
 
         // Enable the emergency hatch for each token.
