@@ -336,7 +336,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         assertEq(address(sucker.DIRECTORY()), address(jbDirectory()));
         assertEq(address(sucker.TOKENS()), address(jbTokens()));
         assertEq(sucker.PEER(), address(sucker));
-        assertEq(uint8(sucker.deprecated()), uint8(JBSuckerDeprecationState.NOT_DEPRECATED));
+        assertEq(uint8(sucker.state()), uint8(JBSuckerState.ENABLED));
 
         return sucker;
     }

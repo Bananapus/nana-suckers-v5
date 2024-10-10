@@ -26,7 +26,7 @@ import {JBOutboxTree} from "./structs/JBOutboxTree.sol";
 import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
 import {JBTokenMapping} from "./structs/JBTokenMapping.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
-import {JBSuckerDeprecationState} from "./enums/JBSuckerDeprecationState.sol";
+import {JBSuckerState} from "./enums/JBSuckerState.sol";
 
 /// @notice An abstract contract for bridging a Juicebox project's tokens and the corresponding funds to and from a
 /// remote chain.
@@ -220,27 +220,27 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
 
     /// @notice Reports the deprecation state of the sucker.
     /// @return state The current deprecation state
-    function deprecated() public view override returns (JBSuckerDeprecationState state) {
+    function state() public view override returns (JBSuckerState) {
         uint256 _deprecatedAfter = deprecatedAfter;
 
         // The sucker is fully functional, no deprecation has been set yet.
         if (_deprecatedAfter == 0) {
-            return JBSuckerDeprecationState.NOT_DEPRECATED;
+            return JBSuckerState.ENABLED;
         }
 
         // The sucker will soon be considered deprecated, this functions only as a warning to users.
         if (block.timestamp < _deprecatedAfter - _maxMessagingDelay()) {
-            return JBSuckerDeprecationState.DEPRECATION_PENDING;
+            return JBSuckerState.DEPRECATION_PENDING;
         }
 
         // The sucker will no longer send new roots to the pair, but it will accept new incoming roots.
         if (block.timestamp < _deprecatedAfter) {
-            return JBSuckerDeprecationState.SENDING_DISABLED;
+            return JBSuckerState.SENDING_DISABLED;
         }
 
         // The sucker is now in the final state of deprecation. It will no longer allow new roots and if needed it will
         // let users emergency exit.
-        return JBSuckerDeprecationState.DEPRECATED;
+        return JBSuckerState.DEPRECATED;
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
@@ -375,7 +375,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         // If the received tree's nonce is greater than the current inbox tree's nonce, update the inbox tree.
         // We can't revert because this could be a native token transfer. If we reverted, we would lose the native
         // tokens.
-        if (root.remoteRoot.nonce > inbox.nonce && deprecated() != JBSuckerDeprecationState.DEPRECATED) {
+        if (root.remoteRoot.nonce > inbox.nonce && state() != JBSuckerState.DEPRECATED) {
             inbox.nonce = root.remoteRoot.nonce;
             inbox.root = root.remoteRoot.root;
             emit NewInboxTreeRoot({
@@ -519,11 +519,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         }
 
         // Make sure that the sucker still allows sending new messaged.
-        JBSuckerDeprecationState deprecationState = deprecated();
-        if (
-            deprecationState == JBSuckerDeprecationState.DEPRECATED
-                || deprecationState == JBSuckerDeprecationState.SENDING_DISABLED
-        ) {
+        JBSuckerState deprecationState = state();
+        if (deprecationState == JBSuckerState.DEPRECATED || deprecationState == JBSuckerState.SENDING_DISABLED) {
             revert JBSucker_Deprecated();
         }
 
@@ -645,7 +642,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     function setDeprecation(uint40 timestamp) external {
         // As long as the sucker has not reached the final deprecation state its deprecation time can be
         // extended/shortened.
-        if (deprecated() == JBSuckerDeprecationState.DEPRECATED) revert JBSucker_Deprecated();
+        if (state() == JBSuckerState.DEPRECATED) revert JBSucker_Deprecated();
 
         // slither-disable-next-line calls-loop
         // TODO: Change permissionId?
@@ -829,11 +826,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         if (remoteToken.addr == address(0)) revert JBSucker_TokenNotMapped(token);
 
         // Make sure that the sucker still allows sending new messaged.
-        JBSuckerDeprecationState deprecationState = deprecated();
-        if (
-            deprecationState == JBSuckerDeprecationState.DEPRECATED
-                || deprecationState == JBSuckerDeprecationState.SENDING_DISABLED
-        ) {
+        JBSuckerState deprecationState = state();
+        if (deprecationState == JBSuckerState.DEPRECATED || deprecationState == JBSuckerState.SENDING_DISABLED) {
             revert JBSucker_Deprecated();
         }
 
@@ -952,7 +946,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         internal
     {
         // Make sure that the emergencyHatch is enabled for the token.
-        if (!_remoteTokenFor[terminalToken].emergencyHatch || deprecated() == JBSuckerDeprecationState.DEPRECATED) {
+        if (!_remoteTokenFor[terminalToken].emergencyHatch || state() == JBSuckerState.DEPRECATED) {
             revert JBSucker_TokenHasInvalidEmergencyHatchState(terminalToken);
         }
 

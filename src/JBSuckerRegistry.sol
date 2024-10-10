@@ -17,7 +17,7 @@ import {IJBSuckerDeployer} from "./interfaces/IJBSuckerDeployer.sol";
 import {IJBSuckerRegistry} from "./interfaces/IJBSuckerRegistry.sol";
 import {JBSuckerDeployerConfig} from "./structs/JBSuckerDeployerConfig.sol";
 import {JBSuckersPair} from "./structs/JBSuckersPair.sol";
-import {JBSuckerDeprecationState} from "./enums/JBSuckerDeprecationState.sol";
+import {JBSuckerState} from "./enums/JBSuckerState.sol";
 
 contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
@@ -29,7 +29,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     error JBSuckerRegistry_InvalidDeployer(IJBSuckerDeployer deployer);
     error JBSuckerRegistry_RulesetDoesNotAllowAddingSucker(uint256 projectId);
     error JBSuckerRegistry_SuckerDoesNotBelongToProject(uint256 projectId, address sucker);
-    error JBSuckerRegistry_SuckerIsNotDeprecated(address sucker, JBSuckerDeprecationState suckerState);
+    error JBSuckerRegistry_SuckerIsNotDeprecated(address sucker, JBSuckerState suckerState);
 
     //*********************************************************************//
     // ------------------------- internal constants ----------------------- //
@@ -242,8 +242,8 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         }
 
         // Check if the sucker is deprecated.
-        JBSuckerDeprecationState state = sucker.deprecated();
-        if (state != JBSuckerDeprecationState.DEPRECATED) {
+        JBSuckerState state = sucker.state();
+        if (state != JBSuckerState.DEPRECATED) {
             revert JBSuckerRegistry_SuckerIsNotDeprecated(address(sucker), state);
         }
 

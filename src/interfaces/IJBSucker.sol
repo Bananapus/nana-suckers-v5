@@ -7,7 +7,7 @@ import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import {JBAddToBalanceMode} from "../enums/JBAddToBalanceMode.sol";
-import {JBSuckerDeprecationState} from "../enums/JBSuckerDeprecationState.sol";
+import {JBSuckerState} from "../enums/JBSuckerState.sol";
 import {JBInboxTreeRoot} from "../structs/JBInboxTreeRoot.sol";
 import {JBOutboxTree} from "../structs/JBOutboxTree.sol";
 import {JBRemoteToken} from "../structs/JBRemoteToken.sol";
@@ -55,7 +55,7 @@ interface IJBSucker is IERC165 {
 
     function peerChainId() external view returns (uint256 chainId);
     function isMapped(address token) external view returns (bool);
-    function deprecated() external view returns (JBSuckerDeprecationState);
+    function state() external view returns (JBSuckerState);
 
     function prepare(
         uint256 projectTokenAmount,

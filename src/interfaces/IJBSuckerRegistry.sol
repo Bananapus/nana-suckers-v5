@@ -20,8 +20,6 @@ interface IJBSuckerRegistry {
     function suckerDeployerIsAllowed(address deployer) external view returns (bool);
 
     function allowSuckerDeployer(address deployer) external;
-    function removeSuckerDeployer(address deployer) external;
-
     function deploySuckersFor(
         uint256 projectId,
         bytes32 salt,
@@ -29,4 +27,5 @@ interface IJBSuckerRegistry {
     )
         external
         returns (address[] memory suckers);
+    function removeSuckerDeployer(address deployer) external;
 }
