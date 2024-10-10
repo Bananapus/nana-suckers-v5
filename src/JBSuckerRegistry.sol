@@ -234,15 +234,15 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     /// @notice Lets anyone remove a deprecated sucker from a project.
     /// @param projectId The ID of the project to remove the sucker from.
     /// @param sucker The address of the deprecated sucker to remove.
-    function removeDeprecatedSucker(uint256 projectId, IJBSucker sucker) public {
+    function removeDeprecatedSucker(uint256 projectId, address sucker) public {
         // Sanity check, make sure that the sucker does actually belong to the project.
-        (bool belongsToProject, uint256 val) = _suckersOf[projectId].tryGet(address(sucker));
+        (bool belongsToProject, uint256 val) = _suckersOf[projectId].tryGet(sucker);
         if (!belongsToProject || val != _SUCKER_EXISTS) {
             revert JBSuckerRegistry_SuckerDoesNotBelongToProject(projectId, address(sucker));
         }
 
         // Check if the sucker is deprecated.
-        JBSuckerState state = sucker.state();
+        JBSuckerState state = IJBSucker(sucker).state();
         if (state != JBSuckerState.DEPRECATED) {
             revert JBSuckerRegistry_SuckerIsNotDeprecated(address(sucker), state);
         }

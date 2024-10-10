@@ -16,8 +16,8 @@ interface IJBSuckerRegistry {
     function PROJECTS() external view returns (IJBProjects);
 
     function isSuckerOf(uint256 projectId, address addr) external view returns (bool);
-    function suckersOf(uint256 projectId) external view returns (address[] memory);
     function suckerDeployerIsAllowed(address deployer) external view returns (bool);
+    function suckersOf(uint256 projectId) external view returns (address[] memory);
 
     function allowSuckerDeployer(address deployer) external;
     function deploySuckersFor(
@@ -27,5 +27,6 @@ interface IJBSuckerRegistry {
     )
         external
         returns (address[] memory suckers);
+    function removeDeprecatedSucker(uint256 projectId, address sucker) external;
     function removeSuckerDeployer(address deployer) external;
 }

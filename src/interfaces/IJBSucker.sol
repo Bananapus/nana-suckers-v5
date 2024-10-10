@@ -50,11 +50,10 @@ interface IJBSucker is IERC165 {
 
     function amountToAddToBalanceOf(address token) external view returns (uint256 amount);
     function inboxOf(address token) external view returns (JBInboxTreeRoot memory);
-    function outboxOf(address token) external view returns (JBOutboxTree memory);
-    function remoteTokenFor(address token) external view returns (JBRemoteToken memory);
-
-    function peerChainId() external view returns (uint256 chainId);
     function isMapped(address token) external view returns (bool);
+    function outboxOf(address token) external view returns (JBOutboxTree memory);
+    function peerChainId() external view returns (uint256 chainId);
+    function remoteTokenFor(address token) external view returns (JBRemoteToken memory);
     function state() external view returns (JBSuckerState);
 
     function prepare(
