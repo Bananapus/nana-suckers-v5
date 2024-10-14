@@ -37,6 +37,7 @@ interface IJBSucker is IERC165 {
     event NewInboxTreeRoot(address indexed token, uint64 nonce, bytes32 root, address caller);
     event RootToRemote(bytes32 indexed root, address indexed token, uint256 index, uint64 nonce, address caller);
     event DeprecationTimeUpdated(uint40 timestamp, address caller);
+    event EmergencyHatchOpened(address[] tokens, address caller);
 
     function MESSENGER_BASE_GAS_LIMIT() external view returns (uint32);
     function MESSENGER_ERC20_MIN_GAS_LIMIT() external view returns (uint32);

@@ -473,7 +473,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         _requirePermissionFrom({
             account: DIRECTORY.PROJECTS().ownerOf(projectId),
             projectId: projectId,
-            permissionId: JBPermissionIds.ENABLE_EMERGENCY_HATCH
+            permissionId: JBPermissionIds.SUCKER_SAFETY
         });
 
         // Enable the emergency hatch for each token.
@@ -483,7 +483,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
             _remoteTokenFor[tokens[i]].emergencyHatch = true;
         }
 
-        // TODO: Emit event
+        emit EmergencyHatchOpened(tokens, msg.sender);
     }
 
     /// @notice Prepare project tokens and the redemption amount backing them to be bridged to the remote chain.
@@ -645,12 +645,11 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         if (state() == JBSuckerState.DEPRECATED) revert JBSucker_Deprecated();
 
         // slither-disable-next-line calls-loop
-        // TODO: Change permissionId?
         uint256 projectId = PROJECT_ID();
         _requirePermissionFrom({
             account: DIRECTORY.PROJECTS().ownerOf(projectId),
             projectId: projectId,
-            permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
+            permissionId: JBPermissionIds.SUCKER_SAFETY
         });
 
         // This is the earliest time for when the sucker can be considered deprecated.
