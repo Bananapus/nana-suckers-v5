@@ -187,9 +187,6 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
             permissionId: JBPermissionIds.DEPLOY_SUCKERS
         });
 
-        // Check if the ruleset allows adding a sucker.
-        _requireRulesetAllowsAddingSucker({projectId: projectId});
-
         // Create an array to store the suckers as they are deployed.
         suckers = new address[](configurations.length);
 
@@ -250,37 +247,5 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         // Remove the sucker from the registry.
         _suckersOf[projectId].remove(address(sucker));
         emit SuckerDeprecated({projectId: projectId, sucker: address(sucker), caller: msg.sender});
-    }
-
-    //*********************************************************************//
-    // --------------------- internal transactions ----------------------- //
-    //*********************************************************************//
-
-    /// @notice Checks if the current ruleset allows adding a sucker.
-    /// @dev Reverts if the ruleset does not allow adding a sucker.
-    /// @param projectId The ID of the project to check.
-    function _requireRulesetAllowsAddingSucker(uint256 projectId) internal view {
-        // Get the controller of the project.
-        IJBController controller = IJBController(address(DIRECTORY.controllerOf(projectId)));
-
-        // Get the ruleset metadata of the project.
-        // slither-disable-next-line unused-return
-        (JBRuleset memory ruleset, JBRulesetMetadata memory metadata) = controller.currentRulesetOf(projectId);
-
-        // Check if this transaction is a deployment.
-        // TODO: Reconsider if we should handle it this way before the first ruleset.
-        bool isDeployment = false;
-        if (ruleset.id == 0) {
-            (ruleset,) = controller.upcomingRulesetOf(projectId);
-
-            if (ruleset.id == block.timestamp) {
-                isDeployment = true;
-            }
-        }
-
-        // Check if the ruleset allows adding a sucker and that this is *not* the deployment transaction.
-        if (!isDeployment && !metadata.allowCrosschainSuckerExtension) {
-            revert JBSuckerRegistry_RulesetDoesNotAllowAddingSucker(projectId);
-        }
     }
 }
