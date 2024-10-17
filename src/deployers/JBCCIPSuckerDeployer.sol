@@ -2,67 +2,72 @@
 pragma solidity 0.8.23;
 
 import {JBPermissioned} from "@bananapus/core/src/abstract/JBPermissioned.sol";
-import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
+import {IJBPrices} from "@bananapus/core/src/interfaces/IJBPrices.sol";
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBRulesets} from "@bananapus/core/src/interfaces/IJBRulesets.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
-
-import {LibClone} from "solady/src/utils/LibClone.sol";
-import {JBOptimismSucker} from "../JBOptimismSucker.sol";
+import {JBCCIPSucker} from "../JBCCIPSucker.sol";
 import {JBAddToBalanceMode} from "../enums/JBAddToBalanceMode.sol";
-import {IJBOpSuckerDeployer} from "./../interfaces/IJBOpSuckerDeployer.sol";
 import {IJBSucker} from "./../interfaces/IJBSucker.sol";
 import {IJBSuckerDeployer} from "./../interfaces/IJBSuckerDeployer.sol";
-import {IOPMessenger} from "../interfaces/IOPMessenger.sol";
-import {IOPStandardBridge} from "../interfaces/IOPStandardBridge.sol";
+import {IJBCCIPSuckerDeployer} from "./../interfaces/IJBCCIPSuckerDeployer.sol";
+import {ICCIPRouter} from "src/interfaces/ICCIPRouter.sol";
 
-/// @notice An `IJBSuckerDeployerFeeless` implementation to deploy `JBOptimismSucker` contracts.
-contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuckerDeployer {
+import {LibClone} from "solady/src/utils/LibClone.sol";
+import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
+
+/// @notice An `IJBSuckerDeployer` implementation to deploy contracts.
+contract JBCCIPSuckerDeployer is JBPermissioned, IJBCCIPSuckerDeployer, IJBSuckerDeployer {
+    error JBCCIPSuckerDeployer_DeployerIsNotConfigured();
+    error JBCCIPSuckerDeployer_ZeroConfiguratorAddress();
+    error JBCCIPSuckerDeployer_InvalidCCIPRouter(address router);
+    error JBCCIPSuckerDeployer_Unauthorized();
+
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
 
     /// @notice The directory of terminals and controllers for projects.
-    IJBDirectory public immutable override DIRECTORY;
-
-    /// @notice Only this address can configure this deployer, can only be used once.
-    address public immutable override LAYER_SPECIFIC_CONFIGURATOR;
+    IJBDirectory public immutable DIRECTORY;
 
     /// @notice The contract that manages token minting and burning.
-    IJBTokens public immutable override TOKENS;
+    IJBTokens public immutable TOKENS;
+
+    /// @notice Only this address can configure this deployer, can only be used once.
+    address public immutable LAYER_SPECIFIC_CONFIGURATOR;
 
     //*********************************************************************//
     // ---------------------- public stored properties ------------------- //
     //*********************************************************************//
 
-    /// @notice The singleton used to clone suckers.
-    JBOptimismSucker public singleton;
-
-    /// @notice The messenger used to send messages between the local and remote sucker.
-    IOPMessenger public override opMessenger;
-
-    /// @notice The bridge used to bridge tokens between the local and remote chain.
-    IOPStandardBridge public override opBridge;
-
     /// @notice A mapping of suckers deployed by this contract.
-    mapping(address => bool) public override isSucker;
+    mapping(address => bool) public isSucker;
+
+    /// @notice The singleton used to clone suckers.
+    JBCCIPSucker public singleton;
+
+    /// @notice Store the remote chain id
+    uint256 public remoteChainId;
+
+    /// @notice Store the remote chain id
+    uint64 public remoteChainSelector;
+
+    /// @notice Store the address of the CCIP router for this chain.
+    ICCIPRouter public ccipRouter;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
 
-    /// @param directory The directory of terminals and controllers for projects.
-    /// @param permissions The permissions contract for the deployer.
-    /// @param tokens The contract that manages token minting and burning.
-    /// @param configurator The address of the configurator.
     constructor(
         IJBDirectory directory,
-        IJBPermissions permissions,
         IJBTokens tokens,
+        IJBPermissions permissions,
         address configurator
     )
         JBPermissioned(permissions)
     {
-        if (configurator == address(0)) revert JBSuckerDeployer_ZeroConfiguratorAddress();
         LAYER_SPECIFIC_CONFIGURATOR = configurator;
         DIRECTORY = directory;
         TOKENS = tokens;
@@ -74,23 +79,30 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
 
     /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment
     /// addresses would change.
-    /// @notice messenger the OPMesssenger on this layer.
-    /// @notice bridge the OPStandardBridge on this layer.
-    function configureLayerSpecific(IOPMessenger messenger, IOPStandardBridge bridge) external {
-        if (address(opMessenger) != address(0) || address(opBridge) != address(0)) {
-            revert JBSuckerDeployer_AlreadyConfigured();
+    function configureLayerSpecific(
+        uint256 _remoteChainId,
+        uint64 _remoteChainSelector,
+        ICCIPRouter _ccipRouter
+    )
+        external
+    {
+        // Only allow configurator to set properties - notice we don't restrict reconfiguration here
+        // TODO: We now do restrict reconfiguration, we should check why we explicitly commented here that we do not.
+        if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR || remoteChainId != 0) {
+            revert JBCCIPSuckerDeployer_Unauthorized();
         }
 
-        if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR) {
-            revert JBSuckerDeployer_Unauthorized(msg.sender, LAYER_SPECIFIC_CONFIGURATOR);
+        // Check that the ccipRouter address has code.
+        // Its easy to assume `ccipRouter` should be for the remoteChain, but it should be for the localChain.
+        if (address(_ccipRouter).code.length == 0) {
+            revert JBCCIPSuckerDeployer_InvalidCCIPRouter(address(_ccipRouter));
         }
 
-        // Configure these layer specific properties.
-        // This is done in a separate call to make the deployment code chain agnostic.
-        opMessenger = messenger;
-        opBridge = bridge;
+        remoteChainId = _remoteChainId;
+        remoteChainSelector = _remoteChainSelector;
+        ccipRouter = _ccipRouter;
 
-        singleton = new JBOptimismSucker({
+        singleton = new JBCCIPSucker({
             directory: DIRECTORY,
             permissions: PERMISSIONS,
             tokens: TOKENS,
@@ -103,10 +115,17 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
     /// @param localProjectId The project's ID on the local chain.
     /// @param salt The salt to use for the `create2` address.
     /// @return sucker The address of the new sucker.
-    function createForSender(uint256 localProjectId, bytes32 salt) external returns (IJBSucker sucker) {
+    function createForSender(
+        uint256 localProjectId,
+        bytes32 salt
+    )
+        external
+        override(IJBCCIPSuckerDeployer, IJBSuckerDeployer)
+        returns (IJBSucker sucker)
+    {
         // Make sure that this deployer is configured properly.
         if (address(singleton) == address(0)) {
-            revert JBSuckerDeployer_DeployerIsNotConfigured();
+            revert JBCCIPSuckerDeployer_DeployerIsNotConfigured();
         }
 
         // Hash the salt with the sender address to ensure only a specific sender can create this sucker.
@@ -116,7 +135,7 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
         sucker = IJBSucker(LibClone.cloneDeterministic(address(singleton), salt));
 
         // Initialize the clone.
-        JBOptimismSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
+        JBCCIPSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
 
         // Mark it as a sucker that was deployed by this deployer.
         isSucker[address(sucker)] = true;

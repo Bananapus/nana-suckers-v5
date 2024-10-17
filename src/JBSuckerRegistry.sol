@@ -17,6 +17,7 @@ import {IJBSuckerDeployer} from "./interfaces/IJBSuckerDeployer.sol";
 import {IJBSuckerRegistry} from "./interfaces/IJBSuckerRegistry.sol";
 import {JBSuckerDeployerConfig} from "./structs/JBSuckerDeployerConfig.sol";
 import {JBSuckersPair} from "./structs/JBSuckersPair.sol";
+import {JBSuckerState} from "./enums/JBSuckerState.sol";
 
 contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
@@ -26,7 +27,9 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     //*********************************************************************//
 
     error JBSuckerRegistry_InvalidDeployer(IJBSuckerDeployer deployer);
-    error JBSuckerRegistry_RulesetDoesNotAllowAddingSucker();
+    error JBSuckerRegistry_RulesetDoesNotAllowAddingSucker(uint256 projectId);
+    error JBSuckerRegistry_SuckerDoesNotBelongToProject(uint256 projectId, address sucker);
+    error JBSuckerRegistry_SuckerIsNotDeprecated(address sucker, JBSuckerState suckerState);
 
     //*********************************************************************//
     // ------------------------- internal constants ----------------------- //
@@ -89,7 +92,8 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     /// @param addr The address of the sucker to check.
     /// @return flag A flag indicating if the sucker belongs to the project, and was deployed through this registry.
     function isSuckerOf(uint256 projectId, address addr) external view override returns (bool) {
-        return _suckersOf[projectId].get(addr) == _SUCKER_EXISTS;
+        (bool exists, uint256 val) = _suckersOf[projectId].tryGet(addr);
+        return exists && val == _SUCKER_EXISTS;
     }
 
     /// @notice Helper function for retrieving the projects suckers and their metadata.
@@ -153,6 +157,14 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         }
     }
 
+    /// @notice Removes a sucker deployer from the allowlist.
+    /// @dev Can only be called by this contract's owner (initially project ID 1, or JuiceboxDAO).
+    /// @param deployer The address of the deployer to remove.
+    function removeSuckerDeployer(address deployer) public override onlyOwner {
+        suckerDeployerIsAllowed[deployer] = false;
+        emit SuckerDeployerRemoved({deployer: deployer, caller: msg.sender});
+    }
+
     /// @notice Deploy one or more suckers for the specified project.
     /// @dev The caller must be the project's owner or have `JBPermissionIds.DEPLOY_SUCKERS` from the project's owner.
     /// @param projectId The ID of the project to deploy suckers for.
@@ -214,5 +226,26 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
                 caller: msg.sender
             });
         }
+    }
+
+    /// @notice Lets anyone remove a deprecated sucker from a project.
+    /// @param projectId The ID of the project to remove the sucker from.
+    /// @param sucker The address of the deprecated sucker to remove.
+    function removeDeprecatedSucker(uint256 projectId, address sucker) public {
+        // Sanity check, make sure that the sucker does actually belong to the project.
+        (bool belongsToProject, uint256 val) = _suckersOf[projectId].tryGet(sucker);
+        if (!belongsToProject || val != _SUCKER_EXISTS) {
+            revert JBSuckerRegistry_SuckerDoesNotBelongToProject(projectId, address(sucker));
+        }
+
+        // Check if the sucker is deprecated.
+        JBSuckerState state = IJBSucker(sucker).state();
+        if (state != JBSuckerState.DEPRECATED) {
+            revert JBSuckerRegistry_SuckerIsNotDeprecated(address(sucker), state);
+        }
+
+        // Remove the sucker from the registry.
+        _suckersOf[projectId].remove(address(sucker));
+        emit SuckerDeprecated({projectId: projectId, sucker: address(sucker), caller: msg.sender});
     }
 }

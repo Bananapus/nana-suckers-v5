@@ -4,14 +4,17 @@ pragma solidity ^0.8.0;
 import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import {JBAddToBalanceMode} from "../enums/JBAddToBalanceMode.sol";
+import {JBSuckerState} from "../enums/JBSuckerState.sol";
 import {JBInboxTreeRoot} from "../structs/JBInboxTreeRoot.sol";
 import {JBOutboxTree} from "../structs/JBOutboxTree.sol";
 import {JBRemoteToken} from "../structs/JBRemoteToken.sol";
 import {JBTokenMapping} from "../structs/JBTokenMapping.sol";
+import {JBMessageRoot} from "../structs/JBMessageRoot.sol";
 
-interface IJBSucker {
+interface IJBSucker is IERC165 {
     event Claimed(
         address beneficiary,
         address token,
@@ -33,6 +36,8 @@ interface IJBSucker {
     );
     event NewInboxTreeRoot(address indexed token, uint64 nonce, bytes32 root, address caller);
     event RootToRemote(bytes32 indexed root, address indexed token, uint256 index, uint64 nonce, address caller);
+    event DeprecationTimeUpdated(uint40 timestamp, address caller);
+    event EmergencyHatchOpened(address[] tokens, address caller);
 
     function MESSENGER_BASE_GAS_LIMIT() external view returns (uint32);
     function MESSENGER_ERC20_MIN_GAS_LIMIT() external view returns (uint32);
@@ -46,11 +51,11 @@ interface IJBSucker {
 
     function amountToAddToBalanceOf(address token) external view returns (uint256 amount);
     function inboxOf(address token) external view returns (JBInboxTreeRoot memory);
-    function outboxOf(address token) external view returns (JBOutboxTree memory);
-    function remoteTokenFor(address token) external view returns (JBRemoteToken memory);
-
-    function peerChainId() external view returns (uint256 chainId);
     function isMapped(address token) external view returns (bool);
+    function outboxOf(address token) external view returns (JBOutboxTree memory);
+    function peerChainId() external view returns (uint256 chainId);
+    function remoteTokenFor(address token) external view returns (JBRemoteToken memory);
+    function state() external view returns (JBSuckerState);
 
     function prepare(
         uint256 projectTokenAmount,
@@ -59,6 +64,10 @@ interface IJBSucker {
         address token
     )
         external;
+
+    function toRemote(address token) external payable;
+    function fromRemote(JBMessageRoot calldata root) external payable;
+
     function mapToken(JBTokenMapping calldata map) external;
     function mapTokens(JBTokenMapping[] calldata maps) external;
 }
