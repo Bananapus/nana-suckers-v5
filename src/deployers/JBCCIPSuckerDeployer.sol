@@ -60,10 +60,14 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBCCIPSuckerDeployer, IJBSucke
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
 
+    /// @param directory The directory of terminals and controllers for projects.
+    /// @param permissions The permissions contract for the deployer.
+    /// @param tokens The contract that manages token minting and burning.
+    /// @param configurator The address of the configurator.
     constructor(
         IJBDirectory directory,
-        IJBTokens tokens,
         IJBPermissions permissions,
+        IJBTokens tokens,
         address configurator
     )
         JBPermissioned(permissions)
