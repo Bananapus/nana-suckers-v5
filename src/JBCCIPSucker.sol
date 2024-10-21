@@ -1,39 +1,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IAny2EVMMessageReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
+import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
+import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
+import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {IJBPrices} from "@bananapus/core/src/interfaces/IJBPrices.sol";
 import {IJBRulesets} from "@bananapus/core/src/interfaces/IJBRulesets.sol";
-import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
-import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
-import "./JBSucker.sol";
-import {IJBCCIPSuckerDeployer} from "src/interfaces/IJBCCIPSuckerDeployer.sol";
+import {JBSucker} from "./JBSucker.sol";
+import {JBCCIPSuckerDeployer} from "./deployers/JBCCIPSuckerDeployer.sol";
 import {ICCIPRouter, IWrappedNativeToken} from "src/interfaces/ICCIPRouter.sol";
+import {IJBCCIPSuckerDeployer} from "src/interfaces/IJBCCIPSuckerDeployer.sol";
+import {CCIPHelper} from "./libraries/CCIPHelper.sol";
+import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
 import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
 import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
-import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
-import {JBCCIPSuckerDeployer} from "./deployers/JBCCIPSuckerDeployer.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
-
-import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
-import {CCIPHelper} from "src/libraries/CCIPHelper.sol";
-import {IAny2EVMMessageReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
 
 /// @notice A `JBSucker` implementation to suck tokens between chains with Chainlink CCIP
 contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     using MerkleLib for MerkleLib.Tree;
     using BitMaps for BitMaps.BitMap;
-
-    ICCIPRouter public immutable CCIP_ROUTER;
-
-    uint256 public immutable REMOTE_CHAIN_ID;
-
-    uint64 public immutable REMOTE_CHAIN_SELECTOR;
 
     //*********************************************************************//
     // --------------------------- custom errors ------------------------- //
@@ -43,17 +36,38 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     error JBCCIPSucker_InvalidRouter(address router);
     error JBCCIPSucker_UnexpectedAmountOfTokens(uint256 nOfTokens);
 
-    /// @notice Return the current router
-    /// @return CCIP router address
-    function getRouter() public view returns (address) {
-        return address(CCIP_ROUTER);
-    }
+    //*********************************************************************//
+    // --------------- public immutable stored properties ---------------- //
+    //*********************************************************************//
+
+    // TODO natspec
+    ICCIPRouter public immutable CCIP_ROUTER;
+
+    // TODO natspec
+    uint256 public immutable REMOTE_CHAIN_ID;
+
+    // TODO natspec
+    uint64 public immutable REMOTE_CHAIN_SELECTOR;
+
+    //*********************************************************************//
+    // ------------------------ external views --------------------------- //
+    //*********************************************************************//
 
     /// @notice Returns the chain on which the peer is located.
     /// @return chainId of the peer.
     function peerChainId() external view virtual override returns (uint256 chainId) {
         // Return the remote chain id
         return REMOTE_CHAIN_ID;
+    }
+
+    //*********************************************************************//
+    // ------------------------- public views ---------------------------- //
+    //*********************************************************************//
+
+    /// @notice Return the current router
+    /// @return CCIP router address
+    function getRouter() public view returns (address) {
+        return address(CCIP_ROUTER);
     }
 
     /// @notice IERC165 supports an interfaceId
@@ -69,10 +83,15 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || super.supportsInterface(interfaceId);
     }
+
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
-
+    
+    /// @param directory A contract storing directories of terminals and controllers for each project.
+    /// @param tokens A contract that manages token minting and burning.
+    /// @param permissions A contract storing permissions.
+    /// @param addToBalanceMode The mode of adding tokens to balance.
     constructor(
         IJBDirectory directory,
         IJBTokens tokens,
@@ -87,14 +106,68 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     }
 
     //*********************************************************************//
+    // --------------------- external transactions ----------------------- //
+    //*********************************************************************//
+
+    /// @notice The entrypoint for the CCIP router to call. This function should
+    /// never revert, all errors should be handled internally in this contract.
+    /// @param any2EvmMessage The message to process.
+    /// @dev Extremely important to ensure only router calls this.
+    function ccipReceive(Client.Any2EVMMessage calldata any2EvmMessage) external override {
+        // only calls from the set router are accepted.
+        if (msg.sender != address(CCIP_ROUTER)) revert JBSucker_NotPeer(msg.sender);
+
+        // Decode the message root from the peer
+        JBMessageRoot memory root = abi.decode(any2EvmMessage.data, (JBMessageRoot));
+        address origin = abi.decode(any2EvmMessage.sender, (address));
+
+        // Make sure that the message came from our peer.
+        if (origin != peer() || any2EvmMessage.sourceChainSelector != REMOTE_CHAIN_SELECTOR) {
+            revert JBSucker_NotPeer(origin);
+        }
+
+        if (any2EvmMessage.destTokenAmounts.length != 1) {
+            // This should never happen, we *always* send a tokenAmount.
+            revert JBCCIPSucker_UnexpectedAmountOfTokens(any2EvmMessage.destTokenAmounts.length);
+        }
+
+        // As far as the sucker contract is aware wrapped natives are not a thing, it only handles ERC20s or native.
+        Client.EVMTokenAmount memory tokenAmount = any2EvmMessage.destTokenAmounts[0];
+        if (root.token == JBConstants.NATIVE_TOKEN) {
+            // We can (safely) assume that the token that is set in the `destTokenAmounts` is a valid wrapped native.
+            // If this ends up not being the case then our sanity check to see if we unwrapped the native asset will
+            // fail.
+            IWrappedNativeToken wrapped_native = IWrappedNativeToken(tokenAmount.token);
+            uint256 balanceBefore = _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)});
+
+            // Withdraw the wrapped native asset.
+            wrapped_native.withdraw(tokenAmount.amount);
+
+            // Sanity check the unwrapping of the native asset.
+            // slither-disable-next-line incorrect-equality
+            assert(
+                balanceBefore + tokenAmount.amount == _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)})
+            );
+        }
+
+        // Call ourselves to process the root.
+        this.fromRemote(root);
+    }
+
+    //*********************************************************************//
     // --------------------- internal transactions ----------------------- //
     //*********************************************************************//
+
+    /// @notice Unused in this context.
+    function _isRemotePeer(address sender) internal view override returns (bool _valid) {
+        // NOTICE: We do not check if its the `peer` here, as this contract is supposed to be the caller *NOT* the peer.
+        return sender == address(this);
+    }
 
     /// @notice
     /// @param transportPayment the amount of `msg.value` that is going to get paid for sending this message.
     /// @param token The token to bridge the outbox tree for.
     /// @param remoteToken Information about the remote token being bridged to.
-
     function _sendRootOverAMB(
         uint256 transportPayment,
         uint256,
@@ -162,57 +235,6 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         // slither-disable-next-line calls-loop
         (bool sent,) = msg.sender.call{value: msg.value - fees}("");
         if (!sent) revert JBCCIPSucker_FailedToRefundFee();
-    }
-
-    /// @notice The entrypoint for the CCIP router to call. This function should
-    /// never revert, all errors should be handled internally in this contract.
-    /// @param any2EvmMessage The message to process.
-    /// @dev Extremely important to ensure only router calls this.
-    function ccipReceive(Client.Any2EVMMessage calldata any2EvmMessage) external override {
-        // only calls from the set router are accepted.
-        if (msg.sender != address(CCIP_ROUTER)) revert JBSucker_NotPeer(msg.sender);
-
-        // Decode the message root from the peer
-        JBMessageRoot memory root = abi.decode(any2EvmMessage.data, (JBMessageRoot));
-        address origin = abi.decode(any2EvmMessage.sender, (address));
-
-        // Make sure that the message came from our peer.
-        if (origin != peer() || any2EvmMessage.sourceChainSelector != REMOTE_CHAIN_SELECTOR) {
-            revert JBSucker_NotPeer(origin);
-        }
-
-        if (any2EvmMessage.destTokenAmounts.length != 1) {
-            // This should never happen, we *always* send a tokenAmount.
-            revert JBCCIPSucker_UnexpectedAmountOfTokens(any2EvmMessage.destTokenAmounts.length);
-        }
-
-        // As far as the sucker contract is aware wrapped natives are not a thing, it only handles ERC20s or native.
-        Client.EVMTokenAmount memory tokenAmount = any2EvmMessage.destTokenAmounts[0];
-        if (root.token == JBConstants.NATIVE_TOKEN) {
-            // We can (safely) assume that the token that is set in the `destTokenAmounts` is a valid wrapped native.
-            // If this ends up not being the case then our sanity check to see if we unwrapped the native asset will
-            // fail.
-            IWrappedNativeToken wrapped_native = IWrappedNativeToken(tokenAmount.token);
-            uint256 balanceBefore = _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)});
-
-            // Withdraw the wrapped native asset.
-            wrapped_native.withdraw(tokenAmount.amount);
-
-            // Sanity check the unwrapping of the native asset.
-            // slither-disable-next-line incorrect-equality
-            assert(
-                balanceBefore + tokenAmount.amount == _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)})
-            );
-        }
-
-        // Call ourselves to process the root.
-        this.fromRemote(root);
-    }
-
-    /// @notice Unused in this context.
-    function _isRemotePeer(address sender) internal view override returns (bool _valid) {
-        // NOTICE: We do not check if its the `peer` here, as this contract is supposed to be the caller *NOT* the peer.
-        return sender == address(this);
     }
 
     /// @notice Allow sucker implementations to add/override mapping rules to suite their specific needs.
