@@ -58,7 +58,7 @@ interface IJBSucker is IERC165 {
     function peerChainId() external view returns (uint256 chainId);
     function remoteTokenFor(address token) external view returns (JBRemoteToken memory);
     function state() external view returns (JBSuckerState);
-  
+
     function addOutstandingAmountToBalance(address token) external;
     function claim(JBClaim[] calldata claims) external;
     function claim(JBClaim calldata claimData) external;

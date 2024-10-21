@@ -332,17 +332,17 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
     //*********************************************************************//
 
     function _assertValidSucker(IJBSucker sucker, uint256 _projectId) internal returns (IJBSucker) {
-        assertEq(sucker.PROJECT_ID(), _projectId);
+        assertEq(sucker.projectId(), _projectId);
         assertEq(address(sucker.DIRECTORY()), address(jbDirectory()));
         assertEq(address(sucker.TOKENS()), address(jbTokens()));
-        assertEq(sucker.PEER(), address(sucker));
+        assertEq(sucker.peer(), address(sucker));
         assertEq(uint8(sucker.state()), uint8(JBSuckerState.ENABLED));
 
         return sucker;
     }
 
     function _assertRegistered(IJBSucker sucker) internal returns (IJBSucker) {
-        uint256 _projectId = sucker.PROJECT_ID();
+        uint256 _projectId = sucker.projectId();
         assert(registry.isSuckerOf(_projectId, address(sucker)));
         assertEq(address(registry.suckersOf(_projectId)[0]), address(sucker));
         return sucker;

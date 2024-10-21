@@ -88,11 +88,11 @@ contract MerkleUnitTest is JBSucker, Test {
         // Mock the token minting.
         address _mockController = address(900);
         vm.mockCall(
-            address(DIRECTORY), abi.encodeCall(IJBDirectory.controllerOf, (PROJECT_ID())), abi.encode(_mockController)
+            address(DIRECTORY), abi.encodeCall(IJBDirectory.controllerOf, (projectId())), abi.encode(_mockController)
         );
         vm.mockCall(
             _mockController,
-            abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID(), 5 ether, address(120), "", false)),
+            abi.encodeCall(IJBController.mintTokensOf, (projectId(), 5 ether, address(120), "", false)),
             abi.encode(0)
         );
 
@@ -116,11 +116,11 @@ contract MerkleUnitTest is JBSucker, Test {
         // Mock the token minting.
         address _mockController = address(900);
         vm.mockCall(
-            address(DIRECTORY), abi.encodeCall(IJBDirectory.controllerOf, (PROJECT_ID())), abi.encode(_mockController)
+            address(DIRECTORY), abi.encodeCall(IJBDirectory.controllerOf, (projectId())), abi.encode(_mockController)
         );
         vm.mockCall(
             _mockController,
-            abi.encodeCall(IJBController.mintTokensOf, (PROJECT_ID(), 5 ether, address(120), "", false)),
+            abi.encodeCall(IJBController.mintTokensOf, (projectId(), 5 ether, address(120), "", false)),
             abi.encode(0)
         );
 

@@ -692,7 +692,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
             // If the token is the native token, use `msg.value`.
             // slither-disable-next-line arbitrary-send-eth,calls-loop
             terminal.addToBalanceOf({
-                projectId: projectId,
+                projectId: _projectId,
                 token: token,
                 amount: amount,
                 shouldReturnHeldFees: false,

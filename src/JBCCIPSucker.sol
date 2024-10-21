@@ -43,7 +43,6 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     error JBCCIPSucker_InvalidRouter(address router);
     error JBCCIPSucker_UnexpectedAmountOfTokens(uint256 nOfTokens);
 
-
     /// @notice Return the current router
     /// @return CCIP router address
     function getRouter() public view returns (address) {
