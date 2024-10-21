@@ -115,10 +115,10 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
         // Clone the singleton.
         sucker = IJBSucker(LibClone.cloneDeterministic(address(singleton), salt));
 
-        // Initialize the clone.
-        JBOptimismSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
-
         // Mark it as a sucker that was deployed by this deployer.
         isSucker[address(sucker)] = true;
+
+        // Initialize the clone.
+        JBOptimismSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
     }
 }

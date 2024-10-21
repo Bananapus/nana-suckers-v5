@@ -8,6 +8,7 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import {JBAddToBalanceMode} from "../enums/JBAddToBalanceMode.sol";
 import {JBSuckerState} from "../enums/JBSuckerState.sol";
+import {JBClaim} from "../structs/JBClaim.sol";
 import {JBInboxTreeRoot} from "../structs/JBInboxTreeRoot.sol";
 import {JBOutboxTree} from "../structs/JBOutboxTree.sol";
 import {JBRemoteToken} from "../structs/JBRemoteToken.sol";
@@ -56,7 +57,15 @@ interface IJBSucker is IERC165 {
     function peerChainId() external view returns (uint256 chainId);
     function remoteTokenFor(address token) external view returns (JBRemoteToken memory);
     function state() external view returns (JBSuckerState);
-
+  
+    function addOutstandingAmountToBalance(address token) external;
+    function claim(JBClaim[] calldata claims) external;
+    function claim(JBClaim calldata claimData) external;
+    function enableEmergencyHatchFor(address[] calldata tokens) external;
+    function exitThroughEmergencyHatch(JBClaim calldata claimData) external;
+    function fromRemote(JBMessageRoot calldata root) external payable;
+    function mapToken(JBTokenMapping calldata map) external;
+    function mapTokens(JBTokenMapping[] calldata maps) external;
     function prepare(
         uint256 projectTokenAmount,
         address beneficiary,
@@ -64,10 +73,7 @@ interface IJBSucker is IERC165 {
         address token
     )
         external;
+    function setDeprecation(uint40 timestamp) external;
 
     function toRemote(address token) external payable;
-    function fromRemote(JBMessageRoot calldata root) external payable;
-
-    function mapToken(JBTokenMapping calldata map) external;
-    function mapTokens(JBTokenMapping[] calldata maps) external;
 }

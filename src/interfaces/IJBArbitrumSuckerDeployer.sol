@@ -6,7 +6,7 @@ import {IArbGatewayRouter} from "../interfaces/IArbGatewayRouter.sol";
 import {IInbox} from "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 
 interface IJBArbitrumSuckerDeployer {
-    function layer() external view returns (JBLayer);
-    function inbox() external view returns (IInbox);
     function gatewayRouter() external view returns (IArbGatewayRouter);
+    function inbox() external view returns (IInbox);
+    function layer() external view returns (JBLayer);
 }

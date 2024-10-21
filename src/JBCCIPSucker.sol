@@ -43,6 +43,33 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     error JBCCIPSucker_InvalidRouter(address router);
     error JBCCIPSucker_UnexpectedAmountOfTokens(uint256 nOfTokens);
 
+
+    /// @notice Return the current router
+    /// @return CCIP router address
+    function getRouter() public view returns (address) {
+        return address(CCIP_ROUTER);
+    }
+
+    /// @notice Returns the chain on which the peer is located.
+    /// @return chainId of the peer.
+    function peerChainId() external view virtual override returns (uint256 chainId) {
+        // Return the remote chain id
+        return REMOTE_CHAIN_ID;
+    }
+
+    /// @notice IERC165 supports an interfaceId
+    /// @param interfaceId The interfaceId to check
+    /// @return true if the interfaceId is supported
+    /// @dev Should indicate whether the contract implements IAny2EVMMessageReceiver
+    /// e.g. return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId
+    /// This allows CCIP to check if ccipReceive is available before calling it.
+    /// If this returns false or reverts, only tokens are transferred to the receiver.
+    /// If this returns true, tokens are transferred and ccipReceive is called atomically.
+    /// Additionally, if the receiver address does not have code associated with
+    /// it at the time of execution (EXTCODESIZE returns 0), only tokens will be transferred.
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || super.supportsInterface(interfaceId);
+    }
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
@@ -88,8 +115,10 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         // Wrap the token if it's native
         if (token == JBConstants.NATIVE_TOKEN) {
             // Get the wrapped native token.
+            // slither-disable-next-line calls-loop
             IWrappedNativeToken wrapped_native = CCIP_ROUTER.getWrappedNative();
             // Deposit the wrapped native asset.
+            // slither-disable-next-line calls-loop,arbitrary-send-eth
             wrapped_native.deposit{value: amount}();
             // Update the token to be the wrapped native asset.
             token = address(wrapped_native);
@@ -114,6 +143,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         });
 
         // Get the fee required to send the CCIP message
+        // slither-disable-next-line calls-loop
         uint256 fees = CCIP_ROUTER.getFee({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: message});
 
         if (fees > transportPayment) {
@@ -126,9 +156,11 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         // TODO: Handle this messageId- for later version with message retries
         // Send the message through the router and store the returned message ID
         /* messageId =  */
+        // slither-disable-next-line calls-loop,unused-return
         CCIP_ROUTER.ccipSend{value: fees}({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: message});
 
         // Refund remaining balance.
+        // slither-disable-next-line calls-loop
         (bool sent,) = msg.sender.call{value: msg.value - fees}("");
         if (!sent) revert JBCCIPSucker_FailedToRefundFee();
     }
@@ -168,6 +200,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
             wrapped_native.withdraw(tokenAmount.amount);
 
             // Sanity check the unwrapping of the native asset.
+            // slither-disable-next-line incorrect-equality
             assert(
                 balanceBefore + tokenAmount.amount == _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)})
             );
@@ -193,32 +226,5 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         if (map.minGas < MESSENGER_ERC20_MIN_GAS_LIMIT && map.localToken != JBConstants.NATIVE_TOKEN) {
             revert JBSucker_BelowMinGas(map.minGas, MESSENGER_ERC20_MIN_GAS_LIMIT);
         }
-    }
-
-    /// @notice Return the current router
-    /// @return CCIP router address
-    function getRouter() public view returns (address) {
-        return address(CCIP_ROUTER);
-    }
-
-    /// @notice Returns the chain on which the peer is located.
-    /// @return chainId of the peer.
-    function peerChainId() external view virtual override returns (uint256 chainId) {
-        // Return the remote chain id
-        return REMOTE_CHAIN_ID;
-    }
-
-    /// @notice IERC165 supports an interfaceId
-    /// @param interfaceId The interfaceId to check
-    /// @return true if the interfaceId is supported
-    /// @dev Should indicate whether the contract implements IAny2EVMMessageReceiver
-    /// e.g. return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId
-    /// This allows CCIP to check if ccipReceive is available before calling it.
-    /// If this returns false or reverts, only tokens are transferred to the receiver.
-    /// If this returns true, tokens are transferred and ccipReceive is called atomically.
-    /// Additionally, if the receiver address does not have code associated with
-    /// it at the time of execution (EXTCODESIZE returns 0), only tokens will be transferred.
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || super.supportsInterface(interfaceId);
     }
 }

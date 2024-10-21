@@ -68,6 +68,7 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBCCIPSuckerDeployer, IJBSucke
     )
         JBPermissioned(permissions)
     {
+        // slither-disable-next-line missing-zero-check
         LAYER_SPECIFIC_CONFIGURATOR = configurator;
         DIRECTORY = directory;
         TOKENS = tokens;
@@ -134,10 +135,10 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBCCIPSuckerDeployer, IJBSucke
         // Clone the singleton.
         sucker = IJBSucker(LibClone.cloneDeterministic(address(singleton), salt));
 
-        // Initialize the clone.
-        JBCCIPSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
-
         // Mark it as a sucker that was deployed by this deployer.
         isSucker[address(sucker)] = true;
+
+        // Initialize the clone.
+        JBCCIPSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
     }
 }

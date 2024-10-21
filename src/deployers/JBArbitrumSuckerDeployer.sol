@@ -121,10 +121,10 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
         // Clone the singleton.
         sucker = IJBSucker(LibClone.cloneDeterministic(address(singleton), salt));
 
-        // Initialize the clone.
-        JBArbitrumSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
-
         // Mark it as a sucker that was deployed by this deployer.
         isSucker[address(sucker)] = true;
+
+        // Initialize the clone.
+        JBArbitrumSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
     }
 }
