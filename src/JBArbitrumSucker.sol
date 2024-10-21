@@ -104,11 +104,11 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         if (LAYER == JBLayer.L1) {
             IBridge bridge = ARBINBOX.bridge();
             // Check that the sender is the bridge and that the outbox has our peer as the sender.
-            return sender == address(bridge) && PEER() == IOutbox(bridge.activeOutbox()).l2ToL1Sender();
+            return sender == address(bridge) && peer() == IOutbox(bridge.activeOutbox()).l2ToL1Sender();
         }
 
         // If we are the L2 peer, check using the `AddressAliasHelper`.
-        return sender == AddressAliasHelper.applyL1ToL2Alias(PEER());
+        return sender == AddressAliasHelper.applyL1ToL2Alias(peer());
     }
 
     //*********************************************************************//
@@ -167,7 +167,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             // slither-disable-next-line calls-loop,unused-return
             IArbL2GatewayRouter(address(GATEWAYROUTER)).outboundTransfer({
                 l1Token: remoteToken.addr,
-                to: PEER(),
+                to: peer(),
                 amount: amount,
                 data: bytes("")
             });
@@ -179,7 +179,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         // Send the message to the peer with the redeemed ETH.
         // Address `100` is the ArbSys precompile address.
         // slither-disable-next-line calls-loop,unused-return
-        ArbSys(address(100)).sendTxToL1{value: nativeValue}(PEER(), data);
+        ArbSys(address(100)).sendTxToL1{value: nativeValue}(peer(), data);
     }
 
     /// @notice Bridge the `token` and data to the remote L2 chain.
@@ -216,7 +216,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             IArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: transportPayment}({
                 token: token,
                 refundTo: msg.sender,
-                to: PEER(),
+                to: peer(),
                 amount: amount,
                 maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk -
                     // MESSENGER_BASE_GAS_LIMIT = 300k here
@@ -242,7 +242,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         // TODO: We could even make this unsafe.
         // slither-disable-next-line calls-loop,unused-return
         ARBINBOX.createRetryableTicket{value: transportPayment}({
-            to: PEER(),
+            to: peer(),
             l2CallValue: nativeValue,
             maxSubmissionCost: maxSubmissionCost,
             excessFeeRefundAddress: msg.sender,

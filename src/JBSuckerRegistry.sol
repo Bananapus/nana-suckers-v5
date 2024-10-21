@@ -116,7 +116,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
 
             // slither-disable-next-line calls-loop
             pairs[i] =
-                JBSuckersPair({local: address(sucker), remote: sucker.PEER(), remoteChainId: sucker.peerChainId()});
+                JBSuckersPair({local: address(sucker), remote: sucker.peer(), remoteChainId: sucker.peerChainId()});
         }
     }
 

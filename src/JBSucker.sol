@@ -181,12 +181,12 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     //*********************************************************************//
 
     /// @notice The peer sucker on the remote chain.
-    function PEER() public view returns (address) {
+    function peer() public view returns (address) {
         return _remotePeer;
     }
 
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
-    function PROJECT_ID() public view returns (uint256) {
+    function projectId() public view returns (uint256) {
         return _localProjectId;
     }
 
@@ -414,12 +414,12 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         _validateTokenMapping(map);
 
         // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
-        uint256 projectId = PROJECT_ID();
+        uint256 _projectId = projectId();
 
         // slither-disable-next-line calls-loop
         _requirePermissionFrom({
-            account: DIRECTORY.PROJECTS().ownerOf(projectId),
-            projectId: projectId,
+            account: DIRECTORY.PROJECTS().ownerOf(_projectId),
+            projectId: _projectId,
             permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
         });
 
@@ -480,10 +480,11 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     function enableEmergencyHatchFor(address[] calldata tokens) external override {
         // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
         // slither-disable-next-line calls-loop
-        uint256 projectId = PROJECT_ID();
+        uint256 _projectId = projectId();
+
         _requirePermissionFrom({
-            account: DIRECTORY.PROJECTS().ownerOf(projectId),
-            projectId: projectId,
+            account: DIRECTORY.PROJECTS().ownerOf(_projectId),
+            projectId: _projectId,
             permissionId: JBPermissionIds.SUCKER_SAFETY
         });
 
@@ -520,7 +521,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         }
 
         // Get the project's token.
-        IERC20 projectToken = IERC20(address(TOKENS.tokenOf(PROJECT_ID())));
+        IERC20 projectToken = IERC20(address(TOKENS.tokenOf(projectId())));
         if (address(projectToken) == address(0)) {
             revert JBSucker_ZeroERC20Token();
         }
@@ -609,10 +610,11 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         if (state() == JBSuckerState.DEPRECATED) revert JBSucker_Deprecated();
 
         // slither-disable-next-line calls-loop
-        uint256 projectId = PROJECT_ID();
+        uint256 _projectId = projectId();
+
         _requirePermissionFrom({
-            account: DIRECTORY.PROJECTS().ownerOf(projectId),
-            projectId: projectId,
+            account: DIRECTORY.PROJECTS().ownerOf(_projectId),
+            projectId: _projectId,
             permissionId: JBPermissionIds.SUCKER_SAFETY
         });
 
@@ -656,15 +658,15 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
             amountToAddToBalanceOf[token] = addableAmount - amount;
         }
 
-        uint256 projectId = PROJECT_ID();
+        uint256 _projectId = projectId();
 
         // Get the project's primary terminal for the token.
         // slither
         // slither-disable-next-line calls-loop
-        IJBTerminal terminal = DIRECTORY.primaryTerminalOf({projectId: projectId, token: token});
+        IJBTerminal terminal = DIRECTORY.primaryTerminalOf({projectId: _projectId, token: token});
 
         // slither-disable-next-line incorrect-equality
-        if (address(terminal) == address(0)) revert JBSucker_NoTerminalForToken(projectId, token);
+        if (address(terminal) == address(0)) revert JBSucker_NoTerminalForToken(_projectId, token);
 
         // Perform the `addToBalance`.
         if (token != JBConstants.NATIVE_TOKEN) {
@@ -675,7 +677,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
 
             // slither-disable-next-line calls-loop
             terminal.addToBalanceOf({
-                projectId: projectId,
+                projectId: _projectId,
                 token: token,
                 amount: amount,
                 shouldReturnHeldFees: false,
@@ -718,12 +720,12 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
             _addToBalance({token: terminalToken, amount: terminalTokenAmount});
         }
 
-        uint256 projectId = PROJECT_ID();
+        uint256 _projectId = projectId();
 
         // Mint the project tokens for the beneficiary.
         // slither-disable-next-line calls-loop,unused-return
-        IJBController(address(DIRECTORY.controllerOf(projectId))).mintTokensOf({
-            projectId: projectId,
+        IJBController(address(DIRECTORY.controllerOf(_projectId))).mintTokensOf({
+            projectId: _projectId,
             tokenCount: projectTokenAmount,
             beneficiary: beneficiary,
             memo: "",
@@ -796,22 +798,22 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     {
         projectToken;
 
-        uint256 projectId = PROJECT_ID();
+        uint256 _projectId = projectId();
 
         // Get the project's primary terminal for `token`. We will redeem from this terminal.
         IJBRedeemTerminal terminal =
-            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf({projectId: projectId, token: token})));
+            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf({projectId: _projectId, token: token})));
 
         // If the project doesn't have a primary terminal for `token`, revert.
         if (address(terminal) == address(0)) {
-            revert JBSucker_NoTerminalForToken(projectId, token);
+            revert JBSucker_NoTerminalForToken(_projectId, token);
         }
 
         // Redeem the tokens.
         uint256 balanceBefore = _balanceOf(token, address(this));
         reclaimedAmount = terminal.redeemTokensOf({
             holder: address(this),
-            projectId: projectId,
+            projectId: _projectId,
             tokenToReclaim: token,
             redeemCount: count,
             minTokensReclaimed: minTokensReclaimed,

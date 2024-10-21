@@ -46,9 +46,10 @@ interface IJBSucker is IERC165 {
     function ADD_TO_BALANCE_MODE() external view returns (JBAddToBalanceMode);
     function DEPLOYER() external view returns (address);
     function DIRECTORY() external view returns (IJBDirectory);
-    function PEER() external view returns (address);
-    function PROJECT_ID() external view returns (uint256);
     function TOKENS() external view returns (IJBTokens);
+
+    function peer() external view returns (address);
+    function projectId() external view returns (uint256);
 
     function amountToAddToBalanceOf(address token) external view returns (uint256 amount);
     function inboxOf(address token) external view returns (JBInboxTreeRoot memory);

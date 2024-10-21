@@ -84,7 +84,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
     function _isRemotePeer(address sender) internal override returns (bool valid) {
-        return sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == PEER();
+        return sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == peer();
     }
 
     /// @notice Use the `OPMESSENGER` to send the outbox tree for the `token` and the corresponding funds to the peer
@@ -121,7 +121,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
             OPBRIDGE.bridgeERC20To({
                 localToken: token,
                 remoteToken: remoteToken.addr,
-                to: PEER(),
+                to: peer(),
                 amount: amount,
                 minGasLimit: remoteToken.minGas,
                 extraData: bytes("")
@@ -134,7 +134,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
         // Send the message to the peer with the redeemed ETH.
         // slither-disable-next-line arbitrary-send-eth,reentrency-events,calls-loop
         OPMESSENGER.sendMessage{value: nativeValue}(
-            PEER(), abi.encodeCall(JBSucker.fromRemote, (message)), MESSENGER_BASE_GAS_LIMIT
+            peer(), abi.encodeCall(JBSucker.fromRemote, (message)), MESSENGER_BASE_GAS_LIMIT
         );
     }
 }

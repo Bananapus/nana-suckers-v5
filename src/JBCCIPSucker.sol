@@ -130,7 +130,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
 
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver: abi.encode(PEER()),
+            receiver: abi.encode(peer()),
             data: abi.encode(sucker_message),
             tokenAmounts: tokenAmounts,
             extraArgs: Client._argsToBytes(
@@ -178,7 +178,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         address origin = abi.decode(any2EvmMessage.sender, (address));
 
         // Make sure that the message came from our peer.
-        if (origin != PEER() || any2EvmMessage.sourceChainSelector != REMOTE_CHAIN_SELECTOR) {
+        if (origin != peer() || any2EvmMessage.sourceChainSelector != REMOTE_CHAIN_SELECTOR) {
             revert JBSucker_NotPeer(origin);
         }
 
@@ -212,7 +212,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
 
     /// @notice Unused in this context.
     function _isRemotePeer(address sender) internal view override returns (bool _valid) {
-        // NOTICE: We do not check if its the `PEER` here, as this contract is supposed to be the caller *NOT* the PEER.
+        // NOTICE: We do not check if its the `peer` here, as this contract is supposed to be the caller *NOT* the peer.
         return sender == address(this);
     }
 
