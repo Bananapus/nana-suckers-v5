@@ -161,13 +161,13 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
 
         deployer = CCIPDeployer;
         CCIPDeployer.configureLayerSpecific({
-            _remoteChainId: _remoteChainId,
-            _remoteChainSelector: _remoteChainSelector,
-            _ccipRouter: _ccipRouter
+            remoteChainId: _remoteChainId,
+            remoteChainSelector: _remoteChainSelector,
+            router: _ccipRouter
         });
 
-        assertEq(CCIPDeployer.remoteChainId(), _remoteChainId);
-        assertEq(CCIPDeployer.remoteChainSelector(), _remoteChainSelector);
+        assertEq(CCIPDeployer.ccipRemoteChainId(), _remoteChainId);
+        assertEq(CCIPDeployer.ccipRemoteChainSelector(), _remoteChainSelector);
         assertEq(address(CCIPDeployer.ccipRouter()), address(_ccipRouter));
     }
 
@@ -189,9 +189,9 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         deployer = ARBDeployer;
         ARBDeployer.configureLayerSpecific(_layer, _inbox, _gatewayRouter);
 
-        assertEq(uint256(ARBDeployer.layer()), uint256(_layer));
-        assertEq(address(ARBDeployer.inbox()), address(_inbox));
-        assertEq(address(ARBDeployer.gatewayRouter()), address(_gatewayRouter));
+        assertEq(uint256(ARBDeployer.arbLayer()), uint256(_layer));
+        assertEq(address(ARBDeployer.arbInbox()), address(_inbox));
+        assertEq(address(ARBDeployer.arbGatewayRouter()), address(_gatewayRouter));
     }
 
     //*********************************************************************//
@@ -368,12 +368,12 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         );
 
         assertEq(
-            JBCCIPSuckerDeployer(address(deployer)).remoteChainId(),
+            JBCCIPSuckerDeployer(address(deployer)).ccipRemoteChainId(),
             JBCCIPSucker(payable(address(sucker))).REMOTE_CHAIN_ID()
         );
 
         assertEq(
-            JBCCIPSuckerDeployer(address(deployer)).remoteChainSelector(),
+            JBCCIPSuckerDeployer(address(deployer)).ccipRemoteChainSelector(),
             JBCCIPSucker(payable(address(sucker))).REMOTE_CHAIN_SELECTOR()
         );
         return sucker;
@@ -381,15 +381,15 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
 
     function _assertArbSucker(IJBSuckerDeployer deployer, IJBSucker sucker) internal returns (IJBSucker) {
         assertEq(
-            uint256(JBArbitrumSuckerDeployer(address(deployer)).layer()),
+            uint256(JBArbitrumSuckerDeployer(address(deployer)).arbLayer()),
             uint256(JBArbitrumSucker(payable(address(sucker))).LAYER())
         );
         assertEq(
-            address(JBArbitrumSuckerDeployer(address(deployer)).inbox()),
+            address(JBArbitrumSuckerDeployer(address(deployer)).arbInbox()),
             address(JBArbitrumSucker(payable(address(sucker))).ARBINBOX())
         );
         assertEq(
-            address(JBArbitrumSuckerDeployer(address(deployer)).gatewayRouter()),
+            address(JBArbitrumSuckerDeployer(address(deployer)).arbGatewayRouter()),
             address(JBArbitrumSucker(payable(address(sucker))).GATEWAYROUTER())
         );
         return sucker;

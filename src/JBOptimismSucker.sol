@@ -37,7 +37,6 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
     /// @notice The messenger used to send messages between the local and remote sucker.
     IOPMessenger public immutable override OPMESSENGER;
 
-
     //*********************************************************************//
     // ------------------------ external views --------------------------- //
     //*********************************************************************//
@@ -52,7 +51,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
         if (chainId == 11_155_420) return 11_155_111;
         return 0;
     }
-    
+
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//

@@ -106,9 +106,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     )
         JBSucker(directory, permissions, tokens, addToBalanceMode)
     {
-        GATEWAYROUTER = JBArbitrumSuckerDeployer(msg.sender).gatewayRouter();
-        ARBINBOX = JBArbitrumSuckerDeployer(msg.sender).inbox();
-        LAYER = JBArbitrumSuckerDeployer(msg.sender).layer();
+        GATEWAYROUTER = JBArbitrumSuckerDeployer(msg.sender).arbGatewayRouter();
+        ARBINBOX = JBArbitrumSuckerDeployer(msg.sender).arbInbox();
+        LAYER = JBArbitrumSuckerDeployer(msg.sender).arbLayer();
     }
 
     //*********************************************************************//

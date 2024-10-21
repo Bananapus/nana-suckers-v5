@@ -43,13 +43,13 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
     JBArbitrumSucker public singleton;
 
     /// @notice The layer that this contract is on.
-    JBLayer public layer;
+    JBLayer public arbLayer;
 
     /// @notice The inbox used to send messages between the local and remote sucker.
-    IInbox public override inbox;
+    IInbox public override arbInbox;
 
     /// @notice The gateway router for the specific chain
-    IArbGatewayRouter public override gatewayRouter;
+    IArbGatewayRouter public override arbGatewayRouter;
 
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
@@ -81,8 +81,11 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
     /// addresses would change.
     /// @notice messenger the OPMesssenger on this layer.
     /// @notice bridge the OPStandardBridge on this layer.
-    function configureLayerSpecific(JBLayer _layer, IInbox _inbox, IArbGatewayRouter _gatewayRouter) external {
-        if (uint256(layer) != uint256(0) || address(inbox) != address(0) || address(gatewayRouter) != address(0)) {
+    function configureLayerSpecific(JBLayer layer, IInbox inbox, IArbGatewayRouter gatewayRouter) external {
+        if (
+            uint256(arbLayer) != uint256(0) || address(arbInbox) != address(0)
+                || address(arbGatewayRouter) != address(0)
+        ) {
             revert JBSuckerDeployer_AlreadyConfigured();
         }
 
@@ -92,9 +95,9 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
 
         // Configure these layer specific properties.
         // This is done in a separate call to make the deployment code chain agnostic.
-        layer = _layer;
-        inbox = _inbox;
-        gatewayRouter = _gatewayRouter;
+        arbLayer = layer;
+        arbInbox = inbox;
+        arbGatewayRouter = gatewayRouter;
 
         singleton = new JBArbitrumSucker({
             directory: DIRECTORY,

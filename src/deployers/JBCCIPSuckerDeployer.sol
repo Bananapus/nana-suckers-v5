@@ -48,10 +48,10 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBCCIPSuckerDeployer, IJBSucke
     JBCCIPSucker public singleton;
 
     /// @notice Store the remote chain id
-    uint256 public remoteChainId;
+    uint256 public ccipRemoteChainId;
 
     /// @notice Store the remote chain id
-    uint64 public remoteChainSelector;
+    uint64 public ccipRemoteChainSelector;
 
     /// @notice Store the address of the CCIP router for this chain.
     ICCIPRouter public ccipRouter;
@@ -84,28 +84,23 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBCCIPSuckerDeployer, IJBSucke
 
     /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment
     /// addresses would change.
-    function configureLayerSpecific(
-        uint256 _remoteChainId,
-        uint64 _remoteChainSelector,
-        ICCIPRouter _ccipRouter
-    )
-        external
-    {
+    /// TODO natspec
+    function configureLayerSpecific(uint256 remoteChainId, uint64 remoteChainSelector, ICCIPRouter router) external {
         // Only allow configurator to set properties - notice we don't restrict reconfiguration here
         // TODO: We now do restrict reconfiguration, we should check why we explicitly commented here that we do not.
-        if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR || remoteChainId != 0) {
+        if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR || ccipRemoteChainId != 0) {
             revert JBCCIPSuckerDeployer_Unauthorized();
         }
 
         // Check that the ccipRouter address has code.
         // Its easy to assume `ccipRouter` should be for the remoteChain, but it should be for the localChain.
-        if (address(_ccipRouter).code.length == 0) {
-            revert JBCCIPSuckerDeployer_InvalidCCIPRouter(address(_ccipRouter));
+        if (address(router).code.length == 0) {
+            revert JBCCIPSuckerDeployer_InvalidCCIPRouter(address(router));
         }
 
-        remoteChainId = _remoteChainId;
-        remoteChainSelector = _remoteChainSelector;
-        ccipRouter = _ccipRouter;
+        ccipRemoteChainId = remoteChainId;
+        ccipRemoteChainSelector = remoteChainSelector;
+        ccipRouter = router;
 
         singleton = new JBCCIPSucker({
             directory: DIRECTORY,
