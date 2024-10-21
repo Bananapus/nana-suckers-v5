@@ -15,12 +15,14 @@ import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
 import {JBSucker} from "./JBSucker.sol";
 import {JBCCIPSuckerDeployer} from "./deployers/JBCCIPSuckerDeployer.sol";
-import {ICCIPRouter, IWrappedNativeToken} from "src/interfaces/ICCIPRouter.sol";
-import {IJBCCIPSuckerDeployer} from "src/interfaces/IJBCCIPSuckerDeployer.sol";
+import {JBAddToBalanceMode} from "./enums/JBAddToBalanceMode.sol";
+import {ICCIPRouter, IWrappedNativeToken} from "./interfaces/ICCIPRouter.sol";
+import {IJBCCIPSuckerDeployer} from "./interfaces/IJBCCIPSuckerDeployer.sol";
 import {CCIPHelper} from "./libraries/CCIPHelper.sol";
 import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
 import {JBMessageRoot} from "./structs/JBMessageRoot.sol";
 import {JBRemoteToken} from "./structs/JBRemoteToken.sol";
+import {JBTokenMapping} from "./structs/JBTokenMapping.sol";
 import {MerkleLib} from "./utils/MerkleLib.sol";
 
 /// @notice A `JBSucker` implementation to suck tokens between chains with Chainlink CCIP
