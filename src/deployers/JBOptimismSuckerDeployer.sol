@@ -119,6 +119,6 @@ contract JBOptimismSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBOpSuc
         isSucker[address(sucker)] = true;
 
         // Initialize the clone.
-        JBOptimismSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
+        JBOptimismSucker(payable(address(sucker))).initialize({__peer: address(sucker), __projectId: localProjectId});
     }
 }

@@ -18,6 +18,7 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 
 import {JBAddToBalanceMode} from "./enums/JBAddToBalanceMode.sol";
 import {IJBSucker} from "./interfaces/IJBSucker.sol";
+import {IJBSuckerExtended} from "./interfaces/IJBSuckerExtended.sol";
 import {IJBSuckerDeployer} from "./interfaces/IJBSuckerDeployer.sol";
 import {JBClaim} from "./structs/JBClaim.sol";
 import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
@@ -34,7 +35,7 @@ import {JBSuckerState} from "./enums/JBSuckerState.sol";
 /// chain to the remote chain, and the inbox tree is used to receive from the remote chain to the local chain.
 /// @dev Throughout this contract, "terminal token" refers to any token accepted by a project's terminal.
 /// @dev This contract does *NOT* support tokens that have a fee on regular transfers and rebasing tokens.
-abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
+abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerExtended {
     using BitMaps for BitMaps.BitMap;
     using MerkleLib for MerkleLib.Tree;
     using SafeERC20 for IERC20;
@@ -216,7 +217,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
-        return interfaceId == type(IJBSucker).interfaceId || super.supportsInterface(interfaceId);
+        return interfaceId == type(IJBSuckerExtended).interfaceId || interfaceId == type(IJBSucker).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 
     //*********************************************************************//
@@ -297,13 +299,13 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     }
 
     /// @notice Initializes the sucker with the project ID and peer address.
-    /// @param projectId The ID of the project (on the local chain) that this sucker is associated with.
-    /// @param peer The peer sucker on the remote chain.
-    function initialize(uint256 projectId, address peer) public initializer {
+    /// @param __projectId The ID of the project (on the local chain) that this sucker is associated with.
+    /// @param __peer The peer sucker on the remote chain.
+    function initialize(uint256 __projectId, address __peer) public initializer {
         // slither-disable-next-line missing-zero-check
-        _localProjectId = projectId;
+        _localProjectId = __projectId;
         // slither-disable-next-line missing-zero-check
-        _remotePeer = peer;
+        _remotePeer = __peer;
     }
 
     //*********************************************************************//
@@ -370,7 +372,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     /// @notice Receive a merkle root for a terminal token from the remote project.
     /// @dev This can only be called by the messenger contract on the local chain, with a message from the remote peer.
     /// @param root The merkle root, token, and amount being received.
-    function fromRemote(JBMessageRoot calldata root) external payable override {
+    function fromRemote(JBMessageRoot calldata root) external payable {
         // Make sure that the message came from our peer.
         if (!_isRemotePeer(msg.sender)) {
             revert JBSucker_NotPeer(msg.sender);

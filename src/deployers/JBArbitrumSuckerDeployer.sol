@@ -128,6 +128,6 @@ contract JBArbitrumSuckerDeployer is JBPermissioned, IJBSuckerDeployer, IJBArbit
         isSucker[address(sucker)] = true;
 
         // Initialize the clone.
-        JBArbitrumSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
+        JBArbitrumSucker(payable(address(sucker))).initialize({__peer: address(sucker), __projectId: localProjectId});
     }
 }
