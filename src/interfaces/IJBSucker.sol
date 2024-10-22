@@ -15,7 +15,7 @@ import {JBRemoteToken} from "../structs/JBRemoteToken.sol";
 import {JBTokenMapping} from "../structs/JBTokenMapping.sol";
 import {JBMessageRoot} from "../structs/JBMessageRoot.sol";
 
-// The minimal interface for a sucker contract.
+// @notice The minimal interface for a sucker contract.
 interface IJBSucker is IERC165 {
     event Claimed(
         address beneficiary,
@@ -58,11 +58,11 @@ interface IJBSucker is IERC165 {
     function remoteTokenFor(address token) external view returns (JBRemoteToken memory);
     function state() external view returns (JBSuckerState);
 
-    function mapToken(JBTokenMapping calldata map) external;
-    function mapTokens(JBTokenMapping[] calldata maps) external;
     function addOutstandingAmountToBalance(address token) external;
     function claim(JBClaim[] calldata claims) external;
     function claim(JBClaim calldata claimData) external;
+    function mapToken(JBTokenMapping calldata map) external;
+    function mapTokens(JBTokenMapping[] calldata maps) external;
     function prepare(
         uint256 projectTokenAmount,
         address beneficiary,
