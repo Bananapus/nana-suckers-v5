@@ -138,6 +138,6 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBCCIPSuckerDeployer, IJBSucke
         isSucker[address(sucker)] = true;
 
         // Initialize the clone.
-        JBCCIPSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
+        JBCCIPSucker(payable(address(sucker))).initialize({__peer: address(sucker), __projectId: localProjectId});
     }
 }
