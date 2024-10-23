@@ -43,35 +43,35 @@ abstract contract JBAllowanceSucker is JBSucker {
         // Get the projectToken total supply.
         uint256 totalSupply = projectToken.totalSupply();
 
-        uint256 projectId = PROJECT_ID();
+        uint256 _projectId = projectId();
 
         // Burn the project tokens.
-        IJBController(address(DIRECTORY.controllerOf(projectId))).burnTokensOf(
-            address(this), projectId, count, string("")
+        IJBController(address(DIRECTORY.controllerOf(_projectId))).burnTokensOf(
+            address(this), _projectId, count, string("")
         );
 
         // Get the primary terminal of the project for the token.
-        IJBRedeemTerminal terminal = IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(projectId, token)));
+        IJBRedeemTerminal terminal = IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(_projectId, token)));
 
         // Make sure a terminal is configured for the token.
         if (address(terminal) == address(0)) {
-            revert JBAllowanceSucker_NoTerminalForToken(projectId, token);
+            revert JBAllowanceSucker_NoTerminalForToken(_projectId, token);
         }
 
         // Get the accounting context for the token.
-        JBAccountingContext memory accountingContext = terminal.accountingContextForTokenOf(projectId, token);
+        JBAccountingContext memory accountingContext = terminal.accountingContextForTokenOf(_projectId, token);
         if (accountingContext.currency == 0) {
-            revert JBAllowanceSucker_TokenNotAccepted(projectId, token);
+            revert JBAllowanceSucker_TokenNotAccepted(_projectId, token);
         }
 
-        uint256 surplus = terminal.currentSurplusOf(projectId, accountingContext.decimals, accountingContext.currency);
+        uint256 surplus = terminal.currentSurplusOf(_projectId, accountingContext.decimals, accountingContext.currency);
 
         uint256 backingAssets = mulDiv(count, surplus, totalSupply);
 
         // Get the balance before we redeem.
         uint256 balanceBefore = _balanceOf(token, address(this));
         receivedAmount = IJBSuckerDeployerFeeless(DEPLOYER).useAllowanceFeeless({
-            projectId: projectId,
+            projectId: _projectId,
             terminal: IJBPayoutTerminal(address(terminal)),
             token: token,
             currency: accountingContext.currency,

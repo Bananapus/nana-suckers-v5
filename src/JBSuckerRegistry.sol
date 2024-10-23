@@ -116,7 +116,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
 
             // slither-disable-next-line calls-loop
             pairs[i] =
-                JBSuckersPair({local: address(sucker), remote: sucker.PEER(), remoteChainId: sucker.peerChainId()});
+                JBSuckersPair({local: address(sucker), remote: sucker.peer(), remoteChainId: sucker.peerChainId()});
         }
     }
 
@@ -155,14 +155,6 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
             suckerDeployerIsAllowed[deployer] = true;
             emit SuckerDeployerAllowed({deployer: deployer, caller: msg.sender});
         }
-    }
-
-    /// @notice Removes a sucker deployer from the allowlist.
-    /// @dev Can only be called by this contract's owner (initially project ID 1, or JuiceboxDAO).
-    /// @param deployer The address of the deployer to remove.
-    function removeSuckerDeployer(address deployer) public override onlyOwner {
-        suckerDeployerIsAllowed[deployer] = false;
-        emit SuckerDeployerRemoved({deployer: deployer, caller: msg.sender});
     }
 
     /// @notice Deploy one or more suckers for the specified project.
@@ -231,7 +223,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     /// @notice Lets anyone remove a deprecated sucker from a project.
     /// @param projectId The ID of the project to remove the sucker from.
     /// @param sucker The address of the deprecated sucker to remove.
-    function removeDeprecatedSucker(uint256 projectId, address sucker) public {
+    function removeDeprecatedSucker(uint256 projectId, address sucker) public override {
         // Sanity check, make sure that the sucker does actually belong to the project.
         (bool belongsToProject, uint256 val) = _suckersOf[projectId].tryGet(sucker);
         if (!belongsToProject || val != _SUCKER_EXISTS) {
@@ -245,7 +237,16 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         }
 
         // Remove the sucker from the registry.
+        // slither-disable-next-line unused-return
         _suckersOf[projectId].remove(address(sucker));
         emit SuckerDeprecated({projectId: projectId, sucker: address(sucker), caller: msg.sender});
+    }
+
+    /// @notice Removes a sucker deployer from the allowlist.
+    /// @dev Can only be called by this contract's owner (initially project ID 1, or JuiceboxDAO).
+    /// @param deployer The address of the deployer to remove.
+    function removeSuckerDeployer(address deployer) public override onlyOwner {
+        suckerDeployerIsAllowed[deployer] = false;
+        emit SuckerDeployerRemoved({deployer: deployer, caller: msg.sender});
     }
 }

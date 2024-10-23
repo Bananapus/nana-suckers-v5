@@ -18,6 +18,7 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 
 import {JBAddToBalanceMode} from "./enums/JBAddToBalanceMode.sol";
 import {IJBSucker} from "./interfaces/IJBSucker.sol";
+import {IJBSuckerExtended} from "./interfaces/IJBSuckerExtended.sol";
 import {IJBSuckerDeployer} from "./interfaces/IJBSuckerDeployer.sol";
 import {JBClaim} from "./structs/JBClaim.sol";
 import {JBInboxTreeRoot} from "./structs/JBInboxTreeRoot.sol";
@@ -34,7 +35,7 @@ import {JBSuckerState} from "./enums/JBSuckerState.sol";
 /// chain to the remote chain, and the inbox tree is used to receive from the remote chain to the local chain.
 /// @dev Throughout this contract, "terminal token" refers to any token accepted by a project's terminal.
 /// @dev This contract does *NOT* support tokens that have a fee on regular transfers and rebasing tokens.
-abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
+abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerExtended {
     using BitMaps for BitMaps.BitMap;
     using MerkleLib for MerkleLib.Tree;
     using SafeERC20 for IERC20;
@@ -109,17 +110,21 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     mapping(address token => uint256 amount) public override amountToAddToBalanceOf;
 
     //*********************************************************************//
-    // -------------------- internal stored properties ------------------- //
+    // --------------------- private stored properties ------------------- //
     //*********************************************************************//
 
     /// @notice The timestamp after which the sucker is entirely deprecated.
-    uint256 internal deprecatedAfter;
+    uint256 internal _deprecatedAfter;
 
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
-    uint256 private localProjectId;
+    uint256 private _localProjectId;
 
     /// @notice The peer sucker on the remote chain.
-    address private remotePeer;
+    address private _remotePeer;
+
+    //*********************************************************************//
+    // -------------------- internal stored properties ------------------- //
+    //*********************************************************************//
 
     /// @notice Tracks whether individual leaves in a given token's merkle tree have been executed (to prevent
     /// double-spending).
@@ -140,54 +145,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     mapping(address token => JBRemoteToken remoteToken) internal _remoteTokenFor;
 
     //*********************************************************************//
-    // ---------------------------- constructor -------------------------- //
-    //*********************************************************************//
-
-    /// @param directory A contract storing directories of terminals and controllers for each project.
-    /// @param permissions A contract storing permissions.
-    /// @param tokens A contract that manages token minting and burning.
-    /// @param addToBalanceMode The mode of adding tokens to balance.
-    constructor(
-        IJBDirectory directory,
-        IJBPermissions permissions,
-        IJBTokens tokens,
-        JBAddToBalanceMode addToBalanceMode
-    )
-        JBPermissioned(permissions)
-    {
-        DIRECTORY = directory;
-        TOKENS = tokens;
-        DEPLOYER = msg.sender;
-        ADD_TO_BALANCE_MODE = addToBalanceMode;
-
-        // Make it so the singleton can't be initialized.
-        _disableInitializers();
-
-        // Sanity check: make sure the merkle lib uses the same tree depth.
-        assert(MerkleLib.TREE_DEPTH == _TREE_DEPTH);
-    }
-
-    /// @notice Initializes the sucker with the project ID and peer address.
-    /// @param projectId The ID of the project (on the local chain) that this sucker is associated with.
-    /// @param peer The peer sucker on the remote chain.
-    function initialize(uint256 projectId, address peer) public initializer {
-        localProjectId = projectId;
-        remotePeer = peer;
-    }
-
-    //*********************************************************************//
     // ------------------------ external views --------------------------- //
     //*********************************************************************//
-
-    /// @notice The ID of the project (on the local chain) that this sucker is associated with.
-    function PROJECT_ID() public view returns (uint256) {
-        return localProjectId;
-    }
-
-    /// @notice The peer sucker on the remote chain.
-    function PEER() public view returns (address) {
-        return remotePeer;
-    }
 
     /// @notice The inbox merkle tree root for a given token.
     /// @param token The local terminal token to get the inbox for.
@@ -218,23 +177,37 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         return _remoteTokenFor[token];
     }
 
+    //*********************************************************************//
+    // ------------------------- public views ---------------------------- //
+    //*********************************************************************//
+
+    /// @notice The peer sucker on the remote chain.
+    function peer() public view returns (address) {
+        return _remotePeer;
+    }
+
+    /// @notice The ID of the project (on the local chain) that this sucker is associated with.
+    function projectId() public view returns (uint256) {
+        return _localProjectId;
+    }
+
     /// @notice Reports the deprecation state of the sucker.
     /// @return state The current deprecation state
     function state() public view override returns (JBSuckerState) {
-        uint256 _deprecatedAfter = deprecatedAfter;
+        uint256 __deprecatedAfter = _deprecatedAfter;
 
         // The sucker is fully functional, no deprecation has been set yet.
-        if (_deprecatedAfter == 0) {
+        if (__deprecatedAfter == 0) {
             return JBSuckerState.ENABLED;
         }
 
         // The sucker will soon be considered deprecated, this functions only as a warning to users.
-        if (block.timestamp < _deprecatedAfter - _maxMessagingDelay()) {
+        if (block.timestamp < __deprecatedAfter - _maxMessagingDelay()) {
             return JBSuckerState.DEPRECATION_PENDING;
         }
 
         // The sucker will no longer send new roots to the pair, but it will accept new incoming roots.
-        if (block.timestamp < _deprecatedAfter) {
+        if (block.timestamp < __deprecatedAfter) {
             return JBSuckerState.SENDING_DISABLED;
         }
 
@@ -244,7 +217,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
-        return interfaceId == type(IJBSucker).interfaceId || super.supportsInterface(interfaceId);
+        return interfaceId == type(IJBSuckerExtended).interfaceId || interfaceId == type(IJBSucker).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 
     //*********************************************************************//
@@ -260,6 +234,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
             return addr.balance;
         }
 
+        // slither-disable-next-line calls-loop
         return IERC20(token).balanceOf(addr);
     }
 
@@ -295,6 +270,43 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
             revert JBSucker_BelowMinGas(map.minGas, MESSENGER_ERC20_MIN_GAS_LIMIT);
         }
     }
+    //*********************************************************************//
+    // ---------------------------- constructor -------------------------- //
+    //*********************************************************************//
+
+    /// @param directory A contract storing directories of terminals and controllers for each project.
+    /// @param permissions A contract storing permissions.
+    /// @param tokens A contract that manages token minting and burning.
+    /// @param addToBalanceMode The mode of adding tokens to balance.
+    constructor(
+        IJBDirectory directory,
+        IJBPermissions permissions,
+        IJBTokens tokens,
+        JBAddToBalanceMode addToBalanceMode
+    )
+        JBPermissioned(permissions)
+    {
+        DIRECTORY = directory;
+        TOKENS = tokens;
+        DEPLOYER = msg.sender;
+        ADD_TO_BALANCE_MODE = addToBalanceMode;
+
+        // Make it so the singleton can't be initialized.
+        _disableInitializers();
+
+        // Sanity check: make sure the merkle lib uses the same tree depth.
+        assert(MerkleLib.TREE_DEPTH == _TREE_DEPTH);
+    }
+
+    /// @notice Initializes the sucker with the project ID and peer address.
+    /// @param __projectId The ID of the project (on the local chain) that this sucker is associated with.
+    /// @param __peer The peer sucker on the remote chain.
+    function initialize(uint256 __projectId, address __peer) public initializer {
+        // slither-disable-next-line missing-zero-check
+        _localProjectId = __projectId;
+        // slither-disable-next-line missing-zero-check
+        _remotePeer = __peer;
+    }
 
     //*********************************************************************//
     // --------------------- external transactions ----------------------- //
@@ -303,7 +315,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     /// @notice Adds the redeemed `token` balance to the projects terminal. Can only be used if `ADD_TO_BALANCE_MODE` is
     /// `MANUAL`.
     /// @param token The address of the terminal token to add to the project's balance.
-    function addOutstandingAmountToBalance(address token) external {
+    function addOutstandingAmountToBalance(address token) external override {
         if (ADD_TO_BALANCE_MODE != JBAddToBalanceMode.MANUAL) {
             revert JBSucker_ManualNotAllowed(ADD_TO_BALANCE_MODE);
         }
@@ -315,7 +327,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     /// @notice Performs multiple claims.
     /// @param claims A list of claims to perform (including the terminal token, merkle tree leaf, and proof for each
     /// claim).
-    function claim(JBClaim[] calldata claims) external {
+    function claim(JBClaim[] calldata claims) external override {
         // Get the number of claims to perform.
         uint256 numberOfClaims = claims.length;
 
@@ -327,7 +339,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
 
     /// @notice `JBClaim` project tokens which have been bridged from the remote chain for their beneficiary.
     /// @param claimData The terminal token, merkle tree leaf, and proof for the claim.
-    function claim(JBClaim calldata claimData) public {
+    function claim(JBClaim calldata claimData) public override {
         // Attempt to validate the proof against the inbox tree for the terminal token.
         _validate({
             projectTokenCount: claimData.leaf.projectTokenCount,
@@ -391,7 +403,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     /// bridged.
     /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging
     /// them.
-    function mapToken(JBTokenMapping calldata map) public {
+    function mapToken(JBTokenMapping calldata map) public override {
         address token = map.localToken;
         JBRemoteToken memory currentMapping = _remoteTokenFor[token];
 
@@ -404,11 +416,12 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         _validateTokenMapping(map);
 
         // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
+        uint256 _projectId = projectId();
+
         // slither-disable-next-line calls-loop
-        uint256 projectId = PROJECT_ID();
         _requirePermissionFrom({
-            account: DIRECTORY.PROJECTS().ownerOf(projectId),
-            projectId: projectId,
+            account: DIRECTORY.PROJECTS().ownerOf(_projectId),
+            projectId: _projectId,
             permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
         });
 
@@ -453,7 +466,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     /// tokens to be bridged.
     /// @param maps A list of local and remote terminal token addresses to map, and minimum amount/gas limits for
     /// bridging them.
-    function mapTokens(JBTokenMapping[] calldata maps) external {
+    function mapTokens(JBTokenMapping[] calldata maps) external override {
         // Keep a reference to the number of token mappings to perform.
         uint256 numberOfMaps = maps.length;
 
@@ -466,13 +479,14 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     /// @notice Enables the emergency hatch for a list of tokens, allowing users to exit on the chain they deposited on.
     /// @dev For use when a token or a few tokens are no longer compatible with a bridge.
     /// @param tokens The terminal tokens to enable the emergency hatch for.
-    function enableEmergencyHatchFor(address[] calldata tokens) external {
+    function enableEmergencyHatchFor(address[] calldata tokens) external override {
         // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
         // slither-disable-next-line calls-loop
-        uint256 projectId = PROJECT_ID();
+        uint256 _projectId = projectId();
+
         _requirePermissionFrom({
-            account: DIRECTORY.PROJECTS().ownerOf(projectId),
-            projectId: projectId,
+            account: DIRECTORY.PROJECTS().ownerOf(_projectId),
+            projectId: _projectId,
             permissionId: JBPermissionIds.SUCKER_SAFETY
         });
 
@@ -501,6 +515,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         address token
     )
         external
+        override
     {
         // Make sure the beneficiary is not the zero address, as this would revert when minting on the remote chain.
         if (beneficiary == address(0)) {
@@ -508,7 +523,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         }
 
         // Get the project's token.
-        IERC20 projectToken = IERC20(address(TOKENS.tokenOf(PROJECT_ID())));
+        IERC20 projectToken = IERC20(address(TOKENS.tokenOf(projectId())));
         if (address(projectToken) == address(0)) {
             revert JBSucker_ZeroERC20Token();
         }
@@ -546,59 +561,11 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         });
     }
 
-    /// @notice Redeems project tokens for terminal tokens.
-    /// @param projectToken The project token being redeemed.
-    /// @param count The number of project tokens to redeem.
-    /// @param token The terminal token to redeem for.
-    /// @param minTokensReclaimed The minimum amount of terminal tokens to reclaim. If the amount reclaimed is less than
-    /// this, the transaction will revert.
-    /// @return reclaimedAmount The amount of terminal tokens reclaimed by the redemption.
-    function _pullBackingAssets(
-        IERC20 projectToken,
-        uint256 count,
-        address token,
-        uint256 minTokensReclaimed
-    )
-        internal
-        virtual
-        returns (uint256 reclaimedAmount)
-    {
-        projectToken;
-
-        uint256 projectId = PROJECT_ID();
-
-        // Get the project's primary terminal for `token`. We will redeem from this terminal.
-        IJBRedeemTerminal terminal =
-            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf({projectId: projectId, token: token})));
-
-        // If the project doesn't have a primary terminal for `token`, revert.
-        if (address(terminal) == address(0)) {
-            revert JBSucker_NoTerminalForToken(projectId, token);
-        }
-
-        // Redeem the tokens.
-        uint256 balanceBefore = _balanceOf(token, address(this));
-        reclaimedAmount = terminal.redeemTokensOf({
-            holder: address(this),
-            projectId: projectId,
-            tokenToReclaim: token,
-            redeemCount: count,
-            minTokensReclaimed: minTokensReclaimed,
-            beneficiary: payable(address(this)),
-            metadata: bytes("")
-        });
-
-        // Sanity check to make sure we received the expected amount.
-        // This prevents malicious terminals from reporting amounts other than what they send.
-        // slither-disable-next-line incorrect-equality
-        assert(reclaimedAmount == _balanceOf({token: token, addr: address(this)}) - balanceBefore);
-    }
-
     /// @notice Bridge the project tokens, redeemed funds, and beneficiary information for a given `token` to the remote
     /// chain.
     /// @dev This sends the outbox root for the specified `token` to the remote chain.
     /// @param token The terminal token being bridged.
-    function toRemote(address token) external payable {
+    function toRemote(address token) external payable override {
         JBRemoteToken memory remoteToken = _remoteTokenFor[token];
 
         // Ensure that the amount being bridged exceeds the minimum bridge amount.
@@ -612,7 +579,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
 
     /// @notice Lets user exit on the chain they deposited in a scenario where the bridge is no longer functional.
     /// @param claimData The terminal token, merkle tree leaf, and proof for the claim
-    function exitThroughEmergencyHatch(JBClaim calldata claimData) external {
+    function exitThroughEmergencyHatch(JBClaim calldata claimData) external override {
         // Does all the needed validation to ensure that the claim is valid *and* that claiming through the emergency
         // hatch is allowed.
         _validateForEmergencyExit({
@@ -639,16 +606,17 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     /// @notice Set or remove the time after which this sucker will be deprecated, once deprecated the sucker will no
     /// longer be functional and it will let all users exit.
     /// @param timestamp The time after which the sucker will be deprecated. Or `0` to remove the upcoming deprecation.
-    function setDeprecation(uint40 timestamp) external {
+    function setDeprecation(uint40 timestamp) external override {
         // As long as the sucker has not reached the final deprecation state its deprecation time can be
         // extended/shortened.
         if (state() == JBSuckerState.DEPRECATED) revert JBSucker_Deprecated();
 
         // slither-disable-next-line calls-loop
-        uint256 projectId = PROJECT_ID();
+        uint256 _projectId = projectId();
+
         _requirePermissionFrom({
-            account: DIRECTORY.PROJECTS().ownerOf(projectId),
-            projectId: projectId,
+            account: DIRECTORY.PROJECTS().ownerOf(_projectId),
+            projectId: _projectId,
             permissionId: JBPermissionIds.SUCKER_SAFETY
         });
 
@@ -662,7 +630,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
             revert JBSucker_DeprecationTimestampTooSoon(timestamp, nextEarliestDeprecationTime);
         }
 
-        deprecatedAfter = timestamp;
+        _deprecatedAfter = timestamp;
         emit DeprecationTimeUpdated(timestamp, msg.sender);
     }
 
@@ -692,15 +660,15 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
             amountToAddToBalanceOf[token] = addableAmount - amount;
         }
 
-        uint256 projectId = PROJECT_ID();
+        uint256 _projectId = projectId();
 
         // Get the project's primary terminal for the token.
         // slither
         // slither-disable-next-line calls-loop
-        IJBTerminal terminal = DIRECTORY.primaryTerminalOf({projectId: projectId, token: token});
+        IJBTerminal terminal = DIRECTORY.primaryTerminalOf({projectId: _projectId, token: token});
 
         // slither-disable-next-line incorrect-equality
-        if (address(terminal) == address(0)) revert JBSucker_NoTerminalForToken(projectId, token);
+        if (address(terminal) == address(0)) revert JBSucker_NoTerminalForToken(_projectId, token);
 
         // Perform the `addToBalance`.
         if (token != JBConstants.NATIVE_TOKEN) {
@@ -711,7 +679,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
 
             // slither-disable-next-line calls-loop
             terminal.addToBalanceOf({
-                projectId: projectId,
+                projectId: _projectId,
                 token: token,
                 amount: amount,
                 shouldReturnHeldFees: false,
@@ -726,7 +694,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
             // If the token is the native token, use `msg.value`.
             // slither-disable-next-line arbitrary-send-eth,calls-loop
             terminal.addToBalanceOf({
-                projectId: projectId,
+                projectId: _projectId,
                 token: token,
                 amount: amount,
                 shouldReturnHeldFees: false,
@@ -754,12 +722,12 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
             _addToBalance({token: terminalToken, amount: terminalTokenAmount});
         }
 
-        uint256 projectId = PROJECT_ID();
+        uint256 _projectId = projectId();
 
         // Mint the project tokens for the beneficiary.
         // slither-disable-next-line calls-loop,unused-return
-        IJBController(address(DIRECTORY.controllerOf(projectId))).mintTokensOf({
-            projectId: projectId,
+        IJBController(address(DIRECTORY.controllerOf(_projectId))).mintTokensOf({
+            projectId: _projectId,
             tokenCount: projectTokenAmount,
             beneficiary: beneficiary,
             memo: "",
@@ -813,6 +781,54 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
     /// @param sender The message's sender.
     function _isRemotePeer(address sender) internal virtual returns (bool valid);
 
+    /// @notice Redeems project tokens for terminal tokens.
+    /// @param projectToken The project token being redeemed.
+    /// @param count The number of project tokens to redeem.
+    /// @param token The terminal token to redeem for.
+    /// @param minTokensReclaimed The minimum amount of terminal tokens to reclaim. If the amount reclaimed is less than
+    /// this, the transaction will revert.
+    /// @return reclaimedAmount The amount of terminal tokens reclaimed by the redemption.
+    function _pullBackingAssets(
+        IERC20 projectToken,
+        uint256 count,
+        address token,
+        uint256 minTokensReclaimed
+    )
+        internal
+        virtual
+        returns (uint256 reclaimedAmount)
+    {
+        projectToken;
+
+        uint256 _projectId = projectId();
+
+        // Get the project's primary terminal for `token`. We will redeem from this terminal.
+        IJBRedeemTerminal terminal =
+            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf({projectId: _projectId, token: token})));
+
+        // If the project doesn't have a primary terminal for `token`, revert.
+        if (address(terminal) == address(0)) {
+            revert JBSucker_NoTerminalForToken(_projectId, token);
+        }
+
+        // Redeem the tokens.
+        uint256 balanceBefore = _balanceOf(token, address(this));
+        reclaimedAmount = terminal.redeemTokensOf({
+            holder: address(this),
+            projectId: _projectId,
+            tokenToReclaim: token,
+            redeemCount: count,
+            minTokensReclaimed: minTokensReclaimed,
+            beneficiary: payable(address(this)),
+            metadata: bytes("")
+        });
+
+        // Sanity check to make sure we received the expected amount.
+        // This prevents malicious terminals from reporting amounts other than what they send.
+        // slither-disable-next-line incorrect-equality
+        assert(reclaimedAmount == _balanceOf({token: token, addr: address(this)}) - balanceBefore);
+    }
+
     /// @notice Send the outbox root for the specified token to the remote peer.
     /// @dev The call may have a `transportPayment` for bridging native tokens. Require it to be `0` if it is not
     /// needed. Make sure if a value being paid to the bridge is expected to revert if the given value is `0`.
@@ -862,6 +878,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
         _sendRootOverAMB(transportPayment, index, token, amount, remoteToken, message);
     }
 
+    // TODO natspec
     function _sendRootOverAMB(
         uint256 transportPayment,
         uint256 index,
@@ -875,6 +892,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSucker {
 
     /// @notice What is the maximum time it takes for a message to be received on the other side.
     /// @dev Be sure to keep in mind if a message fails having to retry and the time it takes to retry.
+    /// @return The maximum time it takes for a message to be received on the other side.
     function _maxMessagingDelay() internal pure virtual returns (uint40) {
         return 14 days;
     }
