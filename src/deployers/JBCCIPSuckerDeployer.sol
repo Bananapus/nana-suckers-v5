@@ -86,8 +86,7 @@ contract JBCCIPSuckerDeployer is JBPermissioned, IJBCCIPSuckerDeployer, IJBSucke
     /// addresses would change.
     /// TODO natspec
     function configureLayerSpecific(uint256 remoteChainId, uint64 remoteChainSelector, ICCIPRouter router) external {
-        // Only allow configurator to set properties - notice we don't restrict reconfiguration here
-        // TODO: We now do restrict reconfiguration, we should check why we explicitly commented here that we do not.
+        // Only allow configurator to set properties.
         if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR || ccipRemoteChainId != 0) {
             revert JBCCIPSuckerDeployer_Unauthorized();
         }

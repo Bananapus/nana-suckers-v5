@@ -239,7 +239,6 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         }
 
         // Create the retryable ticket containing the merkleRoot.
-        // TODO: We could even make this unsafe.
         // slither-disable-next-line calls-loop,unused-return
         ARBINBOX.createRetryableTicket{value: transportPayment}({
             to: peer(),
