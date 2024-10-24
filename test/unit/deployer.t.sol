@@ -60,7 +60,6 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             allowSetController: false,
             allowAddAccountingContext: true,
             allowAddPriceFeed: true,
-            allowCrosschainSuckerExtension: true,
             ownerMustSendPayouts: false,
             holdFees: false,
             useTotalSurplusForRedemptions: true,
