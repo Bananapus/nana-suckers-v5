@@ -10,7 +10,7 @@ import {LibClone} from "solady/src/utils/LibClone.sol";
 import {IJBSucker} from "./../interfaces/IJBSucker.sol";
 import {IJBSuckerDeployer} from "./../interfaces/IJBSuckerDeployer.sol";
 
-/// @notice An `IJBSuckerDeployerFeeless` implementation to deploy `JBOptimismSucker` contracts.
+/// @notice A base implementation for deploying suckers.
 abstract contract JBSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
