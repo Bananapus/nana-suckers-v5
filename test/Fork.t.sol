@@ -279,13 +279,15 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         );
 
         // Deploy the singleton and configure it.
-        JBCCIPSucker singleton = new JBCCIPSucker{salt: bytes32(0)}({
+        vm.startPrank(address(0x1112222));
+        JBCCIPSucker singleton = new JBCCIPSucker({
             deployer: suckerDeployer,
             directory: jbDirectory(),
             permissions: jbPermissions(),
             tokens: jbTokens(),
             addToBalanceMode: JBAddToBalanceMode.MANUAL
         });
+        vm.stopPrank();
 
         suckerDeployer.configureSingleton(singleton);
 
@@ -335,13 +337,15 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         );
 
         // Deploy the singleton and configure it.
-        JBCCIPSucker singleton2 = new JBCCIPSucker{salt: bytes32(0)}({
+        vm.startPrank(address(0x1112222));
+        JBCCIPSucker singleton2 = new JBCCIPSucker({
             deployer: suckerDeployer2,
             directory: jbDirectory(),
             permissions: jbPermissions(),
             tokens: jbTokens(),
             addToBalanceMode: JBAddToBalanceMode.MANUAL
         });
+        vm.stopPrank();
 
         suckerDeployer2.configureSingleton(singleton2);
 
