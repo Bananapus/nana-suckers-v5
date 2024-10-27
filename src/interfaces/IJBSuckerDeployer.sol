@@ -11,6 +11,8 @@ interface IJBSuckerDeployer {
     error JBSuckerDeployer_DeployerIsNotConfigured();
     error JBSuckerDeployer_Unauthorized(address caller, address expected);
     error JBSuckerDeployer_ZeroConfiguratorAddress();
+    error JBSuckerDeployer_InvalidLayerSpecificConfiguration();
+    error JBSuckerDeployer_LayerSpecificNotConfigured();
 
     function DIRECTORY() external view returns (IJBDirectory);
     function TOKENS() external view returns (IJBTokens);

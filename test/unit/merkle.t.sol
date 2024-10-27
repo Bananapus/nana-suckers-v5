@@ -162,14 +162,3 @@ contract MerkleUnitTest is JBSucker, Test {
     {}
     function peerChainId() external view override returns (uint256 chainId) {}
 }
-
-contract DeployerUnitTest is Test {
-    function testDoesntRevert() public {
-        JBOptimismSuckerDeployer _deployer = new JBOptimismSuckerDeployer(
-            IJBDirectory(address(0)), IJBPermissions(address(0)), IJBTokens(address(0)), address(this)
-        );
-        _deployer.configureLayerSpecific(IOPMessenger(address(0)), IOPStandardBridge(address(0)));
-
-        _deployer.createForSender(1, bytes32(0));
-    }
-}

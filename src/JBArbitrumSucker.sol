@@ -99,6 +99,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     /// @param tokens A contract that manages token minting and burning.
     /// @param addToBalanceMode The mode of adding tokens to balance.
     constructor(
+        JBArbitrumSuckerDeployer deployer,
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
@@ -106,9 +107,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     )
         JBSucker(directory, permissions, tokens, addToBalanceMode)
     {
-        GATEWAYROUTER = JBArbitrumSuckerDeployer(msg.sender).arbGatewayRouter();
-        ARBINBOX = JBArbitrumSuckerDeployer(msg.sender).arbInbox();
-        LAYER = JBArbitrumSuckerDeployer(msg.sender).arbLayer();
+        GATEWAYROUTER = JBArbitrumSuckerDeployer(deployer).arbGatewayRouter();
+        ARBINBOX = JBArbitrumSuckerDeployer(deployer).arbInbox();
+        LAYER = JBArbitrumSuckerDeployer(deployer).arbLayer();
     }
 
     //*********************************************************************//

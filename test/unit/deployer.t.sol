@@ -130,6 +130,9 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         internal
         returns (IJBSuckerDeployer deployer)
     {
+        vm.assume(address(_opMessenger) != address(0));
+        vm.assume(address(_opBridge) != address(0));
+
         JBOptimismSuckerDeployer OPDeployer = new JBOptimismSuckerDeployer({
             directory: jbDirectory(),
             permissions: jbPermissions(),
@@ -139,6 +142,18 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
 
         deployer = OPDeployer;
         OPDeployer.configureLayerSpecific(_opMessenger, _opBridge);
+
+        // Deploy the singleton.
+        JBOptimismSucker sucker = new JBOptimismSucker({
+            deployer: OPDeployer,
+            directory: jbDirectory(),
+            permissions: jbPermissions(),
+            tokens: jbTokens(),
+            addToBalanceMode: JBAddToBalanceMode.MANUAL
+        });
+
+        // Set the singleton.
+        OPDeployer.configureSingleton(sucker);
 
         assertEq(address(OPDeployer.opMessenger()), address(_opMessenger));
         assertEq(address(OPDeployer.opBridge()), address(_opBridge));
@@ -166,6 +181,18 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             router: _ccipRouter
         });
 
+        // Deploy the singleton.
+        JBCCIPSucker sucker = new JBCCIPSucker({
+            deployer: CCIPDeployer,
+            directory: jbDirectory(),
+            permissions: jbPermissions(),
+            tokens: jbTokens(),
+            addToBalanceMode: JBAddToBalanceMode.MANUAL
+        });
+
+        // Set the singleton.
+        CCIPDeployer.configureSingleton(sucker);
+
         assertEq(CCIPDeployer.ccipRemoteChainId(), _remoteChainId);
         assertEq(CCIPDeployer.ccipRemoteChainSelector(), _remoteChainSelector);
         assertEq(address(CCIPDeployer.ccipRouter()), address(_ccipRouter));
@@ -188,6 +215,18 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
 
         deployer = ARBDeployer;
         ARBDeployer.configureLayerSpecific(_layer, _inbox, _gatewayRouter);
+
+        // Deploy the singleton.
+        JBArbitrumSucker sucker = new JBArbitrumSucker({
+            deployer: ARBDeployer,
+            directory: jbDirectory(),
+            permissions: jbPermissions(),
+            tokens: jbTokens(),
+            addToBalanceMode: JBAddToBalanceMode.MANUAL
+        });
+
+        // Set the singleton.
+        ARBDeployer.configureSingleton(sucker);
 
         assertEq(uint256(ARBDeployer.arbLayer()), uint256(_layer));
         assertEq(address(ARBDeployer.arbInbox()), address(_inbox));
@@ -214,6 +253,10 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
     }
 
     function testCCIPDeployer(uint256 _remoteChainId, uint64 _remoteChainSelector, ICCIPRouter _ccipRouter) public {
+        // Ensure that the id/selector are set.
+        vm.assume(_remoteChainSelector != 0);
+        vm.assume(_remoteChainId != 0);
+
         // Ensure that its not a precompile.
         vm.assume(uint160(address(_ccipRouter)) > 100);
 
@@ -233,6 +276,10 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
     )
         public
     {
+        // Ensure that the id/selector are set.
+        vm.assume(_remoteChainSelector != 0);
+        vm.assume(_remoteChainId != 0);
+
         // Ensure that its not a precompile.
         vm.assume(uint160(address(_ccipRouter)) > 100);
 

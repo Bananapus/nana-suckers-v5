@@ -90,11 +90,13 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
 
+    /// @param deployer A contract that deploys the clones for this contracts.
     /// @param directory A contract storing directories of terminals and controllers for each project.
     /// @param tokens A contract that manages token minting and burning.
     /// @param permissions A contract storing permissions.
     /// @param addToBalanceMode The mode of adding tokens to balance.
     constructor(
+        JBCCIPSuckerDeployer deployer,
         IJBDirectory directory,
         IJBTokens tokens,
         IJBPermissions permissions,
@@ -102,9 +104,11 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     )
         JBSucker(directory, permissions, tokens, addToBalanceMode)
     {
-        REMOTE_CHAIN_ID = IJBCCIPSuckerDeployer(msg.sender).ccipRemoteChainId();
-        REMOTE_CHAIN_SELECTOR = IJBCCIPSuckerDeployer(msg.sender).ccipRemoteChainSelector();
-        CCIP_ROUTER = IJBCCIPSuckerDeployer(msg.sender).ccipRouter();
+        REMOTE_CHAIN_ID = IJBCCIPSuckerDeployer(deployer).ccipRemoteChainId();
+        REMOTE_CHAIN_SELECTOR = IJBCCIPSuckerDeployer(deployer).ccipRemoteChainSelector();
+        CCIP_ROUTER = IJBCCIPSuckerDeployer(deployer).ccipRouter();
+
+        if (address(CCIP_ROUTER) == address(0)) revert JBCCIPSucker_InvalidRouter(address(CCIP_ROUTER));
     }
 
     //*********************************************************************//

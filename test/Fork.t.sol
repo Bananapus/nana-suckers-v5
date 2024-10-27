@@ -278,6 +278,17 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             421_614, CCIPHelper.selectorOfChain(421_614), ICCIPRouter(CCIPHelper.routerOfChain(block.chainid))
         );
 
+        // Deploy the singleton and configure it.
+        JBCCIPSucker singleton = new JBCCIPSucker{salt: bytes32(0)}({
+            deployer: suckerDeployer,
+            directory: jbDirectory(),
+            permissions: jbPermissions(),
+            tokens: jbTokens(),
+            addToBalanceMode: JBAddToBalanceMode.MANUAL
+        });
+
+        suckerDeployer.configureSingleton(singleton);
+
         // deploy our first sucker (on sepolia, the current fork, or "L1").
         suckerGlobal = suckerDeployer.createForSender(1, "salty");
         vm.label(address(suckerGlobal), "suckerGlobal");
@@ -323,15 +334,19 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             11_155_111, CCIPHelper.selectorOfChain(11_155_111), ICCIPRouter(CCIPHelper.routerOfChain(block.chainid))
         );
 
+        // Deploy the singleton and configure it.
+        JBCCIPSucker singleton2 = new JBCCIPSucker{salt: bytes32(0)}({
+            deployer: suckerDeployer2,
+            directory: jbDirectory(),
+            permissions: jbPermissions(),
+            tokens: jbTokens(),
+            addToBalanceMode: JBAddToBalanceMode.MANUAL
+        });
+
+        suckerDeployer2.configureSingleton(singleton2);
+
         // Deploy the sucker on L2.
         suckerDeployer2.createForSender(1, "salty");
-
-        // vm.prank(address(suckerDeployer2));
-        // deployCodeTo(
-        //     "JBCCIPSucker.sol",
-        //     abi.encode(jbDirectory(), jbTokens(), jbPermissions(), address(0), atbMode),
-        //     address(suckerGlobal)
-        // );
 
         // Launch our project on L2.
         vm.startPrank(multisig());

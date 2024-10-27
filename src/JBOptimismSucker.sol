@@ -56,11 +56,13 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
 
+    /// @param deployer A contract that deploys the clones for this contracts.
     /// @param directory A contract storing directories of terminals and controllers for each project.
     /// @param tokens A contract that manages token minting and burning.
     /// @param permissions A contract storing permissions.
     /// @param addToBalanceMode The mode of adding tokens to balance.
     constructor(
+        JBOptimismSuckerDeployer deployer,
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
@@ -69,8 +71,8 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
         JBSucker(directory, permissions, tokens, addToBalanceMode)
     {
         // Fetch the messenger and bridge by doing a callback to the deployer contract.
-        OPBRIDGE = JBOptimismSuckerDeployer(msg.sender).opBridge();
-        OPMESSENGER = JBOptimismSuckerDeployer(msg.sender).opMessenger();
+        OPBRIDGE = JBOptimismSuckerDeployer(deployer).opBridge();
+        OPMESSENGER = JBOptimismSuckerDeployer(deployer).opMessenger();
     }
 
     //*********************************************************************//

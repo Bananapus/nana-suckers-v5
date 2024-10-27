@@ -8,6 +8,4 @@ interface IJBCCIPSuckerDeployer {
     function ccipRouter() external view returns (ICCIPRouter);
     function ccipRemoteChainId() external view returns (uint256);
     function ccipRemoteChainSelector() external view returns (uint64);
-
-    function createForSender(uint256 localProjectId, bytes32 salt) external returns (IJBSucker sucker);
 }
