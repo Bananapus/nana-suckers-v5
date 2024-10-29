@@ -63,7 +63,13 @@ contract JBCCIPSuckerDeployer is JBSuckerDeployer, IJBCCIPSuckerDeployer {
     /// addresses would change.
     /// TODO natspec
 
-    function setChainSpecificConstants(uint256 remoteChainId, uint64 remoteChainSelector, ICCIPRouter router) external {
+    function setChainSpecificConstants(
+        uint256 remoteChainId,
+        uint64 remoteChainSelector,
+        ICCIPRouter router
+    )
+        external
+    {
         if (_layerSpecificConfigurationIsSet()) {
             revert JBSuckerDeployer_AlreadyConfigured();
         }
