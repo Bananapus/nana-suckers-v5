@@ -239,7 +239,7 @@ contract DeployScript is Script, Sphinx {
                 core.directory, core.permissions, core.tokens, safeAddress()
             );
 
-            _arbDeployer.configureLayerSpecific({
+            _arbDeployer.setChainSpecificConstants({
                 layer: JBLayer.L1,
                 inbox: IInbox(block.chainid == 1 ? ARBAddresses.L1_ETH_INBOX : ARBAddresses.L1_SEP_INBOX),
                 gatewayRouter: IArbGatewayRouter(
@@ -269,7 +269,7 @@ contract DeployScript is Script, Sphinx {
                 core.directory, core.permissions, core.tokens, safeAddress()
             );
 
-            _arbDeployer.configureLayerSpecific({
+            _arbDeployer.setChainSpecificConstants({
                 layer: JBLayer.L2,
                 inbox: IInbox(address(0)),
                 gatewayRouter: IArbGatewayRouter(
