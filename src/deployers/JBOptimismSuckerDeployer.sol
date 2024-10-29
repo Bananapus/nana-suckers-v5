@@ -57,7 +57,7 @@ contract JBOptimismSuckerDeployer is JBSuckerDeployer, IJBOpSuckerDeployer {
     /// addresses would change.
     /// @notice messenger the OPMesssenger on this layer.
     /// @notice bridge the OPStandardBridge on this layer.
-    function configureLayerSpecific(IOPMessenger messenger, IOPStandardBridge bridge) external {
+    function setChainSpecificConstants(IOPMessenger messenger, IOPStandardBridge bridge) external {
         if (_layerSpecificConfigurationIsSet()) {
             revert JBSuckerDeployer_AlreadyConfigured();
         }

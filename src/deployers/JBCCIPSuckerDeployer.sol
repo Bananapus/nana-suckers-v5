@@ -23,7 +23,7 @@ contract JBCCIPSuckerDeployer is JBSuckerDeployer, IJBCCIPSuckerDeployer {
     /// @notice Store the remote chain id
     uint256 public ccipRemoteChainId;
 
-    /// @notice Store the remote chain id
+    /// @notice The remote chain selector target of all sucker deployed by this contract.
     uint64 public ccipRemoteChainSelector;
 
     /// @notice Store the address of the CCIP router for this chain.
@@ -62,7 +62,8 @@ contract JBCCIPSuckerDeployer is JBSuckerDeployer, IJBCCIPSuckerDeployer {
     /// @notice handles some layer specific configuration that can't be done in the constructor otherwise deployment
     /// addresses would change.
     /// TODO natspec
-    function configureLayerSpecific(uint256 remoteChainId, uint64 remoteChainSelector, ICCIPRouter router) external {
+
+    function setChainSpecificConstants(uint256 remoteChainId, uint64 remoteChainSelector, ICCIPRouter router) external {
         if (_layerSpecificConfigurationIsSet()) {
             revert JBSuckerDeployer_AlreadyConfigured();
         }

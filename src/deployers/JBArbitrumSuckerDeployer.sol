@@ -60,7 +60,7 @@ contract JBArbitrumSuckerDeployer is JBSuckerDeployer, IJBArbitrumSuckerDeployer
     /// addresses would change.
     /// @notice messenger the OPMesssenger on this layer.
     /// @notice bridge the OPStandardBridge on this layer.
-    function configureLayerSpecific(JBLayer layer, IInbox inbox, IArbGatewayRouter gatewayRouter) external {
+    function setChainSpecificConstants(JBLayer layer, IInbox inbox, IArbGatewayRouter gatewayRouter) external {
         if (_layerSpecificConfigurationIsSet()) {
             revert JBSuckerDeployer_AlreadyConfigured();
         }

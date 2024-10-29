@@ -60,7 +60,6 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             allowSetController: false,
             allowAddAccountingContext: true,
             allowAddPriceFeed: true,
-            allowCrosschainSuckerExtension: true,
             ownerMustSendPayouts: false,
             holdFees: false,
             useTotalSurplusForRedemptions: true,
@@ -141,7 +140,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         });
 
         deployer = OPDeployer;
-        OPDeployer.configureLayerSpecific(_opMessenger, _opBridge);
+        OPDeployer.setChainSpecificConstants(_opMessenger, _opBridge);
 
         // Deploy the singleton.
         JBOptimismSucker sucker = new JBOptimismSucker({
@@ -175,7 +174,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         });
 
         deployer = CCIPDeployer;
-        CCIPDeployer.configureLayerSpecific({
+        CCIPDeployer.setChainSpecificConstants({
             remoteChainId: _remoteChainId,
             remoteChainSelector: _remoteChainSelector,
             router: _ccipRouter
@@ -214,7 +213,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         });
 
         deployer = ARBDeployer;
-        ARBDeployer.configureLayerSpecific(_layer, _inbox, _gatewayRouter);
+        ARBDeployer.setChainSpecificConstants(_layer, _inbox, _gatewayRouter);
 
         // Deploy the singleton.
         JBArbitrumSucker sucker = new JBArbitrumSucker({
