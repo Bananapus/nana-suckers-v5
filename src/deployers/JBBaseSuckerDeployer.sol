@@ -2,6 +2,7 @@
 pragma solidity 0.8.23;
 
 import "./JBOptimismSuckerDeployer.sol";
+import "../JBBaseSucker.sol";
 
 // Exact same as JBOptimismSuckerDeployer, we do this so we get a seperate artifact for Base.
 contract JBBaseSuckerDeployer is JBOptimismSuckerDeployer {

@@ -9,6 +9,8 @@ import {IJBSucker} from "./IJBSucker.sol";
 interface IJBSuckerDeployer {
     error JBSuckerDeployer_AlreadyConfigured();
     error JBSuckerDeployer_DeployerIsNotConfigured();
+    error JBSuckerDeployer_InvalidLayerSpecificConfiguration();
+    error JBSuckerDeployer_LayerSpecificNotConfigured();
     error JBSuckerDeployer_Unauthorized(address caller, address expected);
     error JBSuckerDeployer_ZeroConfiguratorAddress();
 

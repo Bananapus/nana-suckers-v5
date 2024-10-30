@@ -8,17 +8,19 @@ contract JBBaseSucker is JBOptimismSucker {
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
 
+    /// @param deployer A contract that deploys the clones for this contracts.
     /// @param directory A contract storing directories of terminals and controllers for each project.
     /// @param permissions A contract storing permissions.
     /// @param tokens A contract that manages token minting and burning.
     /// @param addToBalanceMode The mode of adding tokens to balance.
     constructor(
+        JBOptimismSuckerDeployer deployer,
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
         JBAddToBalanceMode addToBalanceMode
     )
-        JBOptimismSucker(directory, permissions, tokens, addToBalanceMode)
+        JBOptimismSucker(deployer, directory, permissions, tokens, addToBalanceMode)
     {}
 
     //*********************************************************************//

@@ -9,6 +9,7 @@ import "@bananapus/core/script/helpers/CoreDeploymentLib.sol";
 import {Sphinx} from "@sphinx-labs/contracts/SphinxPlugin.sol";
 import {Script} from "forge-std/Script.sol";
 import {JBSuckerRegistry} from "./../src/JBSuckerRegistry.sol";
+import {ARBAddresses} from "../src/libraries/ARBAddresses.sol";
 import {ARBChains} from "../src/libraries/ARBChains.sol";
 
 contract DeployScript is Script, Sphinx {
@@ -102,6 +103,18 @@ contract DeployScript is Script, Sphinx {
                 )
             );
 
+            // Deploy the singleton instance.
+            JBOptimismSucker _singleton = new JBOptimismSucker{salt: OP_SALT}({
+                deployer: _opDeployer,
+                directory: core.directory,
+                permissions: core.permissions,
+                tokens: core.tokens,
+                addToBalanceMode: JBAddToBalanceMode.MANUAL
+            });
+
+            // Configure the deployer to use the singleton instance.
+            _opDeployer.configureSingleton(_singleton);
+
             PRE_APPROVED_DEPLOYERS.push(address(_opDeployer));
         }
 
@@ -116,6 +129,18 @@ contract DeployScript is Script, Sphinx {
                 IOPMessenger(0x4200000000000000000000000000000000000007),
                 IOPStandardBridge(0x4200000000000000000000000000000000000010)
             );
+
+            // Deploy the singleton instance.
+            JBOptimismSucker _singleton = new JBOptimismSucker{salt: OP_SALT}({
+                deployer: _opDeployer,
+                directory: core.directory,
+                permissions: core.permissions,
+                tokens: core.tokens,
+                addToBalanceMode: JBAddToBalanceMode.MANUAL
+            });
+
+            // Configure the deployer to use the singleton instance.
+            _opDeployer.configureSingleton(_singleton);
 
             PRE_APPROVED_DEPLOYERS.push(address(_opDeployer));
         }
@@ -152,6 +177,18 @@ contract DeployScript is Script, Sphinx {
                 )
             );
 
+            // Deploy the singleton instance.
+            JBBaseSucker _singleton = new JBBaseSucker{salt: BASE_SALT}({
+                deployer: _baseDeployer,
+                directory: core.directory,
+                permissions: core.permissions,
+                tokens: core.tokens,
+                addToBalanceMode: JBAddToBalanceMode.MANUAL
+            });
+
+            // Configure the deployer to use the singleton instance.
+            _baseDeployer.configureSingleton(_singleton);
+
             PRE_APPROVED_DEPLOYERS.push(address(_baseDeployer));
         }
 
@@ -165,6 +202,18 @@ contract DeployScript is Script, Sphinx {
                 IOPMessenger(0x4200000000000000000000000000000000000007),
                 IOPStandardBridge(0x4200000000000000000000000000000000000010)
             );
+
+            // Deploy the singleton instance.
+            JBBaseSucker _singleton = new JBBaseSucker{salt: BASE_SALT}({
+                deployer: _baseDeployer,
+                directory: core.directory,
+                permissions: core.permissions,
+                tokens: core.tokens,
+                addToBalanceMode: JBAddToBalanceMode.MANUAL
+            });
+
+            // Configure the deployer to use the singleton instance.
+            _baseDeployer.configureSingleton(_singleton);
 
             PRE_APPROVED_DEPLOYERS.push(address(_baseDeployer));
         }
@@ -190,6 +239,26 @@ contract DeployScript is Script, Sphinx {
                 core.directory, core.permissions, core.tokens, safeAddress()
             );
 
+            _arbDeployer.setChainSpecificConstants({
+                layer: JBLayer.L1,
+                inbox: IInbox(block.chainid == 1 ? ARBAddresses.L1_ETH_INBOX : ARBAddresses.L1_SEP_INBOX),
+                gatewayRouter: IArbGatewayRouter(
+                    block.chainid == 1 ? ARBAddresses.L1_GATEWAY_ROUTER : ARBAddresses.L1_SEP_GATEWAY_ROUTER
+                )
+            });
+
+            // Deploy the singleton instance.
+            JBArbitrumSucker _singleton = new JBArbitrumSucker{salt: ARB_SALT}({
+                deployer: _arbDeployer,
+                directory: core.directory,
+                permissions: core.permissions,
+                tokens: core.tokens,
+                addToBalanceMode: JBAddToBalanceMode.MANUAL
+            });
+
+            // Configure the deployer to use the singleton instance.
+            _arbDeployer.configureSingleton(_singleton);
+
             PRE_APPROVED_DEPLOYERS.push(address(_arbDeployer));
         }
 
@@ -199,6 +268,26 @@ contract DeployScript is Script, Sphinx {
             JBArbitrumSuckerDeployer _arbDeployer = new JBArbitrumSuckerDeployer{salt: ARB_SALT}(
                 core.directory, core.permissions, core.tokens, safeAddress()
             );
+
+            _arbDeployer.setChainSpecificConstants({
+                layer: JBLayer.L2,
+                inbox: IInbox(address(0)),
+                gatewayRouter: IArbGatewayRouter(
+                    block.chainid == 10 ? ARBAddresses.L2_GATEWAY_ROUTER : ARBAddresses.L2_SEP_GATEWAY_ROUTER
+                )
+            });
+
+            // Deploy the singleton instance.
+            JBArbitrumSucker _singleton = new JBArbitrumSucker{salt: ARB_SALT}({
+                deployer: _arbDeployer,
+                directory: core.directory,
+                permissions: core.permissions,
+                tokens: core.tokens,
+                addToBalanceMode: JBAddToBalanceMode.MANUAL
+            });
+
+            // Configure the deployer to use the singleton instance.
+            _arbDeployer.configureSingleton(_singleton);
 
             PRE_APPROVED_DEPLOYERS.push(address(_arbDeployer));
         }
