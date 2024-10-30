@@ -58,16 +58,23 @@ abstract contract JBSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     )
         JBPermissioned(permissions)
     {
-        if (configurator == address(0)) revert JBSuckerDeployer_ZeroConfiguratorAddress();
         DIRECTORY = directory;
         TOKENS = tokens;
         LAYER_SPECIFIC_CONFIGURATOR = configurator;
+
+        // There has to be a configurator address or the layer specific configuration has to already be configured.
+        if (configurator == address(0) && !_layerSpecificConfigurationIsSet()) {
+            revert JBSuckerDeployer_ZeroConfiguratorAddress();
+        }
     }
 
     //*********************************************************************//
     // --------------------- external transactions ----------------------- //
     //*********************************************************************//
 
+    /// @notice Configure the singleton instance that is used to clone suckers.
+    /// @dev Can only be called *once* by the layer specific configurator.
+    /// @param _singleton The address of the singleton.
     function configureSingleton(IJBSucker _singleton) external {
         // Make sure only the configurator can call this function.
         if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR) {

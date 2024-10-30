@@ -165,11 +165,27 @@ contract MerkleUnitTest is JBSucker, Test {
 
 contract DeployerUnitTest is Test {
     function testDoesntRevert() public {
+        // Deploy the deployer.
         JBOptimismSuckerDeployer _deployer = new JBOptimismSuckerDeployer(
             IJBDirectory(address(0)), IJBPermissions(address(0)), IJBTokens(address(0)), address(this)
         );
-        _deployer.setChainSpecificConstants(IOPMessenger(address(0)), IOPStandardBridge(address(0)));
 
+        // Configure the chain specific contstants.
+        _deployer.setChainSpecificConstants(IOPMessenger(address(1)), IOPStandardBridge(address(1)));
+
+        // Deploy the singleton.
+        JBOptimismSucker _sucker = new JBOptimismSucker(
+            _deployer,
+            IJBDirectory(address(0)),
+            IJBPermissions(address(0)),
+            IJBTokens(address(0)),
+            JBAddToBalanceMode.MANUAL
+        );
+
+        // Configure the singleton on the deployer.
+        _deployer.configureSingleton(_sucker);
+
+        // Create a sucker for a project.
         _deployer.createForSender(1, bytes32(0));
     }
 }
