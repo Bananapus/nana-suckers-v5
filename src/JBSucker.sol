@@ -403,6 +403,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// bridged.
     /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging
     /// them.
+    /// @param tokensDisabled The number of tokens that are being disabled, only necessary when called from mapToken(s).
     function mapToken(JBTokenMapping calldata map, uint256 tokensDisabled) public payable override {
         address token = map.localToken;
         JBRemoteToken memory currentMapping = _remoteTokenFor[token];
@@ -466,6 +467,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// tokens to be bridged.
     /// @param maps A list of local and remote terminal token addresses to map, and minimum amount/gas limits for
     /// bridging them.
+    /// @param tokensDisabled The number of tokens that are being disabled.
     function mapTokens(JBTokenMapping[] calldata maps, uint256 tokensDisabled) external payable override {
         // Keep a reference to the number of token mappings to perform.
         uint256 numberOfMaps = maps.length;
