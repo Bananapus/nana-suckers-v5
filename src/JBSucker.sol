@@ -440,7 +440,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds
         // to the remote chain.
         if (map.remoteToken == address(0) && _outboxOf[token].balance != 0) {
-            _sendRoot({transportPayment: msg.value / tokensDisabled, token: token, remoteToken: currentMapping});
+            _sendRoot({transportPayment: tokensDisabled != 0 ? msg.value / tokensDisabled : msg.value, token: token, remoteToken: currentMapping});
         }
 
         // There is a niche edge-case where if the remote sucker has send us tokens but this contract was not deployed
