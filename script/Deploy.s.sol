@@ -18,6 +18,8 @@ contract DeployScript is Script, Sphinx {
     /// @notice tracks the addressed of the deployers that will get pre-approved.
     address[] PRE_APPROVED_DEPLOYERS;
 
+    address TRUSTED_FORWARDER;
+
     /// @notice the nonces that are used to deploy the contracts.
     bytes32 OP_SALT = "_SUCKER_ETH_OP_";
     bytes32 BASE_SALT = "_SUCKER_ETH_BASE_";
@@ -37,6 +39,10 @@ contract DeployScript is Script, Sphinx {
         core = CoreDeploymentLib.getDeployment(
             vm.envOr("NANA_CORE_DEPLOYMENT_PATH", string("node_modules/@bananapus/core/deployments/"))
         );
+
+        // We use the same trusted forwarder as the core deployment.
+        TRUSTED_FORWARDER = core.controller.trustedForwarder();
+
         // Perform the deployment transactions.
         deploy();
     }
@@ -109,7 +115,8 @@ contract DeployScript is Script, Sphinx {
                 directory: core.directory,
                 permissions: core.permissions,
                 tokens: core.tokens,
-                addToBalanceMode: JBAddToBalanceMode.MANUAL
+                addToBalanceMode: JBAddToBalanceMode.MANUAL,
+                trusted_forwarder: TRUSTED_FORWARDER
             });
 
             // Configure the deployer to use the singleton instance.
@@ -136,7 +143,8 @@ contract DeployScript is Script, Sphinx {
                 directory: core.directory,
                 permissions: core.permissions,
                 tokens: core.tokens,
-                addToBalanceMode: JBAddToBalanceMode.MANUAL
+                addToBalanceMode: JBAddToBalanceMode.MANUAL,
+                trusted_forwarder: TRUSTED_FORWARDER
             });
 
             // Configure the deployer to use the singleton instance.
@@ -183,7 +191,8 @@ contract DeployScript is Script, Sphinx {
                 directory: core.directory,
                 permissions: core.permissions,
                 tokens: core.tokens,
-                addToBalanceMode: JBAddToBalanceMode.MANUAL
+                addToBalanceMode: JBAddToBalanceMode.MANUAL,
+                trusted_forwarder: TRUSTED_FORWARDER
             });
 
             // Configure the deployer to use the singleton instance.
@@ -209,7 +218,8 @@ contract DeployScript is Script, Sphinx {
                 directory: core.directory,
                 permissions: core.permissions,
                 tokens: core.tokens,
-                addToBalanceMode: JBAddToBalanceMode.MANUAL
+                addToBalanceMode: JBAddToBalanceMode.MANUAL,
+                trusted_forwarder: TRUSTED_FORWARDER
             });
 
             // Configure the deployer to use the singleton instance.
@@ -253,7 +263,8 @@ contract DeployScript is Script, Sphinx {
                 directory: core.directory,
                 permissions: core.permissions,
                 tokens: core.tokens,
-                addToBalanceMode: JBAddToBalanceMode.MANUAL
+                addToBalanceMode: JBAddToBalanceMode.MANUAL,
+                trusted_forwarder: TRUSTED_FORWARDER
             });
 
             // Configure the deployer to use the singleton instance.
@@ -283,7 +294,8 @@ contract DeployScript is Script, Sphinx {
                 directory: core.directory,
                 permissions: core.permissions,
                 tokens: core.tokens,
-                addToBalanceMode: JBAddToBalanceMode.MANUAL
+                addToBalanceMode: JBAddToBalanceMode.MANUAL,
+                trusted_forwarder: TRUSTED_FORWARDER
             });
 
             // Configure the deployer to use the singleton instance.

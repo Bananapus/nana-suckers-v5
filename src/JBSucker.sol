@@ -15,6 +15,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 import {ERC165, IERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 import {JBAddToBalanceMode} from "./enums/JBAddToBalanceMode.sol";
 import {IJBSucker} from "./interfaces/IJBSucker.sol";
@@ -35,7 +37,7 @@ import {JBSuckerState} from "./enums/JBSuckerState.sol";
 /// chain to the remote chain, and the inbox tree is used to receive from the remote chain to the local chain.
 /// @dev Throughout this contract, "terminal token" refers to any token accepted by a project's terminal.
 /// @dev This contract does *NOT* support tokens that have a fee on regular transfers and rebasing tokens.
-abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerExtended {
+abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC165, IJBSuckerExtended {
     using BitMaps for BitMaps.BitMap;
     using MerkleLib for MerkleLib.Tree;
     using SafeERC20 for IERC20;
@@ -270,6 +272,24 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
             revert JBSucker_BelowMinGas(map.minGas, MESSENGER_ERC20_MIN_GAS_LIMIT);
         }
     }
+
+    /// @notice The calldata. Preferred to use over `msg.data`.
+    /// @return calldata The `msg.data` of this call.
+    function _msgData() internal view override(ERC2771Context, Context) returns (bytes calldata) {
+        return ERC2771Context._msgData();
+    }
+
+    /// @notice The message's sender. Preferred to use over `msg.sender`.
+    /// @return sender The address which sent this call.
+    function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
+        return ERC2771Context._msgSender();
+    }
+
+    /// @dev ERC-2771 specifies the context as being a single address (20 bytes).
+    function _contextSuffixLength() internal view virtual override(ERC2771Context, Context) returns (uint256) {
+        return ERC2771Context._contextSuffixLength();
+    }
+
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
@@ -282,8 +302,10 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
-        JBAddToBalanceMode addToBalanceMode
+        JBAddToBalanceMode addToBalanceMode,
+        address trusted_forwarder
     )
+        ERC2771Context(trusted_forwarder)
         JBPermissioned(permissions)
     {
         DIRECTORY = directory;
@@ -357,7 +379,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
             terminalTokenAmount: claimData.leaf.terminalTokenAmount,
             index: claimData.leaf.index,
             autoAddedToBalance: ADD_TO_BALANCE_MODE == JBAddToBalanceMode.ON_CLAIM ? true : false,
-            caller: msg.sender
+            caller: _msgSender()
         });
 
         // Give the user their project tokens, send the project its funds.
@@ -374,8 +396,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// @param root The merkle root, token, and amount being received.
     function fromRemote(JBMessageRoot calldata root) external payable {
         // Make sure that the message came from our peer.
-        if (!_isRemotePeer(msg.sender)) {
-            revert JBSucker_NotPeer(msg.sender);
+        if (!_isRemotePeer(_msgSender())) {
+            revert JBSucker_NotPeer(_msgSender());
         }
 
         // Increase the outstanding amount to be added to the project's balance by the amount being received.
@@ -394,7 +416,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
                 token: root.token,
                 nonce: root.remoteRoot.nonce,
                 root: root.remoteRoot.root,
-                caller: msg.sender
+                caller: _msgSender()
             });
         }
     }
@@ -497,7 +519,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
             _remoteTokenFor[tokens[i]].emergencyHatch = true;
         }
 
-        emit EmergencyHatchOpened(tokens, msg.sender);
+        emit EmergencyHatchOpened(tokens, _msgSender());
     }
 
     /// @notice Prepare project tokens and the redemption amount backing them to be bridged to the remote chain.
@@ -541,7 +563,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
 
         // Transfer the tokens to this contract.
         // slither-disable-next-line reentrancy-events,reentrancy-benign
-        projectToken.safeTransferFrom({from: msg.sender, to: address(this), value: projectTokenCount});
+        projectToken.safeTransferFrom({from: _msgSender(), to: address(this), value: projectTokenCount});
 
         // Redeem the tokens.
         // slither-disable-next-line reentrancy-events,reentrancy-benign
@@ -631,7 +653,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         }
 
         _deprecatedAfter = timestamp;
-        emit DeprecationTimeUpdated(timestamp, msg.sender);
+        emit DeprecationTimeUpdated(timestamp, _msgSender());
     }
 
     //*********************************************************************//
@@ -773,11 +795,11 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
             root: outbox.tree.root(),
             projectTokenCount: projectTokenCount,
             terminalTokenAmount: terminalTokenAmount,
-            caller: msg.sender
+            caller: _msgSender()
         });
     }
 
-    /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
+    /// @notice Checks if the `sender` (`_msgSender`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
     function _isRemotePeer(address sender) internal virtual returns (bool valid);
 
@@ -865,7 +887,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         outbox.lastestCountSend = count;
 
         // Emit an event for the relayers to watch for.
-        emit RootToRemote({root: root, token: token, index: index, nonce: nonce, caller: msg.sender});
+        emit RootToRemote({root: root, token: token, index: index, nonce: nonce, caller: _msgSender()});
 
         // Build the message to be send.
         JBMessageRoot memory message = JBMessageRoot({

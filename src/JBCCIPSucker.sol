@@ -100,9 +100,10 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         IJBDirectory directory,
         IJBTokens tokens,
         IJBPermissions permissions,
-        JBAddToBalanceMode addToBalanceMode
+        JBAddToBalanceMode addToBalanceMode,
+        address trusted_forwarder
     )
-        JBSucker(directory, permissions, tokens, addToBalanceMode)
+        JBSucker(directory, permissions, tokens, addToBalanceMode, trusted_forwarder)
     {
         REMOTE_CHAIN_ID = IJBCCIPSuckerDeployer(deployer).ccipRemoteChainId();
         REMOTE_CHAIN_SELECTOR = IJBCCIPSuckerDeployer(deployer).ccipRemoteChainSelector();
@@ -121,7 +122,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     /// @dev Extremely important to ensure only router calls this.
     function ccipReceive(Client.Any2EVMMessage calldata any2EvmMessage) external override {
         // only calls from the set router are accepted.
-        if (msg.sender != address(CCIP_ROUTER)) revert JBSucker_NotPeer(msg.sender);
+        if (_msgSender() != address(CCIP_ROUTER)) revert JBSucker_NotPeer(_msgSender());
 
         // Decode the message root from the peer
         JBMessageRoot memory root = abi.decode(any2EvmMessage.data, (JBMessageRoot));
@@ -239,7 +240,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
 
         // Refund remaining balance.
         // slither-disable-next-line calls-loop
-        (bool sent,) = msg.sender.call{value: msg.value - fees}("");
+        (bool sent,) = _msgSender().call{value: msg.value - fees}("");
         if (!sent) revert JBCCIPSucker_FailedToRefundFee();
     }
 

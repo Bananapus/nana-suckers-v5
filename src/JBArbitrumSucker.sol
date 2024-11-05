@@ -75,7 +75,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     // ------------------------ internal views --------------------------- //
     //*********************************************************************//
 
-    /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
+    /// @notice Checks if the `sender` (`_msgSender()`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
     /// @return valid A flag if the sender is a valid representative of the remote peer.
     function _isRemotePeer(address sender) internal view override returns (bool) {
@@ -103,9 +103,10 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
-        JBAddToBalanceMode addToBalanceMode
+        JBAddToBalanceMode addToBalanceMode,
+        address trusted_forwarder
     )
-        JBSucker(directory, permissions, tokens, addToBalanceMode)
+        JBSucker(directory, permissions, tokens, addToBalanceMode, trusted_forwarder)
     {
         GATEWAYROUTER = JBArbitrumSuckerDeployer(deployer).arbGatewayRouter();
         ARBINBOX = JBArbitrumSuckerDeployer(deployer).arbInbox();
@@ -216,7 +217,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             // slither-disable-next-line calls-loop,unused-return
             IArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: transportPayment}({
                 token: token,
-                refundTo: msg.sender,
+                refundTo: _msgSender(),
                 to: peer(),
                 amount: amount,
                 maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk -
@@ -245,8 +246,8 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             to: peer(),
             l2CallValue: nativeValue,
             maxSubmissionCost: maxSubmissionCost,
-            excessFeeRefundAddress: msg.sender,
-            callValueRefundAddress: msg.sender,
+            excessFeeRefundAddress: _msgSender(),
+            callValueRefundAddress: _msgSender(),
             gasLimit: MESSENGER_BASE_GAS_LIMIT,
             maxFeePerGas: 0.2 gwei,
             data: data

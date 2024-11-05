@@ -284,7 +284,8 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             directory: jbDirectory(),
             permissions: jbPermissions(),
             tokens: jbTokens(),
-            addToBalanceMode: JBAddToBalanceMode.MANUAL
+            addToBalanceMode: JBAddToBalanceMode.MANUAL,
+            trusted_forwarder: address(0)
         });
         vm.stopPrank();
 
@@ -342,7 +343,8 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             directory: jbDirectory(),
             permissions: jbPermissions(),
             tokens: jbTokens(),
-            addToBalanceMode: JBAddToBalanceMode.MANUAL
+            addToBalanceMode: JBAddToBalanceMode.MANUAL,
+            trusted_forwarder: address(0)
         });
         vm.stopPrank();
 

@@ -148,7 +148,8 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             directory: jbDirectory(),
             permissions: jbPermissions(),
             tokens: jbTokens(),
-            addToBalanceMode: JBAddToBalanceMode.MANUAL
+            addToBalanceMode: JBAddToBalanceMode.MANUAL,
+            trusted_forwarder: address(0)
         });
 
         // Set the singleton.
@@ -186,7 +187,8 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             directory: jbDirectory(),
             permissions: jbPermissions(),
             tokens: jbTokens(),
-            addToBalanceMode: JBAddToBalanceMode.MANUAL
+            addToBalanceMode: JBAddToBalanceMode.MANUAL,
+            trusted_forwarder: address(0)
         });
 
         // Set the singleton.
@@ -221,7 +223,8 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             directory: jbDirectory(),
             permissions: jbPermissions(),
             tokens: jbTokens(),
-            addToBalanceMode: JBAddToBalanceMode.MANUAL
+            addToBalanceMode: JBAddToBalanceMode.MANUAL,
+            trusted_forwarder: address(0)
         });
 
         // Set the singleton.

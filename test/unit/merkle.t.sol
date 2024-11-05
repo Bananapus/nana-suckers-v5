@@ -22,7 +22,8 @@ contract MerkleUnitTest is JBSucker, Test {
             IJBDirectory(address(600)),
             IJBPermissions(address(800)),
             IJBTokens(address(700)),
-            JBAddToBalanceMode.MANUAL
+            JBAddToBalanceMode.MANUAL,
+            address(0)
         )
     // self.initialize(.NATIVE_TOKEN, JBConstants.NATIVE_TOKEN, JBConstants.NATIVE_TOKEN)
     {
@@ -179,7 +180,8 @@ contract DeployerUnitTest is Test {
             IJBDirectory(address(0)),
             IJBPermissions(address(0)),
             IJBTokens(address(0)),
-            JBAddToBalanceMode.MANUAL
+            JBAddToBalanceMode.MANUAL,
+            address(0)
         );
 
         // Configure the singleton on the deployer.
