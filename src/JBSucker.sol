@@ -858,11 +858,10 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         bytes32 root = outbox.tree.root();
 
         uint256 count = outbox.tree.count;
-        uint256 index = count - 1;
-
-        // Update the lastestCountSend to the current count of the tree.
+        // Update the numberOfClaimsSent to the current count of the tree.
         // This is used as in the fallback to allow users to withdraw locally if the bridge is reverting.
-        outbox.lastestCountSend = count;
+        outbox.numberOfClaimsSent = count;
+        uint256 index = count - 1;
 
         // Emit an event for the relayers to watch for.
         emit RootToRemote({root: root, token: token, index: index, nonce: nonce, caller: msg.sender});
@@ -926,20 +925,10 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         _executedFor[terminalToken].set(index);
 
         // Calculate the root based on the leaf, the branch, and the index.
-        bytes32 root = MerkleLib.branchRoot({
-            _item: _buildTreeHash({
-                projectTokenCount: projectTokenCount,
-                terminalTokenAmount: terminalTokenAmount,
-                beneficiary: beneficiary
-            }),
-            _branch: leaves,
-            _index: index
-        });
-
-        // Compare the calculated root to the terminal token's inbox root. Revert if they do not match.
-        if (root != _inboxOf[terminalToken].root) {
-            revert JBSucker_InvalidProof(root, _inboxOf[terminalToken].root);
-        }
+        // Compare to the current root, Revert if they do not match.
+        _validateBranchRoot(
+            _inboxOf[terminalToken].root, projectTokenCount, terminalTokenAmount, beneficiary, index, leaves
+        );
     }
 
     /// @notice Validates a leaf as being in the outbox merkle tree and not being send over the amb, and registers the
@@ -963,15 +952,17 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         internal
     {
         // Make sure that the emergencyHatch is enabled for the token.
-        if (!_remoteTokenFor[terminalToken].emergencyHatch || state() == JBSuckerState.DEPRECATED) {
+        if (!_remoteTokenFor[terminalToken].emergencyHatch && state() != JBSuckerState.DEPRECATED) {
             revert JBSucker_TokenHasInvalidEmergencyHatchState(terminalToken);
         }
 
         // Check that this claim is within the bounds of who can claim.
         // If the root that this leaf is in was already send then we can not let the user claim here.
         // As it could have also been received by the peer sucker, which would then let the user claim on each side.
+        // NOTE: We are comparing the *count* and the *index*, so `count - 1` is the last index that was sent.
+        // A count of 0 means that no root has ever been send for this token, so everyone can claim.
         JBOutboxTree storage outboxOfToken = _outboxOf[terminalToken];
-        if (outboxOfToken.lastestCountSend >= index) {
+        if (outboxOfToken.numberOfClaimsSent != 0 && outboxOfToken.numberOfClaimsSent - 1 >= index) {
             revert JBSucker_LeafAlreadyExecuted(terminalToken, index);
         }
 
@@ -992,6 +983,27 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         }
 
         // Calculate the root based on the leaf, the branch, and the index.
+        // Compare to the current root, Revert if they do not match.
+        _validateBranchRoot(
+            _outboxOf[terminalToken].tree.root(), projectTokenCount, terminalTokenAmount, beneficiary, index, leaves
+        );
+    }
+
+    /// @notice Validates a branch root against the expected root.
+    /// @dev This is a virtual function to allow a tests to override the behavior, it should never be overwritten
+    /// otherwise.
+    function _validateBranchRoot(
+        bytes32 expectedRoot,
+        uint256 projectTokenCount,
+        uint256 terminalTokenAmount,
+        address beneficiary,
+        uint256 index,
+        bytes32[_TREE_DEPTH] calldata leaves
+    )
+        internal
+        virtual
+    {
+        // Calculate the root based on the leaf, the branch, and the index.
         bytes32 root = MerkleLib.branchRoot({
             _item: _buildTreeHash({
                 projectTokenCount: projectTokenCount,
@@ -1003,9 +1015,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         });
 
         // Compare to the current root, Revert if they do not match.
-        bytes32 resultingRoot = _outboxOf[terminalToken].tree.root();
-        if (root != resultingRoot) {
-            revert JBSucker_InvalidProof(root, resultingRoot);
+        if (root != expectedRoot) {
+            revert JBSucker_InvalidProof(root, expectedRoot);
         }
     }
 }
