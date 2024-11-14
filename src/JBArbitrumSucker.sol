@@ -207,6 +207,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
+            // Split the transport payment in half for the two uses of transportPayment below.
+            transportPayment = transportPayment / 2;
+
             // Approve the tokens to be bridged.
             // slither-disable-next-line calls-loop
             SafeERC20.forceApprove({token: IERC20(token), spender: GATEWAYROUTER.getGateway(token), value: amount});
