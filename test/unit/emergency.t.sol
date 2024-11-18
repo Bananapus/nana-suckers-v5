@@ -129,6 +129,35 @@ contract SuckerEmergencyTest is Test {
         sucker.exitThroughEmergencyHatch(claim);
     }
 
+    /// @notice tests that the deprecation can be set, changed and cancelled.
+    function testCancelDeprecation(uint40 currentTime, uint40 deprecateAt, uint40 changeDeprecationTo) external {
+        // Ensure that none of the math overflows which would cause unexpected test results.
+        vm.assume(type(uint40).max - 14 days > currentTime);
+        vm.assume(type(uint40).max - 14 days > deprecateAt);
+        vm.assume(type(uint40).max - 14 days > changeDeprecationTo);
+        // Ensure that the inputs are within the expected bounds.
+        vm.assume(currentTime + 14 days < deprecateAt);
+        vm.assume(deprecateAt + 7 days < changeDeprecationTo || changeDeprecationTo == 0);
+
+        uint256 projectId = 1;
+        TestSucker sucker = _createTestSucker(projectId, address(PEER), "");
+
+        // Mock the Directory.
+        vm.mockCall(DIRECTORY, abi.encodeCall(IJBDirectory.PROJECTS, ()), abi.encode(PROJECT));
+        // Mock the owner of the project.
+        vm.mockCall(PROJECT, abi.encodeCall(IERC721.ownerOf, (projectId)), abi.encode(address(this)));
+
+        // Set the time at which the deprecation call is done.
+        vm.warp(currentTime);
+        // Set the deprecation to be at a future time.
+        sucker.setDeprecation(uint40(deprecateAt));
+
+        // Foward to a time before its fully deprecated..
+        vm.warp(currentTime + 7 days);
+        // Change the time at which it deprecates
+        sucker.setDeprecation(changeDeprecationTo);
+    }
+
     function _createTestSucker(uint256 projectId, address peer, bytes32 salt) internal returns (TestSucker) {
         // Singleton.
         TestSucker singleton = new TestSucker(

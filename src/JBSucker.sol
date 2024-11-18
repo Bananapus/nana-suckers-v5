@@ -626,7 +626,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         uint256 nextEarliestDeprecationTime = block.timestamp + _maxMessagingDelay();
 
         // The deprecation can be entirely disabled *or* it has to be later than the earliest possible time.
-        if (timestamp == 0 || timestamp < nextEarliestDeprecationTime) {
+        if (timestamp != 0 && timestamp < nextEarliestDeprecationTime) {
             revert JBSucker_DeprecationTimestampTooSoon(timestamp, nextEarliestDeprecationTime);
         }
 
