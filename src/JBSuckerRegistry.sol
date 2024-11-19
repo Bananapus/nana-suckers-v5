@@ -210,7 +210,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
 
             // Map the tokens for the sucker.
             // slither-disable-next-line reentrancy-events,calls-loop
-            sucker.mapTokens(configuration.mappings, 0);
+            sucker.mapTokens(configuration.mappings);
             emit SuckerDeployedFor({
                 projectId: projectId,
                 sucker: address(sucker),

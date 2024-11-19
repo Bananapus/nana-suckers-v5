@@ -62,8 +62,8 @@ interface IJBSucker is IERC165 {
     function claim(JBClaim[] calldata claims) external;
     function claim(JBClaim calldata claimData) external;
     function initialize(uint256 projectId, address peer) external;
-    function mapToken(JBTokenMapping calldata map, uint256 tokensDisabled) external payable;
-    function mapTokens(JBTokenMapping[] calldata maps, uint256 tokensDisabled) external payable;
+    function mapToken(JBTokenMapping calldata map) external payable;
+    function mapTokens(JBTokenMapping[] calldata maps) external payable;
     function prepare(
         uint256 projectTokenAmount,
         address beneficiary,

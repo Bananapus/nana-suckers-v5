@@ -391,7 +391,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         });
 
         vm.prank(multisig());
-        suckerGlobal.mapToken(map, 0);
+        suckerGlobal.mapToken(map);
 
         // Let the terminal spend our test tokens so we can pay and receive project tokens
         vm.startPrank(user);
@@ -453,7 +453,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         });
 
         vm.prank(multisig());
-        suckerGlobal.mapToken(map, 0);
+        suckerGlobal.mapToken(map);
 
         // Let the terminal spend our test tokens so we can pay and receive project tokens
         vm.startPrank(user);

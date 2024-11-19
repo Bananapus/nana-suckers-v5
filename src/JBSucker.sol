@@ -404,7 +404,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging
     /// them.
     function mapToken(JBTokenMapping calldata map) public payable override {
-        _mapToken({ map: map, transportPaymentValue: msg.value });
+        _mapToken({map: map, transportPaymentValue: msg.value});
     }
 
     /// @notice Map multiple ERC-20 tokens on the local chain to ERC-20 tokens on the remote chain, allowing those
@@ -415,9 +415,19 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         // Keep a reference to the number of token mappings to perform.
         uint256 numberOfMaps = maps.length;
 
+        uint256 numberToDisable;
+
+        // Loop over the number of mappings and increase numberToDisable if map.remoteToken == address(0) &&
+        // _outboxOf[token].balance != 0
+        for (uint256 i; i < numberOfMaps; i++) {
+            if (maps[i].remoteToken == address(0) && _outboxOf[maps[i].localToken].balance != 0) {
+                numberToDisable++;
+            }
+        }
+
         // Perform each token mapping.
         for (uint256 i; i < numberOfMaps; i++) {
-            _mapToken({ map: maps[i], transportPaymentValue: msg.value / numberOfMaps });
+            _mapToken({map: maps[i], transportPaymentValue: numberToDisable > 0 ? msg.value / numberToDisable : 0});
         }
     }
 
@@ -767,11 +777,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds
         // to the remote chain.
         if (map.remoteToken == address(0) && _outboxOf[token].balance != 0) {
-            _sendRoot({
-                transportPayment: trasnportPaymentValue,
-                token: token,
-                remoteToken: currentMapping
-            });
+            _sendRoot({transportPayment: transportPaymentValue, token: token, remoteToken: currentMapping});
         }
 
         // There is a niche edge-case where if the remote sucker has send us tokens but this contract was not deployed
