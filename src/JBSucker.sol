@@ -417,8 +417,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
 
         uint256 numberToDisable;
 
-        // Loop over the number of mappings and increase numberToDisable if map.remoteToken == address(0) &&
-        // _outboxOf[token].balance != 0
+        // Loop over the number of mappings and increase numberToDisable to correctly set transportPaymentValue.
         for (uint256 i; i < numberOfMaps; i++) {
             if (maps[i].remoteToken == address(0) && _outboxOf[maps[i].localToken].balance != 0) {
                 numberToDisable++;
