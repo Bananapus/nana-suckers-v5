@@ -87,6 +87,6 @@ contract JBCCIPSuckerDeployer is JBSuckerDeployer, IJBCCIPSuckerDeployer {
             revert JBSuckerDeployer_InvalidLayerSpecificConfiguration();
         }
 
-        emit CCIPConstantsSet(address(ccipRouter), ccipRemoteChainId, ccipRemoteChainSelector);
+        emit CCIPConstantsSet(address(ccipRouter), ccipRemoteChainId, ccipRemoteChainSelector, msg.sender);
     }
 }
