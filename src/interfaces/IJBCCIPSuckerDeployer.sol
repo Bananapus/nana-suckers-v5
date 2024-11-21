@@ -5,7 +5,12 @@ import {IJBSucker} from "./IJBSucker.sol";
 import {ICCIPRouter} from "./ICCIPRouter.sol";
 
 interface IJBCCIPSuckerDeployer {
-    event CCIPConstantsSet(address ccipRouter, uint256 ccipRemoteChainId, uint64 ccipRemoteChainSelector);
+    event CCIPConstantsSet(
+        address ccipRouter, 
+        uint256 ccipRemoteChainId, 
+        uint64 ccipRemoteChainSelector, 
+        address caller
+    );
 
     function ccipRouter() external view returns (ICCIPRouter);
     function ccipRemoteChainId() external view returns (uint256);
