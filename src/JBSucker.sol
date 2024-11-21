@@ -736,7 +736,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     function _isRemotePeer(address sender) internal virtual returns (bool valid);
 
     /// @notice Map an ERC-20 token on the local chain to an ERC-20 token on the remote chain, allowing that token to be
-    /// bridged.
+    /// bridged or disabled.
     /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging
     /// them.
     /// @param transportPaymentValue The amount of `msg.value` to send for the token mapping.
@@ -752,7 +752,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         // Validate the token mapping according to the rules of the sucker.
         _validateTokenMapping(map);
 
-        // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
+        // Reference the project id.
         uint256 _projectId = projectId();
 
         // slither-disable-next-line calls-loop
