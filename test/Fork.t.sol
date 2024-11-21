@@ -368,12 +368,12 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
 
     function test_forkNativeTransfer() external {
         // The pool is disabled for now, but functionality was confirmed in past runs.
-        vm.skip(true);
+        // vm.skip(true);
 
         // Declare test actors and parameters
         address rootSender = makeAddr("rootSender");
         address user = makeAddr("him");
-        uint256 amountToSend = 100;
+        uint256 amountToSend = 1 ether;
         uint256 maxRedeemed = amountToSend / 2;
 
         // Select our L1 fork to begin this test.
@@ -429,6 +429,9 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         // Meaning CCIP transferred the data to our sucker on L2's inbox
         bytes32 inboxRoot = suckerGlobal.inboxOf(JBConstants.NATIVE_TOKEN).root;
         assertNotEq(inboxRoot, bytes32(0));
+
+        // Ensure correct native value was sent.
+        assertEq(address(suckerGlobal).balance, maxRedeemed);
     }
 
     function test_forkTokenTransfer() external {
