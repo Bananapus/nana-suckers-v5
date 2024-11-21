@@ -223,12 +223,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
                 refundTo: msg.sender,
                 to: peer(),
                 amount: amount,
-                maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk -
-                    // MESSENGER_BASE_GAS_LIMIT = 300k here
-                gasPriceBid: 0.2 gwei, // sane enough for now - covers moderate congestion, maybe decide client side in
-                    // the future
-                data: bytes(abi.encode(maxSubmissionCost, data)) // @note: maybe this is zero if we pay with msg.value?
-                    // we'll see in testing
+                maxGas: MESSENGER_BASE_GAS_LIMIT,
+                gasPriceBid: 0.2 gwei,
+                data: bytes(abi.encode(maxSubmissionCost, bytes("")))
             });
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
