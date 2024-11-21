@@ -426,6 +426,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
 
         // Perform each token mapping.
         for (uint256 i; i < numberOfMaps; i++) {
+            // slither-disable-next-line msg-value-loop
             _mapToken({map: maps[i], transportPaymentValue: numberToDisable > 0 ? msg.value / numberToDisable : 0});
         }
     }
