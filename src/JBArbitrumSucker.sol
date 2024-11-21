@@ -157,6 +157,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
 
         // Revert if there's a `msg.value`. Sending a message to L1 does not require any payment.
         if (msg.value != 0) {
+            // slither-disable-next-line msg-value-loop
             revert JBSucker_UnexpectedMsgValue(msg.value);
         }
 

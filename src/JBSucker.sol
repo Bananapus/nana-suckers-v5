@@ -403,76 +403,31 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// bridged.
     /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging
     /// them.
-    function mapToken(JBTokenMapping calldata map) public override {
-        address token = map.localToken;
-        JBRemoteToken memory currentMapping = _remoteTokenFor[token];
-
-        // Once the emergency hatch for a token is enabled it can't be disabled.
-        if (currentMapping.emergencyHatch) {
-            revert JBSucker_TokenHasInvalidEmergencyHatchState(token);
-        }
-
-        // Validate the token mapping according to the rules of the sucker.
-        _validateTokenMapping(map);
-
-        // The caller must be the project owner or have the `QUEUE_RULESETS` permission from them.
-        uint256 _projectId = projectId();
-
-        // slither-disable-next-line calls-loop
-        _requirePermissionFrom({
-            account: DIRECTORY.PROJECTS().ownerOf(_projectId),
-            projectId: _projectId,
-            permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
-        });
-
-        // Make sure that the token does not get remapped to another remote token.
-        // As this would cause the funds for this token to be double spendable on the other side.
-        // It should not be possible to cause any issues even without this check
-        // a bridge *should* never accept such a request. This is mostly a sanity check.
-        if (
-            currentMapping.addr != address(0) && currentMapping.addr != map.remoteToken && map.remoteToken != address(0)
-                && _outboxOf[token].tree.count != 0
-        ) {
-            revert JBSucker_TokenAlreadyMapped(token, currentMapping.addr);
-        }
-
-        // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds
-        // to the remote chain.
-        if (map.remoteToken == address(0) && _outboxOf[token].balance != 0) {
-            _sendRoot({transportPayment: 0, token: token, remoteToken: currentMapping});
-        }
-
-        // There is a niche edge-case where if the remote sucker has send us tokens but this contract was not deployed
-        // we might have missed adding the received amount to the `amountToAddToBalanceOf`.
-        // If we have no items in the outbox tree we can safely add the received amount to the `amountToAddToBalanceOf`.
-        // As this sucker should have no balance of the specific token.
-        if (_outboxOf[token].tree.count == 0 && amountToAddToBalanceOf[token] == 0) {
-            amountToAddToBalanceOf[token] = _balanceOf({token: token, addr: address(this)});
-        }
-
-        // Update the token mapping.
-        _remoteTokenFor[token] = JBRemoteToken({
-            enabled: map.remoteToken != address(0),
-            emergencyHatch: false,
-            minGas: map.minGas,
-            // This is done so that a token can be disabled and then enabled again
-            // while ensuring the remoteToken never changes (unless it hasn't been used yet)
-            addr: map.remoteToken == address(0) ? currentMapping.addr : map.remoteToken,
-            minBridgeAmount: map.minBridgeAmount
-        });
+    function mapToken(JBTokenMapping calldata map) public payable override {
+        _mapToken({map: map, transportPaymentValue: msg.value});
     }
 
     /// @notice Map multiple ERC-20 tokens on the local chain to ERC-20 tokens on the remote chain, allowing those
     /// tokens to be bridged.
     /// @param maps A list of local and remote terminal token addresses to map, and minimum amount/gas limits for
     /// bridging them.
-    function mapTokens(JBTokenMapping[] calldata maps) external override {
+    function mapTokens(JBTokenMapping[] calldata maps) external payable override {
         // Keep a reference to the number of token mappings to perform.
         uint256 numberOfMaps = maps.length;
 
+        uint256 numberToDisable;
+
+        // Loop over the number of mappings and increase numberToDisable to correctly set transportPaymentValue.
+        for (uint256 h; h < numberOfMaps; h++) {
+            if (maps[h].remoteToken == address(0) && _outboxOf[maps[h].localToken].balance != 0) {
+                numberToDisable++;
+            }
+        }
+
         // Perform each token mapping.
         for (uint256 i; i < numberOfMaps; i++) {
-            mapToken(maps[i]);
+            // slither-disable-next-line msg-value-loop
+            _mapToken({map: maps[i], transportPaymentValue: numberToDisable > 0 ? msg.value / numberToDisable : 0});
         }
     }
 
@@ -780,6 +735,70 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
     function _isRemotePeer(address sender) internal virtual returns (bool valid);
+
+    /// @notice Map an ERC-20 token on the local chain to an ERC-20 token on the remote chain, allowing that token to be
+    /// bridged or disabled.
+    /// @param map The local and remote terminal token addresses to map, and minimum amount/gas limits for bridging
+    /// them.
+    /// @param transportPaymentValue The amount of `msg.value` to send for the token mapping.
+    function _mapToken(JBTokenMapping calldata map, uint256 transportPaymentValue) internal {
+        address token = map.localToken;
+        JBRemoteToken memory currentMapping = _remoteTokenFor[token];
+
+        // Once the emergency hatch for a token is enabled it can't be disabled.
+        if (currentMapping.emergencyHatch) {
+            revert JBSucker_TokenHasInvalidEmergencyHatchState(token);
+        }
+
+        // Validate the token mapping according to the rules of the sucker.
+        _validateTokenMapping(map);
+
+        // Reference the project id.
+        uint256 _projectId = projectId();
+
+        // slither-disable-next-line calls-loop
+        _requirePermissionFrom({
+            account: DIRECTORY.PROJECTS().ownerOf(_projectId),
+            projectId: _projectId,
+            permissionId: JBPermissionIds.MAP_SUCKER_TOKEN
+        });
+
+        // Make sure that the token does not get remapped to another remote token.
+        // As this would cause the funds for this token to be double spendable on the other side.
+        // It should not be possible to cause any issues even without this check
+        // a bridge *should* never accept such a request. This is mostly a sanity check.
+        if (
+            currentMapping.addr != address(0) && currentMapping.addr != map.remoteToken && map.remoteToken != address(0)
+                && _outboxOf[token].tree.count != 0
+        ) {
+            revert JBSucker_TokenAlreadyMapped(token, currentMapping.addr);
+        }
+
+        // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds
+        // to the remote chain.
+        if (map.remoteToken == address(0) && _outboxOf[token].balance != 0) {
+            _sendRoot({transportPayment: transportPaymentValue, token: token, remoteToken: currentMapping});
+        }
+
+        // There is a niche edge-case where if the remote sucker has send us tokens but this contract was not deployed
+        // we might have missed adding the received amount to the `amountToAddToBalanceOf`.
+        // If we have no items in the outbox tree we can safely add the received amount to the `amountToAddToBalanceOf`.
+        // As this sucker should have no balance of the specific token.
+        if (_outboxOf[token].tree.count == 0 && amountToAddToBalanceOf[token] == 0) {
+            amountToAddToBalanceOf[token] = _balanceOf({token: token, addr: address(this)});
+        }
+
+        // Update the token mapping.
+        _remoteTokenFor[token] = JBRemoteToken({
+            enabled: map.remoteToken != address(0),
+            emergencyHatch: false,
+            minGas: map.minGas,
+            // This is done so that a token can be disabled and then enabled again
+            // while ensuring the remoteToken never changes (unless it hasn't been used yet)
+            addr: map.remoteToken == address(0) ? currentMapping.addr : map.remoteToken,
+            minBridgeAmount: map.minBridgeAmount
+        });
+    }
 
     /// @notice Redeems project tokens for terminal tokens.
     /// @param projectToken The project token being redeemed.
