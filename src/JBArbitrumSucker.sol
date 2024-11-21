@@ -235,17 +235,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             nativeValue = amount;
         }
 
-        // Ensure we bridge enough for gas costs on L2 side
-        // transportPayment is ref of msg.value
-        if (nativeValue + feeTotal > transportPayment) {
-            revert JBArbitrumSucker_NotEnoughGas(
-                transportPayment < nativeValue ? 0 : transportPayment - nativeValue, feeTotal
-            );
-        }
-
         // Create the retryable ticket containing the merkleRoot.
         // slither-disable-next-line calls-loop,unused-return
-        ARBINBOX.createRetryableTicket{value: transportPayment}({
+        ARBINBOX.createRetryableTicket{value: transportPayment + nativeValue}({
             to: peer(),
             l2CallValue: nativeValue,
             maxSubmissionCost: maxSubmissionCost,
