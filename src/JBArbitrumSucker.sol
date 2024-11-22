@@ -223,29 +223,18 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
                 refundTo: msg.sender,
                 to: peer(),
                 amount: amount,
-                maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk -
-                    // MESSENGER_BASE_GAS_LIMIT = 300k here
-                gasPriceBid: 0.2 gwei, // sane enough for now - covers moderate congestion, maybe decide client side in
-                    // the future
-                data: bytes(abi.encode(maxSubmissionCost, data)) // @note: maybe this is zero if we pay with msg.value?
-                    // we'll see in testing
+                maxGas: MESSENGER_BASE_GAS_LIMIT,
+                gasPriceBid: 0.2 gwei,
+                data: bytes(abi.encode(maxSubmissionCost, bytes("")))
             });
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
         }
 
-        // Ensure we bridge enough for gas costs on L2 side
-        // transportPayment is ref of msg.value
-        if (nativeValue + feeTotal > transportPayment) {
-            revert JBArbitrumSucker_NotEnoughGas(
-                transportPayment < nativeValue ? 0 : transportPayment - nativeValue, feeTotal
-            );
-        }
-
         // Create the retryable ticket containing the merkleRoot.
         // slither-disable-next-line calls-loop,unused-return
-        ARBINBOX.createRetryableTicket{value: transportPayment}({
+        ARBINBOX.createRetryableTicket{value: transportPayment + nativeValue}({
             to: peer(),
             l2CallValue: nativeValue,
             maxSubmissionCost: maxSubmissionCost,
