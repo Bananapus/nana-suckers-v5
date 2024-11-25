@@ -15,7 +15,6 @@ contract SuckerEmergencyTest is Test {
     address constant TOKENS = address(700);
     address constant CONTROLLER = address(900);
     address constant PROJECT = address(1000);
-    address constant PEER = address(900);
 
     function setUp() public {
         vm.label(DIRECTORY, "MOCK_DIRECTORY");
@@ -23,17 +22,16 @@ contract SuckerEmergencyTest is Test {
         vm.label(TOKENS, "MOCK_TOKENS");
         vm.label(CONTROLLER, "MOCK_CONTROLLER");
         vm.label(PROJECT, "MOCK_PROJECT");
-        vm.label(PEER, "MOCK_PEER");
     }
 
     function testHelloWorld() external {
-        _createTestSucker(1, address(900), "");
+        _createTestSucker(1, "");
     }
 
     /// @notice Ensures that if a sucker is deprecated and a claim is valid that a user can withdraw their deposit.
     function testEmergencyExitWhenDeprecated(bool setAsDeprecated, bool isValidClaim, JBClaim memory claim) external {
         uint256 projectId = 1;
-        TestSucker sucker = _createTestSucker(projectId, address(PEER), "");
+        TestSucker sucker = _createTestSucker(projectId, "");
 
         // Mock the Directory.
         vm.mockCall(DIRECTORY, abi.encodeCall(IJBDirectory.PROJECTS, ()), abi.encode(PROJECT));
@@ -86,7 +84,7 @@ contract SuckerEmergencyTest is Test {
         external
     {
         uint256 projectId = 1;
-        TestSucker sucker = _createTestSucker(projectId, address(PEER), "");
+        TestSucker sucker = _createTestSucker(projectId, "");
 
         // Mock the Directory.
         vm.mockCall(DIRECTORY, abi.encodeCall(IJBDirectory.PROJECTS, ()), abi.encode(PROJECT));
@@ -140,7 +138,7 @@ contract SuckerEmergencyTest is Test {
         vm.assume(deprecateAt + 7 days < changeDeprecationTo || changeDeprecationTo == 0);
 
         uint256 projectId = 1;
-        TestSucker sucker = _createTestSucker(projectId, address(PEER), "");
+        TestSucker sucker = _createTestSucker(projectId, "");
 
         // Mock the Directory.
         vm.mockCall(DIRECTORY, abi.encodeCall(IJBDirectory.PROJECTS, ()), abi.encode(PROJECT));
@@ -158,7 +156,7 @@ contract SuckerEmergencyTest is Test {
         sucker.setDeprecation(changeDeprecationTo);
     }
 
-    function _createTestSucker(uint256 projectId, address peer, bytes32 salt) internal returns (TestSucker) {
+    function _createTestSucker(uint256 projectId, bytes32 salt) internal returns (TestSucker) {
         // Singleton.
         TestSucker singleton = new TestSucker(
             IJBDirectory(DIRECTORY), IJBPermissions(PERMISSIONS), IJBTokens(TOKENS), JBAddToBalanceMode.MANUAL
@@ -168,7 +166,7 @@ contract SuckerEmergencyTest is Test {
         // Clone the singleton and initialize the clone.
         TestSucker sucker = TestSucker(payable(address(LibClone.cloneDeterministic(address(singleton), salt))));
         vm.label(address(sucker), "SUCKER");
-        sucker.initialize(projectId, peer);
+        sucker.initialize(projectId);
 
         return TestSucker(sucker);
     }

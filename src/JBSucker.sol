@@ -119,9 +119,6 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
     uint256 private _localProjectId;
 
-    /// @notice The peer sucker on the remote chain.
-    address private _remotePeer;
-
     //*********************************************************************//
     // -------------------- internal stored properties ------------------- //
     //*********************************************************************//
@@ -182,8 +179,14 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     //*********************************************************************//
 
     /// @notice The peer sucker on the remote chain.
-    function peer() public view returns (address) {
-        return _remotePeer;
+    function peer() public view virtual returns (address) {
+        /// This can be overridden by the inheriting contract to return a different address. This is fully supported by
+        /// the sucker implementation and all its off-chain infrastructure, This does however break some
+        /// invariants/assumptions, for revnets it would break the assumption of matching configurations on both chains,
+        /// for this reason we only support a matching address.
+
+        // The peer is at the same address on the other chain.
+        return address(this);
     }
 
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
@@ -300,12 +303,9 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
 
     /// @notice Initializes the sucker with the project ID and peer address.
     /// @param __projectId The ID of the project (on the local chain) that this sucker is associated with.
-    /// @param __peer The peer sucker on the remote chain.
-    function initialize(uint256 __projectId, address __peer) public initializer {
+    function initialize(uint256 __projectId) public initializer {
         // slither-disable-next-line missing-zero-check
         _localProjectId = __projectId;
-        // slither-disable-next-line missing-zero-check
-        _remotePeer = __peer;
     }
 
     //*********************************************************************//
@@ -896,7 +896,14 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         _sendRootOverAMB(transportPayment, index, token, amount, remoteToken, message);
     }
 
-    // TODO natspec
+    /// @notice Performs the logic to send a message to the peer over the AMB.
+    /// @dev This is chain/sucker/bridge specific logic.
+    /// @param transportPayment The amount of `msg.value` that is going to get paid for sending this message.
+    /// @param index The index of the most recent message that is part of the root.
+    /// @param token The terminal token being bridged.
+    /// @param amount The amount of terminal tokens being bridged.
+    /// @param remoteToken The remote token which the terminal token is mapped to.
+    /// @param message The message/root to send to the remote chain.
     function _sendRootOverAMB(
         uint256 transportPayment,
         uint256 index,
