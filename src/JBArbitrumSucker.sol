@@ -198,13 +198,12 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         internal
     {
         uint256 nativeValue;
+        uint256 maxFeePerGas = 0.2 gwei;
+
         // slither-disable-next-line calls-loop
         uint256 maxSubmissionCost =
-            ARBINBOX.calculateRetryableSubmissionFee({dataLength: data.length, baseFee: 0.2 gwei});
-        uint256 feeTotal = maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * 0.2 gwei);
-
-        // Ensure we bridge enough for gas costs on L2 side
-        if (transportPayment < feeTotal) revert JBArbitrumSucker_NotEnoughGas(transportPayment, feeTotal);
+            ARBINBOX.calculateRetryableSubmissionFee({dataLength: data.length, baseFee: maxFeePerGas});
+        uint256 feeTotal = maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * maxFeePerGas);
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
@@ -232,16 +231,23 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             nativeValue = amount;
         }
 
+        // Ensure we bridge enough for gas costs on L2 side
+        if (transportPayment < feeTotal) revert JBArbitrumSucker_NotEnoughGas(transportPayment, feeTotal);
+
         // Create the retryable ticket containing the merkleRoot.
+        // We call unsafe as we do not want the refund address to be aliased to L2.
+        // The above check is the same check that makes it `safeCreateRetryableTicket`.
+
         // slither-disable-next-line calls-loop,unused-return
-        ARBINBOX.createRetryableTicket{value: transportPayment + nativeValue}({
+        ARBINBOX.unsafeCreateRetryableTicket{value: transportPayment + nativeValue}({
             to: peer(),
             l2CallValue: nativeValue,
             maxSubmissionCost: maxSubmissionCost,
             excessFeeRefundAddress: msg.sender,
-            callValueRefundAddress: msg.sender,
+            // In the case that the call fails we want to send the native asset to the peer on the L2.
+            callValueRefundAddress: peer(),
             gasLimit: MESSENGER_BASE_GAS_LIMIT,
-            maxFeePerGas: 0.2 gwei,
+            maxFeePerGas: maxFeePerGas,
             data: data
         });
         // slither-disable-end out-of-order-retryable
