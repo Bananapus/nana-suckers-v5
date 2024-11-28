@@ -328,11 +328,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// @param claims A list of claims to perform (including the terminal token, merkle tree leaf, and proof for each
     /// claim).
     function claim(JBClaim[] calldata claims) external override {
-        // Get the number of claims to perform.
-        uint256 numberOfClaims = claims.length;
-
         // Claim each.
-        for (uint256 i; i < numberOfClaims; i++) {
+        for (uint256 i; i < claims.length; i++) {
             claim(claims[i]);
         }
     }
@@ -412,20 +409,17 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// @param maps A list of local and remote terminal token addresses to map, and minimum amount/gas limits for
     /// bridging them.
     function mapTokens(JBTokenMapping[] calldata maps) external payable override {
-        // Keep a reference to the number of token mappings to perform.
-        uint256 numberOfMaps = maps.length;
-
         uint256 numberToDisable;
 
         // Loop over the number of mappings and increase numberToDisable to correctly set transportPaymentValue.
-        for (uint256 h; h < numberOfMaps; h++) {
+        for (uint256 h; h < maps.length; h++) {
             if (maps[h].remoteToken == address(0) && _outboxOf[maps[h].localToken].balance != 0) {
                 numberToDisable++;
             }
         }
 
         // Perform each token mapping.
-        for (uint256 i; i < numberOfMaps; i++) {
+        for (uint256 i; i < maps.length; i++) {
             // slither-disable-next-line msg-value-loop
             _mapToken({map: maps[i], transportPaymentValue: numberToDisable > 0 ? msg.value / numberToDisable : 0});
         }
