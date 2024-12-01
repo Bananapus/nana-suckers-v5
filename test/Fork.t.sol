@@ -9,7 +9,7 @@ import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {IJBTerminal} from "@bananapus/core/src/interfaces/IJBTerminal.sol";
-import {IJBRedeemTerminal} from "@bananapus/core/src/interfaces/IJBRedeemTerminal.sol";
+import {IJBCashOutTerminal} from "@bananapus/core/src/interfaces/IJBCashOutTerminal.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
 import {JBPermissioned} from "@bananapus/core/src/abstract/JBPermissioned.sol";
 import {JBPermissionsData} from "@bananapus/core/src/structs/JBPermissionsData.sol";
@@ -85,7 +85,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
     function initMetadata() public {
         _metadata = JBRulesetMetadata({
             reservedPercent: JBConstants.MAX_RESERVED_PERCENT / 2, //50%
-            redemptionRate: JBConstants.MAX_REDEMPTION_RATE, //50%
+            cashOutTaxRate: 0, 
             baseCurrency: uint32(uint160(address(JBConstants.NATIVE_TOKEN))),
             pausePay: false,
             pauseCreditTransfers: false,
@@ -98,9 +98,9 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             allowAddPriceFeed: true,
             ownerMustSendPayouts: false,
             holdFees: false,
-            useTotalSurplusForRedemptions: true,
+            useTotalSurplusForCashOuts: true,
             useDataHookForPay: false,
-            useDataHookForRedeem: false,
+            useDataHookForCashOut: false,
             dataHook: address(0),
             metadata: 0
         });
@@ -135,7 +135,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             _rulesetConfigurations[0].mustStartAtOrAfter = 0;
             _rulesetConfigurations[0].duration = 0;
             _rulesetConfigurations[0].weight = 1000 * 10 ** 18;
-            _rulesetConfigurations[0].decayPercent = 0;
+            _rulesetConfigurations[0].weightCutPercent = 0;
             _rulesetConfigurations[0].approvalHook = IJBRulesetApprovalHook(address(0));
             _rulesetConfigurations[0].metadata = _metadata;
             _rulesetConfigurations[0].splitGroups = new JBSplitGroup[](0);
@@ -177,7 +177,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             // Setup an erc20 for the project
             projectOneToken = jbController().deployERC20For(1, "SuckerToken", "SOOK", bytes32(0));
 
-            // Add a price-feed to reconcile pays and redeems with our test token
+            // Add a price-feed to reconcile pays and cash outs with our test token
             MockPriceFeed _priceFeedNativeTest = new MockPriceFeed(100 * 10 ** 18, 18); // 2000 test token == 1 native
                 // token
             vm.label(address(_priceFeedNativeTest), "Mock Price Feed Native-ccipBnM");
@@ -212,7 +212,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             _rulesetConfigurations[0].mustStartAtOrAfter = 0;
             _rulesetConfigurations[0].duration = 0;
             _rulesetConfigurations[0].weight = 1000 * 10 ** 18;
-            _rulesetConfigurations[0].decayPercent = 0;
+            _rulesetConfigurations[0].weightCutPercent = 0;
             _rulesetConfigurations[0].approvalHook = IJBRulesetApprovalHook(address(0));
             _rulesetConfigurations[0].metadata = _metadata;
             _rulesetConfigurations[0].splitGroups = new JBSplitGroup[](0);
@@ -374,7 +374,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         address rootSender = makeAddr("rootSender");
         address user = makeAddr("him");
         uint256 amountToSend = 1 ether;
-        uint256 maxRedeemed = amountToSend / 2;
+        uint256 maxCashedOut = amountToSend / 2;
 
         // Select our L1 fork to begin this test.
         vm.selectFork(sepoliaFork);
@@ -404,8 +404,8 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         // Approve the sucker to use those project tokens received by the user (we are still pranked as user)
         IERC20(address(projectOneToken)).approve(address(suckerGlobal), projectTokenAmount);
 
-        // Call prepare which uses our project tokens to retrieve (redeem) for our backing tokens (test token)
-        suckerGlobal.prepare(projectTokenAmount, user, maxRedeemed, JBConstants.NATIVE_TOKEN);
+        // Call prepare which uses our project tokens to retrieve (cash out) for our backing tokens (test token)
+        suckerGlobal.prepare(projectTokenAmount, user, maxCashedOut, JBConstants.NATIVE_TOKEN);
         vm.stopPrank();
 
         // Give the root sender some eth to pay the fees
@@ -423,7 +423,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         ccipLocalSimulatorFork.switchChainAndRouteMessage(arbSepoliaFork);
 
         // Check that the tokens were transferred
-        assertEq(address(suckerGlobal).balance, maxRedeemed);
+        assertEq(address(suckerGlobal).balance, maxCashedOut);
 
         // This is the most simple verification that messages are being sent and received though
         // Meaning CCIP transferred the data to our sucker on L2's inbox
@@ -431,7 +431,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         assertNotEq(inboxRoot, bytes32(0));
 
         // Ensure correct native value was sent.
-        assertEq(address(suckerGlobal).balance, maxRedeemed);
+        assertEq(address(suckerGlobal).balance, maxCashedOut);
     }
 
     function test_forkTokenTransfer() external {
@@ -439,7 +439,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         address rootSender = makeAddr("rootSender");
         address user = makeAddr("him");
         uint256 amountToSend = 100;
-        uint256 maxRedeemed = amountToSend / 2;
+        uint256 maxCashedOut = amountToSend / 2;
 
         // Select our L1 fork to begin this test.
         vm.selectFork(sepoliaFork);
@@ -468,8 +468,8 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         // Approve the sucker to use those project tokens received by the user (we are still pranked as user)
         IERC20(address(projectOneToken)).approve(address(suckerGlobal), projectTokenAmount);
 
-        // Call prepare which uses our project tokens to retrieve (redeem) for our backing tokens (test token)
-        suckerGlobal.prepare(projectTokenAmount, user, maxRedeemed, address(ccipBnM));
+        // Call prepare which uses our project tokens to retrieve (cash out) for our backing tokens (test token)
+        suckerGlobal.prepare(projectTokenAmount, user, maxCashedOut, address(ccipBnM));
         vm.stopPrank();
 
         // Give the root sender some eth to pay the fees
@@ -487,7 +487,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         ccipLocalSimulatorFork.switchChainAndRouteMessage(arbSepoliaFork);
 
         // Check that the tokens were transferred
-        assertEq(ccipBnMArbSepolia.balanceOf(address(suckerGlobal)), maxRedeemed);
+        assertEq(ccipBnMArbSepolia.balanceOf(address(suckerGlobal)), maxCashedOut);
 
         // This is the most simple verification that messages are being sent and received though
         // Meaning CCIP transferred the data to our sucker on L2's inbox
@@ -500,7 +500,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             index: 1,
             beneficiary: user,
             projectTokenAmount: projectTokenAmount,
-            terminalTokenAmount: maxRedeemed
+            terminalTokenAmount: maxCashedOut
         });
 
         // faux proof data for test claim

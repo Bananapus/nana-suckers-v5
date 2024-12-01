@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
+import {IJBCashOutTerminal} from "@bananapus/core/src/interfaces/IJBCashOutTerminal.sol";
 import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/IJBPayoutTerminal.sol";
-import {IJBRedeemTerminal} from "@bananapus/core/src/interfaces/IJBRedeemTerminal.sol";
 import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {mulDiv} from "@prb/math/src/Common.sol";
@@ -23,12 +23,12 @@ abstract contract JBAllowanceSucker is JBSucker {
     // ---------------------- internal functions ------------------------- //
     //*********************************************************************//
 
-    /// @notice Redeems the project tokens for the redemption tokens.
-    /// @param projectToken the token to redeem.
-    /// @param count the amount of project tokens to redeem.
-    /// @param token the token to redeem for.
+    /// @notice Cash out the project tokens for the cash out tokens.
+    /// @param projectToken the token to cash out.
+    /// @param count the amount of project tokens to cash out.
+    /// @param token the token to reclaim.
     /// @param minTokensReclaimed the minimum amount of tokens to receive.
-    /// @return receivedAmount the amount of tokens received by redeeming.
+    /// @return receivedAmount the amount of tokens received by cashing out.
     function _pullBackingAssets(
         IERC20 projectToken,
         uint256 count,
@@ -51,7 +51,7 @@ abstract contract JBAllowanceSucker is JBSucker {
         );
 
         // Get the primary terminal of the project for the token.
-        IJBRedeemTerminal terminal = IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf(_projectId, token)));
+        IJBCashOutTerminal terminal = IJBCashOutTerminal(address(DIRECTORY.primaryTerminalOf(_projectId, token)));
 
         // Make sure a terminal is configured for the token.
         if (address(terminal) == address(0)) {
@@ -68,7 +68,7 @@ abstract contract JBAllowanceSucker is JBSucker {
 
         uint256 backingAssets = mulDiv(count, surplus, totalSupply);
 
-        // Get the balance before we redeem.
+        // Get the balance before we cash out.
         uint256 balanceBefore = _balanceOf(token, address(this));
         receivedAmount = IJBSuckerDeployerFeeless(DEPLOYER).useAllowanceFeeless({
             projectId: _projectId,
