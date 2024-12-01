@@ -312,7 +312,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     // --------------------- external transactions ----------------------- //
     //*********************************************************************//
 
-    /// @notice Adds the reclaimed `token` balance to the projects terminal. Can only be used if `ADD_TO_BALANCE_MODE` is
+    /// @notice Adds the reclaimed `token` balance to the projects terminal. Can only be used if `ADD_TO_BALANCE_MODE`
+    /// is
     /// `MANUAL`.
     /// @param token The address of the terminal token to add to the project's balance.
     function addOutstandingAmountToBalance(address token) external override {
@@ -460,7 +461,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// `toRemote` for the same `token`.
     /// @param projectTokenCount The number of project tokens to prepare for bridging.
     /// @param beneficiary The address of the recipient of the tokens on the remote chain.
-    /// @param minTokensReclaimed The minimum amount of terminal tokens to cash out for. If the amount cashed out is less
+    /// @param minTokensReclaimed The minimum amount of terminal tokens to cash out for. If the amount cashed out is
+    /// less
     /// than this, the transaction will revert.
     /// @param token The address of the terminal token to cash out for.
     function prepare(
@@ -516,7 +518,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         });
     }
 
-    /// @notice Bridge the project tokens, cashed out funds, and beneficiary information for a given `token` to the remote
+    /// @notice Bridge the project tokens, cashed out funds, and beneficiary information for a given `token` to the
+    /// remote
     /// chain.
     /// @dev This sends the outbox root for the specified `token` to the remote chain.
     /// @param token The terminal token being bridged.

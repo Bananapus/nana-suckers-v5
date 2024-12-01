@@ -85,7 +85,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
     function initMetadata() public {
         _metadata = JBRulesetMetadata({
             reservedPercent: JBConstants.MAX_RESERVED_PERCENT / 2, //50%
-            cashOutTaxRate: 0, 
+            cashOutTaxRate: 0,
             baseCurrency: uint32(uint160(address(JBConstants.NATIVE_TOKEN))),
             pausePay: false,
             pauseCreditTransfers: false,
