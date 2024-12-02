@@ -103,14 +103,11 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         // Get the suckers of the project.
         address[] memory suckers = _suckersOf[projectId].keys();
 
-        // Keep a reference to the number of suckers.
-        uint256 numberOfSuckers = suckers.length;
-
         // Initialize the array of pairs.
-        pairs = new JBSuckersPair[](numberOfSuckers);
+        pairs = new JBSuckersPair[](suckers.length);
 
         // Populate the array of pairs.
-        for (uint256 i; i < numberOfSuckers; i++) {
+        for (uint256 i; i < suckers.length; i++) {
             // Get the sucker being iterated over.
             IJBSucker sucker = IJBSucker(suckers[i]);
 
@@ -143,11 +140,8 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     /// @dev Can only be called by this contract's owner (initially project ID 1, or JuiceboxDAO).
     /// @param deployers The address of the deployer to add.
     function allowSuckerDeployers(address[] calldata deployers) public onlyOwner {
-        // Keep a reference to the number of deployers.
-        uint256 numberOfDeployers = deployers.length;
-
         // Iterate through the deployers and allow them.
-        for (uint256 i; i < numberOfDeployers; i++) {
+        for (uint256 i; i < deployers.length; i++) {
             // Get the deployer being iterated over.
             address deployer = deployers[i];
 
@@ -186,11 +180,8 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         // This means that for suckers to be peers, the sender has to be the same on each chain.
         salt = keccak256(abi.encode(msg.sender, salt));
 
-        // Keep a reference to the number of configurations.
-        uint256 numberOfConfigurations = configurations.length;
-
         // Iterate through the configurations and deploy the suckers.
-        for (uint256 i; i < numberOfConfigurations; i++) {
+        for (uint256 i; i < configurations.length; i++) {
             // Get the configuration being iterated over.
             JBSuckerDeployerConfig memory configuration = configurations[i];
 
