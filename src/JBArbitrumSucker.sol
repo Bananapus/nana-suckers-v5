@@ -178,7 +178,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             nativeValue = amount;
         }
 
-        // Send the message to the peer with the redeemed ETH.
+        // Send the message to the peer with the reclaimed ETH.
         // Address `100` is the ArbSys precompile address.
         // slither-disable-next-line calls-loop,unused-return
         ArbSys(address(100)).sendTxToL1{value: nativeValue}(peer(), data);

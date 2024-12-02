@@ -2,10 +2,10 @@
 pragma solidity 0.8.23;
 
 import {JBPermissioned} from "@bananapus/core/src/abstract/JBPermissioned.sol";
+import {IJBCashOutTerminal} from "@bananapus/core/src/interfaces/IJBCashOutTerminal.sol";
 import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
 import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
-import {IJBRedeemTerminal} from "@bananapus/core/src/interfaces/IJBRedeemTerminal.sol";
 import {IJBTerminal} from "@bananapus/core/src/interfaces/IJBTerminal.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
@@ -242,8 +242,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     }
 
     /// @notice Builds a hash as they are stored in the merkle tree.
-    /// @param projectTokenCount The number of project tokens being redeemed.
-    /// @param terminalTokenAmount The amount of terminal tokens being reclaimed by the redemption.
+    /// @param projectTokenCount The number of project tokens being cashed out.
+    /// @param terminalTokenAmount The amount of terminal tokens being reclaimed by the cash out.
     /// @param beneficiary The beneficiary which will receive the project tokens.
     function _buildTreeHash(
         uint256 projectTokenCount,
@@ -312,7 +312,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     // --------------------- external transactions ----------------------- //
     //*********************************************************************//
 
-    /// @notice Adds the redeemed `token` balance to the projects terminal. Can only be used if `ADD_TO_BALANCE_MODE` is
+    /// @notice Adds the reclaimed `token` balance to the projects terminal. Can only be used if `ADD_TO_BALANCE_MODE`
+    /// is
     /// `MANUAL`.
     /// @param token The address of the terminal token to add to the project's balance.
     function addOutstandingAmountToBalance(address token) external override {
@@ -455,14 +456,15 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         emit EmergencyHatchOpened(tokens, msg.sender);
     }
 
-    /// @notice Prepare project tokens and the redemption amount backing them to be bridged to the remote chain.
+    /// @notice Prepare project tokens and the cash out amount backing them to be bridged to the remote chain.
     /// @dev This adds the tokens and funds to the outbox tree for the `token`. They will be bridged by the next call to
     /// `toRemote` for the same `token`.
     /// @param projectTokenCount The number of project tokens to prepare for bridging.
     /// @param beneficiary The address of the recipient of the tokens on the remote chain.
-    /// @param minTokensReclaimed The minimum amount of terminal tokens to redeem for. If the amount reclaimed is less
+    /// @param minTokensReclaimed The minimum amount of terminal tokens to cash out for. If the amount cashed out is
+    /// less
     /// than this, the transaction will revert.
-    /// @param token The address of the terminal token to redeem for.
+    /// @param token The address of the terminal token to cash out for.
     function prepare(
         uint256 projectTokenCount,
         address beneficiary,
@@ -498,7 +500,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         // slither-disable-next-line reentrancy-events,reentrancy-benign
         projectToken.safeTransferFrom({from: msg.sender, to: address(this), value: projectTokenCount});
 
-        // Redeem the tokens.
+        // Cash out the tokens.
         // slither-disable-next-line reentrancy-events,reentrancy-benign
         uint256 terminalTokenAmount = _pullBackingAssets({
             projectToken: projectToken,
@@ -516,7 +518,8 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         });
     }
 
-    /// @notice Bridge the project tokens, redeemed funds, and beneficiary information for a given `token` to the remote
+    /// @notice Bridge the project tokens, cashed out funds, and beneficiary information for a given `token` to the
+    /// remote
     /// chain.
     /// @dev This sends the outbox root for the specified `token` to the remote chain.
     /// @param token The terminal token being bridged.
@@ -593,7 +596,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     // ---------------------------- receive  ----------------------------- //
     //*********************************************************************//
 
-    /// @notice Used to receive redeemed native tokens.
+    /// @notice Used to receive cashed out native tokens.
     receive() external payable {}
 
     //*********************************************************************//
@@ -672,7 +675,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     )
         internal
     {
-        // If this contract's add to balance mode is `ON_CLAIM`, add the redeemed funds to the project's balance.
+        // If this contract's add to balance mode is `ON_CLAIM`, add the cashed out funds to the project's balance.
         if (ADD_TO_BALANCE_MODE == JBAddToBalanceMode.ON_CLAIM) {
             _addToBalance({token: terminalToken, amount: terminalTokenAmount});
         }
@@ -691,9 +694,9 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     }
 
     /// @notice Inserts a new leaf into the outbox merkle tree for the specified `token`.
-    /// @param projectTokenCount The amount of project tokens being redeemed.
-    /// @param token The terminal token being redeemed for.
-    /// @param terminalTokenAmount The amount of terminal tokens reclaimed by redeeming.
+    /// @param projectTokenCount The amount of project tokens being cashed out.
+    /// @param token The terminal token being cashed out for.
+    /// @param terminalTokenAmount The amount of terminal tokens reclaimed by cashing out.
     /// @param beneficiary The beneficiary of the project tokens on the remote chain.
     function _insertIntoTree(
         uint256 projectTokenCount,
@@ -800,13 +803,13 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         });
     }
 
-    /// @notice Redeems project tokens for terminal tokens.
-    /// @param projectToken The project token being redeemed.
-    /// @param count The number of project tokens to redeem.
-    /// @param token The terminal token to redeem for.
+    /// @notice Cash out project tokens for terminal tokens.
+    /// @param projectToken The project token being cashed out.
+    /// @param count The number of project tokens to cash out.
+    /// @param token The terminal token to cash out for.
     /// @param minTokensReclaimed The minimum amount of terminal tokens to reclaim. If the amount reclaimed is less than
     /// this, the transaction will revert.
-    /// @return reclaimedAmount The amount of terminal tokens reclaimed by the redemption.
+    /// @return reclaimedAmount The amount of terminal tokens reclaimed by the cash out.
     function _pullBackingAssets(
         IERC20 projectToken,
         uint256 count,
@@ -821,22 +824,22 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
 
         uint256 _projectId = projectId();
 
-        // Get the project's primary terminal for `token`. We will redeem from this terminal.
-        IJBRedeemTerminal terminal =
-            IJBRedeemTerminal(address(DIRECTORY.primaryTerminalOf({projectId: _projectId, token: token})));
+        // Get the project's primary terminal for `token`. We will cash out from this terminal.
+        IJBCashOutTerminal terminal =
+            IJBCashOutTerminal(address(DIRECTORY.primaryTerminalOf({projectId: _projectId, token: token})));
 
         // If the project doesn't have a primary terminal for `token`, revert.
         if (address(terminal) == address(0)) {
             revert JBSucker_NoTerminalForToken(_projectId, token);
         }
 
-        // Redeem the tokens.
+        // Cash out the tokens.
         uint256 balanceBefore = _balanceOf(token, address(this));
-        reclaimedAmount = terminal.redeemTokensOf({
+        reclaimedAmount = terminal.cashOutTokensOf({
             holder: address(this),
             projectId: _projectId,
+            cashOutCount: count,
             tokenToReclaim: token,
-            redeemCount: count,
             minTokensReclaimed: minTokensReclaimed,
             beneficiary: payable(address(this)),
             metadata: bytes("")
@@ -925,9 +928,9 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// @notice Validates a leaf as being in the inbox merkle tree and registers the leaf as executed (to prevent
     /// double-spending).
     /// @dev Reverts if the leaf is invalid.
-    /// @param projectTokenCount The number of project tokens which were redeemed.
-    /// @param terminalToken The terminal token that the project tokens were redeemed for.
-    /// @param terminalTokenAmount The amount of terminal tokens reclaimed by the redemption.
+    /// @param projectTokenCount The number of project tokens which were cashed out.
+    /// @param terminalToken The terminal token that the project tokens were cashed out for.
+    /// @param terminalTokenAmount The amount of terminal tokens reclaimed by the cash out.
     /// @param beneficiary The beneficiary which will receive the project tokens.
     /// @param index The index of the leaf being proved in the terminal token's inbox tree.
     /// @param leaves The leaves that prove that the leaf at the `index` is in the tree (i.e. the merkle branch that the
@@ -960,9 +963,9 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// @notice Validates a leaf as being in the outbox merkle tree and not being send over the amb, and registers the
     /// leaf as executed (to prevent double-spending).
     /// @dev Reverts if the leaf is invalid.
-    /// @param projectTokenCount The number of project tokens which were redeemed.
-    /// @param terminalToken The terminal token that the project tokens were redeemed for.
-    /// @param terminalTokenAmount The amount of terminal tokens reclaimed by the redemption.
+    /// @param projectTokenCount The number of project tokens which were cashed out.
+    /// @param terminalToken The terminal token that the project tokens were cashed out for.
+    /// @param terminalTokenAmount The amount of terminal tokens reclaimed by the cash out.
     /// @param beneficiary The beneficiary which will receive the project tokens.
     /// @param index The index of the leaf being proved in the terminal token's inbox tree.
     /// @param leaves The leaves that prove that the leaf at the `index` is in the tree (i.e. the merkle branch that the

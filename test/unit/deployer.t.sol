@@ -49,7 +49,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         // Package up the limits for the given terminal.
         JBRulesetMetadata memory _metadata = JBRulesetMetadata({
             reservedPercent: JBConstants.MAX_RESERVED_PERCENT / 2, //50%
-            redemptionRate: JBConstants.MAX_REDEMPTION_RATE, //50%
+            cashOutTaxRate: 0,
             baseCurrency: uint32(uint160(address(JBConstants.NATIVE_TOKEN))),
             pausePay: false,
             pauseCreditTransfers: false,
@@ -62,9 +62,9 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             allowAddPriceFeed: true,
             ownerMustSendPayouts: false,
             holdFees: false,
-            useTotalSurplusForRedemptions: true,
+            useTotalSurplusForCashOuts: true,
             useDataHookForPay: false,
-            useDataHookForRedeem: false,
+            useDataHookForCashOut: false,
             dataHook: address(0),
             metadata: 0
         });
@@ -91,7 +91,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         _rulesetConfigurations[0].mustStartAtOrAfter = 0;
         _rulesetConfigurations[0].duration = 0;
         _rulesetConfigurations[0].weight = 1000 * 10 ** 18;
-        _rulesetConfigurations[0].decayPercent = 0;
+        _rulesetConfigurations[0].weightCutPercent = 0;
         _rulesetConfigurations[0].approvalHook = IJBRulesetApprovalHook(address(0));
         _rulesetConfigurations[0].metadata = _metadata;
         _rulesetConfigurations[0].splitGroups = new JBSplitGroup[](0);
