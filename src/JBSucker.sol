@@ -101,15 +101,6 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     IJBTokens public immutable override TOKENS;
 
     //*********************************************************************//
-    // ---------------------- public stored properties ------------------- //
-    //*********************************************************************//
-
-    /// @notice The outstanding amount of tokens to be added to the project's balance by `claim` or
-    /// `addOutstandingAmountToBalance`.
-    /// @custom:param token The local terminal token to get the amount to add to balance for.
-    mapping(address token => uint256 amount) public override amountToAddToBalanceOf;
-
-    //*********************************************************************//
     // --------------------- private stored properties ------------------- //
     //*********************************************************************//
 
@@ -144,6 +135,14 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     //*********************************************************************//
     // ------------------------ external views --------------------------- //
     //*********************************************************************//
+
+    /// @notice The outstanding amount of tokens to be added to the project's balance by `claim` or
+    /// `addOutstandingAmountToBalance`.
+    /// @param token The local terminal token to get the amount to add to balance for.
+    function amountToAddToBalanceOf(address token) public view override returns (uint256) {
+        // Get the amount that is in this sucker to be bridged.
+        return _balanceOf(token, address(this)) - _outboxOf[token].balance;
+    }
 
     /// @notice The inbox merkle tree root for a given token.
     /// @param token The local terminal token to get the inbox for.
@@ -321,7 +320,7 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         }
 
         // Add entire outstanding amount to the project's balance.
-        _addToBalance({token: token, amount: amountToAddToBalanceOf[token]});
+        _addToBalance({token: token, amount: amountToAddToBalanceOf(token)});
     }
 
     /// @notice Performs multiple claims.
@@ -377,9 +376,6 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         if (!_isRemotePeer(msg.sender)) {
             revert JBSucker_NotPeer(msg.sender);
         }
-
-        // Increase the outstanding amount to be added to the project's balance by the amount being received.
-        amountToAddToBalanceOf[root.token] += root.amount;
 
         // Get the inbox in storage.
         JBInboxTreeRoot storage inbox = _inboxOf[root.token];
@@ -605,14 +601,9 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
     /// @param amount The amount of terminal tokens to add to the project's balance.
     function _addToBalance(address token, uint256 amount) internal {
         // Make sure that the current `amountToAddToBalance` is greater than or equal to the amount being added.
-        uint256 addableAmount = amountToAddToBalanceOf[token];
+        uint256 addableAmount = amountToAddToBalanceOf(token);
         if (amount > addableAmount) {
             revert JBSucker_InsufficientBalance(amount, addableAmount);
-        }
-
-        // Update the outstanding amount of tokens which can be added to the project's balance.
-        unchecked {
-            amountToAddToBalanceOf[token] = addableAmount - amount;
         }
 
         uint256 _projectId = projectId();
@@ -778,14 +769,6 @@ abstract contract JBSucker is JBPermissioned, Initializable, ERC165, IJBSuckerEx
         // to the remote chain.
         if (map.remoteToken == address(0) && _outboxOf[token].balance != 0) {
             _sendRoot({transportPayment: transportPaymentValue, token: token, remoteToken: currentMapping});
-        }
-
-        // There is a niche edge-case where if the remote sucker has send us tokens but this contract was not deployed
-        // we might have missed adding the received amount to the `amountToAddToBalanceOf`.
-        // If we have no items in the outbox tree we can safely add the received amount to the `amountToAddToBalanceOf`.
-        // As this sucker should have no balance of the specific token.
-        if (_outboxOf[token].tree.count == 0 && amountToAddToBalanceOf[token] == 0) {
-            amountToAddToBalanceOf[token] = _balanceOf({token: token, addr: address(this)});
         }
 
         // Update the token mapping.
