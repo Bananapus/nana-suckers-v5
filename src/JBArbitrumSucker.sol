@@ -204,6 +204,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         uint256 maxSubmissionCost =
             ARBINBOX.calculateRetryableSubmissionFee({dataLength: data.length, baseFee: maxFeePerGas});
 
+        uint256 maxSubmissionCostERC20 =
+            ARBINBOX.calculateRetryableSubmissionFee({dataLength: 0, baseFee: maxFeePerGas});
+
         uint256 feeTotal = maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * maxFeePerGas);
 
         // If the token is an ERC-20, bridge it to the peer.
@@ -225,8 +228,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
                 amount: amount,
                 maxGas: MESSENGER_BASE_GAS_LIMIT,
                 gasPriceBid: 0.2 gwei,
-                // Calculating this in-line saves us a staticcall to `calculateRetryableSubmissionFee`.
-                data: bytes(abi.encode(maxFeePerGas * 1400, bytes("")))
+                data: bytes(abi.encode(maxSubmissionCostERC20, bytes("")))
             });
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
