@@ -268,7 +268,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
 
         vm.stopPrank();
         vm.startPrank(address(0x1112222));
-        suckerDeployer = new JBCCIPSuckerDeployer(jbDirectory(), jbPermissions(), jbTokens(), address(this));
+        suckerDeployer = new JBCCIPSuckerDeployer(jbDirectory(), jbPermissions(), jbTokens(), address(this), address(0));
         vm.stopPrank();
 
         // Set the remote chain as arb-sep, which also grabs the chain selector from CCIPHelper for deployer
@@ -328,7 +328,8 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         vm.stopPrank();
 
         vm.startPrank(address(0x1112222));
-        suckerDeployer2 = new JBCCIPSuckerDeployer(jbDirectory(), jbPermissions(), jbTokens(), address(this));
+        suckerDeployer2 =
+            new JBCCIPSuckerDeployer(jbDirectory(), jbPermissions(), jbTokens(), address(this), address(0));
         vm.stopPrank();
 
         suckerDeployer2.setChainSpecificConstants(

@@ -43,7 +43,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         super.setUp();
 
         // Deploy the registry.
-        registry = new JBSuckerRegistry(jbDirectory(), jbPermissions(), address(this));
+        registry = new JBSuckerRegistry(jbDirectory(), jbPermissions(), address(this), address(0));
 
         // Setup: terminal / project
         // Package up the limits for the given terminal.
@@ -136,7 +136,8 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             directory: jbDirectory(),
             permissions: jbPermissions(),
             tokens: jbTokens(),
-            configurator: address(this)
+            configurator: address(this),
+            trusted_forwarder: address(0)
         });
 
         deployer = OPDeployer;
@@ -171,7 +172,8 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             directory: jbDirectory(),
             permissions: jbPermissions(),
             tokens: jbTokens(),
-            configurator: address(this)
+            configurator: address(this),
+            trusted_forwarder: address(0)
         });
 
         deployer = CCIPDeployer;
@@ -211,7 +213,8 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             directory: jbDirectory(),
             permissions: jbPermissions(),
             tokens: jbTokens(),
-            configurator: address(this)
+            configurator: address(this),
+            trusted_forwarder: address(0)
         });
 
         deployer = ARBDeployer;

@@ -47,9 +47,10 @@ contract JBArbitrumSuckerDeployer is JBSuckerDeployer, IJBArbitrumSuckerDeployer
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
-        address configurator
+        address configurator,
+        address trusted_forwarder
     )
-        JBSuckerDeployer(directory, permissions, tokens, configurator)
+        JBSuckerDeployer(directory, permissions, tokens, configurator, trusted_forwarder)
     {}
 
     //*********************************************************************//
@@ -65,8 +66,8 @@ contract JBArbitrumSuckerDeployer is JBSuckerDeployer, IJBArbitrumSuckerDeployer
             revert JBSuckerDeployer_AlreadyConfigured();
         }
 
-        if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR) {
-            revert JBSuckerDeployer_Unauthorized(msg.sender, LAYER_SPECIFIC_CONFIGURATOR);
+        if (_msgSender() != LAYER_SPECIFIC_CONFIGURATOR) {
+            revert JBSuckerDeployer_Unauthorized(_msgSender(), LAYER_SPECIFIC_CONFIGURATOR);
         }
 
         // Configure these layer specific properties.

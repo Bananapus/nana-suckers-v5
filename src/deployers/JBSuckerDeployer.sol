@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {JBPermissioned} from "@bananapus/core/src/abstract/JBPermissioned.sol";
 import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
 import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
+import {IJBSuckerDeployer} from "./../interfaces/IJBSuckerDeployer.sol";
+import {IJBSucker} from "./../interfaces/IJBSucker.sol";
 
+import {JBPermissioned} from "@bananapus/core/src/abstract/JBPermissioned.sol";
 import {LibClone} from "solady/src/utils/LibClone.sol";
 import {JBSucker} from "../JBSucker.sol";
-import {IJBSucker} from "./../interfaces/IJBSucker.sol";
-import {IJBSuckerDeployer} from "./../interfaces/IJBSuckerDeployer.sol";
+import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 /// @notice A base implementation for deploying suckers.
-abstract contract JBSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
+abstract contract JBSuckerDeployer is ERC2771Context, JBPermissioned, IJBSuckerDeployer {
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
@@ -43,6 +45,23 @@ abstract contract JBSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     /// @notice Check if the layer specific configuration is set or not. Used as a sanity check.
     function _layerSpecificConfigurationIsSet() internal view virtual returns (bool);
 
+    /// @notice The message's sender. Preferred to use over `msg.sender`.
+    /// @return sender The address which sent this call.
+    function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
+        return ERC2771Context._msgSender();
+    }
+
+    /// @notice The calldata. Preferred to use over `msg.data`.
+    /// @return calldata The `msg.data` of this call.
+    function _msgData() internal view override(ERC2771Context, Context) returns (bytes calldata) {
+        return ERC2771Context._msgData();
+    }
+
+    /// @dev ERC-2771 specifies the context as being a single address (20 bytes).
+    function _contextSuffixLength() internal view virtual override(ERC2771Context, Context) returns (uint256) {
+        return ERC2771Context._contextSuffixLength();
+    }
+
     //*********************************************************************//
     // ---------------------------- constructor -------------------------- //
     //*********************************************************************//
@@ -55,8 +74,10 @@ abstract contract JBSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
-        address configurator
+        address configurator,
+        address trusted_forwarder
     )
+        ERC2771Context(trusted_forwarder)
         JBPermissioned(permissions)
     {
         DIRECTORY = directory;
@@ -78,8 +99,8 @@ abstract contract JBSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     /// @param _singleton The address of the singleton.
     function configureSingleton(JBSucker _singleton) external {
         // Make sure only the configurator can call this function.
-        if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR) {
-            revert JBSuckerDeployer_Unauthorized(msg.sender, LAYER_SPECIFIC_CONFIGURATOR);
+        if (_msgSender() != LAYER_SPECIFIC_CONFIGURATOR) {
+            revert JBSuckerDeployer_Unauthorized(_msgSender(), LAYER_SPECIFIC_CONFIGURATOR);
         }
 
         // Ensure that the layer specific configuration is set.
@@ -112,7 +133,7 @@ abstract contract JBSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
         }
 
         // Hash the salt with the sender address to ensure only a specific sender can create this sucker.
-        salt = keccak256(abi.encodePacked(msg.sender, salt));
+        salt = keccak256(abi.encodePacked(_msgSender(), salt));
 
         // Clone the singleton.
         sucker = IJBSucker(LibClone.cloneDeterministic(address(singleton), salt));

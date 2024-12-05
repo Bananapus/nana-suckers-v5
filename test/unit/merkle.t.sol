@@ -168,7 +168,7 @@ contract DeployerUnitTest is Test {
     function testDoesntRevert() public {
         // Deploy the deployer.
         JBOptimismSuckerDeployer _deployer = new JBOptimismSuckerDeployer(
-            IJBDirectory(address(0)), IJBPermissions(address(0)), IJBTokens(address(0)), address(this)
+            IJBDirectory(address(0)), IJBPermissions(address(0)), IJBTokens(address(0)), address(this), address(0)
         );
 
         // Configure the chain specific contstants.
