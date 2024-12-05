@@ -65,7 +65,9 @@ abstract contract JBAllowanceSucker is JBSucker {
             revert JBAllowanceSucker_TokenNotAccepted(_projectId, token);
         }
 
-        uint256 surplus = terminal.currentSurplusOf(_projectId, accountingContext, accountingContext[0].decimals, accountingContext[0].currency);
+        uint256 surplus = terminal.currentSurplusOf(
+            _projectId, accountingContext, accountingContext[0].decimals, accountingContext[0].currency
+        );
 
         uint256 backingAssets = mulDiv(count, surplus, totalSupply);
 

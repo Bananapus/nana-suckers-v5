@@ -160,7 +160,11 @@ contract SuckerEmergencyTest is Test {
     function _createTestSucker(uint256 projectId, bytes32 salt) internal returns (TestSucker) {
         // Singleton.
         TestSucker singleton = new TestSucker(
-            IJBDirectory(DIRECTORY), IJBPermissions(PERMISSIONS), IJBTokens(TOKENS), JBAddToBalanceMode.MANUAL, FORWARDER
+            IJBDirectory(DIRECTORY),
+            IJBPermissions(PERMISSIONS),
+            IJBTokens(TOKENS),
+            JBAddToBalanceMode.MANUAL,
+            FORWARDER
         );
         vm.label(address(singleton), "SUCKER_SINGLETON");
 
