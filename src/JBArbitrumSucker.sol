@@ -268,7 +268,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             l2CallValue: nativeValue,
             maxSubmissionCost: maxSubmissionCost,
             excessFeeRefundAddress: _msgSender(),
-            callValueRefundAddress: _msgSender(),
+            callValueRefundAddress: peer(),
             gasLimit: MESSENGER_BASE_GAS_LIMIT,
             maxFeePerGas: maxFeePerGas,
             data: data
