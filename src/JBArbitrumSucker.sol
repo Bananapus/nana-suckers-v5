@@ -198,7 +198,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         internal
     {
         uint256 nativeValue;
-        uint256 maxFeePerGas = 0.2 gwei;
+        uint256 maxFeePerGas = block.basefee;
 
         // slither-disable-next-line calls-loop
         uint256 maxSubmissionCost =
@@ -240,7 +240,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
                 to: peer(),
                 amount: amount,
                 maxGas: remoteToken.minGas,
-                gasPriceBid: 0.2 gwei,
+                gasPriceBid: maxFeePerGas,
                 data: bytes(abi.encode(maxSubmissionCostERC20, bytes("")))
             });
         } else {
