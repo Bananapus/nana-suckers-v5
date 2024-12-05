@@ -21,4 +21,8 @@ contract ArbitrumTest is Test {
         assertGt(maxSubmissionCostERC20, 0);
         assertEq(maxSubmissionCostERC20, maxFeePerGas * 1400);
     }
+
+    function testERC20CallDataLength() public {
+        assertEq(abi.encode(uint256(0), bytes("")).length, 96);
+    }
 }
