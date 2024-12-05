@@ -209,9 +209,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
-            // Calculate the cost of the ERC-20 transfer.
+            // Calculate the cost of the ERC-20 transfer. (96 is the length of the abi encoded `data`)
             uint256 maxSubmissionCostERC20 =
-                ARBINBOX.calculateRetryableSubmissionFee({dataLength: 0, baseFee: maxFeePerGas});
+                ARBINBOX.calculateRetryableSubmissionFee({dataLength: 96, baseFee: maxFeePerGas});
 
             uint256 tokenTransportCost = maxSubmissionCostERC20 + (remoteToken.minGas * maxFeePerGas);
 
