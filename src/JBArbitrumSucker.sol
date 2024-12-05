@@ -193,23 +193,39 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         uint256 transportPayment,
         uint256 amount,
         bytes memory data,
-        JBRemoteToken memory /* remoteToken */
+        JBRemoteToken memory remoteToken
     )
         internal
     {
         uint256 nativeValue;
+        uint256 maxFeePerGas = block.basefee;
+
         // slither-disable-next-line calls-loop
         uint256 maxSubmissionCost =
-            ARBINBOX.calculateRetryableSubmissionFee({dataLength: data.length, baseFee: 0.2 gwei});
-        uint256 feeTotal = maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * 0.2 gwei);
+            ARBINBOX.calculateRetryableSubmissionFee({dataLength: data.length, baseFee: maxFeePerGas});
 
-        // Ensure we bridge enough for gas costs on L2 side
-        if (transportPayment < feeTotal) revert JBArbitrumSucker_NotEnoughGas(transportPayment, feeTotal);
+        // Tracks the cost for the call to the remote peer.
+        uint256 callTransportCost = maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * maxFeePerGas);
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
-            // Split the transport payment in half for the two uses of transportPayment below.
-            transportPayment = transportPayment / 2;
+            // Calculate the cost of the ERC-20 transfer. (96 is the length of the abi encoded `data`)
+            uint256 maxSubmissionCostERC20 =
+                ARBINBOX.calculateRetryableSubmissionFee({dataLength: 96, baseFee: maxFeePerGas});
+
+            uint256 tokenTransportCost = maxSubmissionCostERC20 + (remoteToken.minGas * maxFeePerGas);
+
+            // Ensure we bridge enough for gas costs on L2 side
+            if (transportPayment < callTransportCost + tokenTransportCost) {
+                revert JBArbitrumSucker_NotEnoughGas(transportPayment, callTransportCost + tokenTransportCost);
+            }
+
+            {
+                // The amount of left over transportPayment will be split over the two calls.
+                uint256 transportPaymentRemainder = (transportPayment - callTransportCost - tokenTransportCost) / 2;
+                tokenTransportCost += transportPaymentRemainder;
+                callTransportCost += transportPaymentRemainder;
+            }
 
             // Approve the tokens to be bridged.
             // slither-disable-next-line calls-loop
@@ -218,30 +234,43 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             // Perform the ERC-20 bridge transfer.
             // slither-disable-start out-of-order-retryable
             // slither-disable-next-line calls-loop,unused-return
-            IArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: transportPayment}({
+            IArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: tokenTransportCost}({
                 token: token,
                 refundTo: msg.sender,
                 to: peer(),
                 amount: amount,
-                maxGas: MESSENGER_BASE_GAS_LIMIT,
-                gasPriceBid: 0.2 gwei,
-                data: bytes(abi.encode(maxSubmissionCost, bytes("")))
+                maxGas: remoteToken.minGas,
+                gasPriceBid: maxFeePerGas,
+                data: bytes(abi.encode(maxSubmissionCostERC20, bytes("")))
             });
         } else {
+            // Ensure we bridge enough for gas costs on L2 side
+            if (transportPayment < callTransportCost) {
+                revert JBArbitrumSucker_NotEnoughGas(transportPayment, callTransportCost);
+            }
+
+            // If the token is the native token then we only need to do a single call.
+            // So it should use all of the transportPayment.
+            callTransportCost = transportPayment;
+
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
         }
 
         // Create the retryable ticket containing the merkleRoot.
+        // We call unsafe as we do not want the refund address to be aliased to L2.
+        // The above check is the same check that makes it `safeCreateRetryableTicket`.
+
         // slither-disable-next-line calls-loop,unused-return
-        ARBINBOX.createRetryableTicket{value: transportPayment + nativeValue}({
+        ARBINBOX.unsafeCreateRetryableTicket{value: callTransportCost + nativeValue}({
             to: peer(),
             l2CallValue: nativeValue,
             maxSubmissionCost: maxSubmissionCost,
             excessFeeRefundAddress: msg.sender,
-            callValueRefundAddress: msg.sender,
+            // In the case that the call fails we want to send the native asset to the peer on the L2.
+            callValueRefundAddress: peer(),
             gasLimit: MESSENGER_BASE_GAS_LIMIT,
-            maxFeePerGas: 0.2 gwei,
+            maxFeePerGas: maxFeePerGas,
             data: data
         });
         // slither-disable-end out-of-order-retryable
