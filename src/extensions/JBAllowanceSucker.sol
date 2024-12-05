@@ -59,12 +59,15 @@ abstract contract JBAllowanceSucker is JBSucker {
         }
 
         // Get the accounting context for the token.
-        JBAccountingContext memory accountingContext = terminal.accountingContextForTokenOf(_projectId, token);
-        if (accountingContext.currency == 0) {
+        JBAccountingContext[] memory accountingContext = new JBAccountingContext[](1);
+        accountingContext[0] = terminal.accountingContextForTokenOf(_projectId, token);
+        if (accountingContext[0].currency == 0) {
             revert JBAllowanceSucker_TokenNotAccepted(_projectId, token);
         }
 
-        uint256 surplus = terminal.currentSurplusOf(_projectId, accountingContext.decimals, accountingContext.currency);
+        uint256 surplus = terminal.currentSurplusOf(
+            _projectId, accountingContext, accountingContext[0].decimals, accountingContext[0].currency
+        );
 
         uint256 backingAssets = mulDiv(count, surplus, totalSupply);
 
@@ -74,7 +77,7 @@ abstract contract JBAllowanceSucker is JBSucker {
             projectId: _projectId,
             terminal: IJBPayoutTerminal(address(terminal)),
             token: token,
-            currency: accountingContext.currency,
+            currency: accountingContext[0].currency,
             amount: backingAssets,
             minTokensReclaimed: minTokensReclaimed
         });

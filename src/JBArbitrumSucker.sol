@@ -75,7 +75,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
     // ------------------------ internal views --------------------------- //
     //*********************************************************************//
 
-    /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
+    /// @notice Checks if the `sender` (`_msgSender()`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
     /// @return valid A flag if the sender is a valid representative of the remote peer.
     function _isRemotePeer(address sender) internal view override returns (bool) {
@@ -103,9 +103,10 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
-        JBAddToBalanceMode addToBalanceMode
+        JBAddToBalanceMode addToBalanceMode,
+        address trusted_forwarder
     )
-        JBSucker(directory, permissions, tokens, addToBalanceMode)
+        JBSucker(directory, permissions, tokens, addToBalanceMode, trusted_forwarder)
     {
         GATEWAYROUTER = JBArbitrumSuckerDeployer(deployer).arbGatewayRouter();
         ARBINBOX = JBArbitrumSuckerDeployer(deployer).arbInbox();
@@ -236,7 +237,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             // slither-disable-next-line calls-loop,unused-return
             IArbL1GatewayRouter(address(GATEWAYROUTER)).outboundTransferCustomRefund{value: tokenTransportCost}({
                 token: token,
-                refundTo: msg.sender,
+                refundTo: _msgSender(),
                 to: peer(),
                 amount: amount,
                 maxGas: remoteToken.minGas,
@@ -266,8 +267,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             to: peer(),
             l2CallValue: nativeValue,
             maxSubmissionCost: maxSubmissionCost,
-            excessFeeRefundAddress: msg.sender,
-            // In the case that the call fails we want to send the native asset to the peer on the L2.
+            excessFeeRefundAddress: _msgSender(),
             callValueRefundAddress: peer(),
             gasLimit: MESSENGER_BASE_GAS_LIMIT,
             maxFeePerGas: maxFeePerGas,

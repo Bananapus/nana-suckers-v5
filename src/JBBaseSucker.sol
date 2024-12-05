@@ -18,9 +18,10 @@ contract JBBaseSucker is JBOptimismSucker {
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
-        JBAddToBalanceMode addToBalanceMode
+        JBAddToBalanceMode addToBalanceMode,
+        address trusted_forwarder
     )
-        JBOptimismSucker(deployer, directory, permissions, tokens, addToBalanceMode)
+        JBOptimismSucker(deployer, directory, permissions, tokens, addToBalanceMode, trusted_forwarder)
     {}
 
     //*********************************************************************//

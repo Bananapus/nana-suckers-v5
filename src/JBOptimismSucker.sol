@@ -66,9 +66,10 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
-        JBAddToBalanceMode addToBalanceMode
+        JBAddToBalanceMode addToBalanceMode,
+        address trusted_forwarder
     )
-        JBSucker(directory, permissions, tokens, addToBalanceMode)
+        JBSucker(directory, permissions, tokens, addToBalanceMode, trusted_forwarder)
     {
         // Fetch the messenger and bridge by doing a callback to the deployer contract.
         OPBRIDGE = JBOptimismSuckerDeployer(deployer).opBridge();
@@ -79,7 +80,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
     // --------------------- internal transactions ----------------------- //
     //*********************************************************************//
 
-    /// @notice Checks if the `sender` (`msg.sender`) is a valid representative of the remote peer.
+    /// @notice Checks if the `sender` (`_msgSender()`) is a valid representative of the remote peer.
     /// @param sender The message's sender.
     function _isRemotePeer(address sender) internal override returns (bool valid) {
         return sender == address(OPMESSENGER) && OPMESSENGER.xDomainMessageSender() == peer();

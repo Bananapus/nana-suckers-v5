@@ -21,6 +21,6 @@ contract RegistryUnitTest is Test {
         JBProjects _projects = new JBProjects(msg.sender, address(0));
         JBPermissions _permissions = new JBPermissions();
         JBDirectory _directory = new JBDirectory(_permissions, _projects, address(100));
-        new JBSuckerRegistry(_directory, _permissions, address(100));
+        new JBSuckerRegistry(_directory, _permissions, address(100), address(0));
     }
 }

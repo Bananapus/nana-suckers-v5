@@ -15,6 +15,7 @@ contract SuckerEmergencyTest is Test {
     address constant TOKENS = address(700);
     address constant CONTROLLER = address(900);
     address constant PROJECT = address(1000);
+    address constant FORWARDER = address(1100);
 
     function setUp() public {
         vm.label(DIRECTORY, "MOCK_DIRECTORY");
@@ -159,7 +160,11 @@ contract SuckerEmergencyTest is Test {
     function _createTestSucker(uint256 projectId, bytes32 salt) internal returns (TestSucker) {
         // Singleton.
         TestSucker singleton = new TestSucker(
-            IJBDirectory(DIRECTORY), IJBPermissions(PERMISSIONS), IJBTokens(TOKENS), JBAddToBalanceMode.MANUAL
+            IJBDirectory(DIRECTORY),
+            IJBPermissions(PERMISSIONS),
+            IJBTokens(TOKENS),
+            JBAddToBalanceMode.MANUAL,
+            FORWARDER
         );
         vm.label(address(singleton), "SUCKER_SINGLETON");
 
@@ -183,9 +188,10 @@ contract TestSucker is JBSucker {
         IJBDirectory directory,
         IJBPermissions permissions,
         IJBTokens tokens,
-        JBAddToBalanceMode addToBalanceMode
+        JBAddToBalanceMode addToBalanceMode,
+        address forwarder
     )
-        JBSucker(directory, permissions, tokens, addToBalanceMode)
+        JBSucker(directory, permissions, tokens, addToBalanceMode, forwarder)
     {}
 
     function _sendRootOverAMB(

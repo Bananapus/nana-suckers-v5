@@ -11,6 +11,8 @@ import {JBRulesetMetadata} from "@bananapus/core/src/structs/JBRulesetMetadata.s
 import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
+import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 import {IJBSucker} from "./interfaces/IJBSucker.sol";
 import {IJBSuckerDeployer} from "./interfaces/IJBSuckerDeployer.sol";
@@ -19,7 +21,7 @@ import {JBSuckerDeployerConfig} from "./structs/JBSuckerDeployerConfig.sol";
 import {JBSuckersPair} from "./structs/JBSuckersPair.sol";
 import {JBSuckerState} from "./enums/JBSuckerState.sol";
 
-contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
+contract JBSuckerRegistry is ERC2771Context, Ownable, JBPermissioned, IJBSuckerRegistry {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
     //*********************************************************************//
@@ -64,6 +66,27 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     mapping(uint256 => EnumerableMap.AddressToUintMap) internal _suckersOf;
 
     //*********************************************************************//
+    // ------------------------ internal views --------------------------- //
+    //*********************************************************************//
+
+    /// @notice The calldata. Preferred to use over `msg.data`.
+    /// @return calldata The `msg.data` of this call.
+    function _msgData() internal view override(ERC2771Context, Context) returns (bytes calldata) {
+        return ERC2771Context._msgData();
+    }
+
+    /// @notice The message's sender. Preferred to use over `msg.sender`.
+    /// @return sender The address which sent this call.
+    function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
+        return ERC2771Context._msgSender();
+    }
+
+    /// @dev ERC-2771 specifies the context as being a single address (20 bytes).
+    function _contextSuffixLength() internal view virtual override(ERC2771Context, Context) returns (uint256) {
+        return ERC2771Context._contextSuffixLength();
+    }
+
+    //*********************************************************************//
     // -------------------------- constructor ---------------------------- //
     //*********************************************************************//
 
@@ -73,8 +96,10 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     constructor(
         IJBDirectory directory,
         IJBPermissions permissions,
-        address initialOwner
+        address initialOwner,
+        address trusted_forwarder
     )
+        ERC2771Context(trusted_forwarder)
         JBPermissioned(permissions)
         Ownable(initialOwner)
     {
@@ -133,7 +158,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     /// @param deployer The address of the deployer to add.
     function allowSuckerDeployer(address deployer) public override onlyOwner {
         suckerDeployerIsAllowed[deployer] = true;
-        emit SuckerDeployerAllowed({deployer: deployer, caller: msg.sender});
+        emit SuckerDeployerAllowed({deployer: deployer, caller: _msgSender()});
     }
 
     /// @notice Adds multiple suckers deployer to the allowlist.
@@ -147,7 +172,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
 
             // Allow the deployer.
             suckerDeployerIsAllowed[deployer] = true;
-            emit SuckerDeployerAllowed({deployer: deployer, caller: msg.sender});
+            emit SuckerDeployerAllowed({deployer: deployer, caller: _msgSender()});
         }
     }
 
@@ -178,7 +203,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
 
         // Calculate the salt using the sender's address and the provided `salt`.
         // This means that for suckers to be peers, the sender has to be the same on each chain.
-        salt = keccak256(abi.encode(msg.sender, salt));
+        salt = keccak256(abi.encode(_msgSender(), salt));
 
         // Iterate through the configurations and deploy the suckers.
         for (uint256 i; i < configurations.length; i++) {
@@ -206,7 +231,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
                 projectId: projectId,
                 sucker: address(sucker),
                 configuration: configuration,
-                caller: msg.sender
+                caller: _msgSender()
             });
         }
     }
@@ -230,7 +255,7 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
         // Remove the sucker from the registry.
         // slither-disable-next-line unused-return
         _suckersOf[projectId].remove(address(sucker));
-        emit SuckerDeprecated({projectId: projectId, sucker: address(sucker), caller: msg.sender});
+        emit SuckerDeprecated({projectId: projectId, sucker: address(sucker), caller: _msgSender()});
     }
 
     /// @notice Removes a sucker deployer from the allowlist.
@@ -238,6 +263,6 @@ contract JBSuckerRegistry is Ownable, JBPermissioned, IJBSuckerRegistry {
     /// @param deployer The address of the deployer to remove.
     function removeSuckerDeployer(address deployer) public override onlyOwner {
         suckerDeployerIsAllowed[deployer] = false;
-        emit SuckerDeployerRemoved({deployer: deployer, caller: msg.sender});
+        emit SuckerDeployerRemoved({deployer: deployer, caller: _msgSender()});
     }
 }
