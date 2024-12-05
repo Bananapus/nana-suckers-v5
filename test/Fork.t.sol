@@ -62,8 +62,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
 
     // RPCs
     string ETHEREUM_SEPOLIA_RPC_URL = vm.envOr("RPC_ETHEREUM_SEPOLIA", string("https://1rpc.io/sepolia"));
-    string ARBITRUM_SEPOLIA_RPC_URL =
-        vm.envOr("RPC_ARBITRUM_SEPOLIA", string("https://arbitrum-sepolia.blockpi.network/v1/rpc/public"));
+    string ARBITRUM_SEPOLIA_RPC_URL = vm.envOr("RPC_ARBITRUM_SEPOLIA", string("https://rpc.ankr.com/arbitrum_sepolia"));
 
     //*********************************************************************//
     // ---------------------------- Setup parts -------------------------- //
@@ -417,6 +416,10 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         vm.prank(rootSender);
         suckerGlobal.toRemote{value: 1 ether}(JBConstants.NATIVE_TOKEN);
 
+        // Check outbox is cleared
+        uint256 outboxBalance = suckerGlobal.outboxOf(JBConstants.NATIVE_TOKEN).balance;
+        assertEq(outboxBalance, 0);
+
         // Fees are paid but balance isn't zero (excess msg.value is returned)
         assert(rootSender.balance < 1 ether);
         assert(rootSender.balance > 0);
@@ -484,6 +487,10 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         // Fees are paid but balance isn't zero (excess msg.value is returned)
         assert(rootSender.balance < 1 ether);
         assert(rootSender.balance > 0);
+
+        // Check outbox is cleared
+        uint256 outboxBalance = suckerGlobal.outboxOf(address(ccipBnM)).balance;
+        assertEq(outboxBalance, 0);
 
         // Use CCIP local to initiate the transfer on the L2
         ccipLocalSimulatorFork.switchChainAndRouteMessage(arbSepoliaFork);
