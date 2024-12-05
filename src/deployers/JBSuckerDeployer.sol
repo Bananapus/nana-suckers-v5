@@ -7,6 +7,7 @@ import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol"
 import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
 
 import {LibClone} from "solady/src/utils/LibClone.sol";
+import {JBSucker} from "../JBSucker.sol";
 import {IJBSucker} from "./../interfaces/IJBSucker.sol";
 import {IJBSuckerDeployer} from "./../interfaces/IJBSuckerDeployer.sol";
 
@@ -33,7 +34,7 @@ abstract contract JBSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     mapping(address => bool) public override isSucker;
 
     /// @notice The singleton used to clone suckers.
-    IJBSucker public singleton;
+    JBSucker public singleton;
 
     //*********************************************************************//
     // ------------------------ internal views --------------------------- //
@@ -75,7 +76,7 @@ abstract contract JBSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
     /// @notice Configure the singleton instance that is used to clone suckers.
     /// @dev Can only be called *once* by the layer specific configurator.
     /// @param _singleton The address of the singleton.
-    function configureSingleton(IJBSucker _singleton) external {
+    function configureSingleton(JBSucker _singleton) external {
         // Make sure only the configurator can call this function.
         if (msg.sender != LAYER_SPECIFIC_CONFIGURATOR) {
             revert JBSuckerDeployer_Unauthorized(msg.sender, LAYER_SPECIFIC_CONFIGURATOR);
@@ -120,6 +121,6 @@ abstract contract JBSuckerDeployer is JBPermissioned, IJBSuckerDeployer {
         isSucker[address(sucker)] = true;
 
         // Initialize the clone.
-        IJBSucker(payable(address(sucker))).initialize({peer: address(sucker), projectId: localProjectId});
+        JBSucker(payable(address(sucker))).initialize(localProjectId);
     }
 }

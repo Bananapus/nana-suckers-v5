@@ -239,7 +239,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         CCIP_ROUTER.ccipSend{value: fees}({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: message});
 
         // Refund remaining balance.
-        // slither-disable-next-line calls-loop
+        // slither-disable-next-line calls-loop,msg-value-loop
         (bool sent,) = _msgSender().call{value: msg.value - fees}("");
         if (!sent) revert JBCCIPSucker_FailedToRefundFee();
     }

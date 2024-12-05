@@ -130,7 +130,7 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
             nativeValue = amount;
         }
 
-        // Send the message to the peer with the redeemed ETH.
+        // Send the message to the peer with the reclaimed ETH.
         // slither-disable-next-line arbitrary-send-eth,reentrency-events,calls-loop
         OPMESSENGER.sendMessage{value: nativeValue}(
             peer(), abi.encodeCall(JBSucker.fromRemote, (message)), MESSENGER_BASE_GAS_LIMIT

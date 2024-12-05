@@ -158,6 +158,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
 
         // Revert if there's a `msg.value`. Sending a message to L1 does not require any payment.
         if (msg.value != 0) {
+            // slither-disable-next-line msg-value-loop
             revert JBSucker_UnexpectedMsgValue(msg.value);
         }
 
@@ -178,7 +179,7 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
             nativeValue = amount;
         }
 
-        // Send the message to the peer with the redeemed ETH.
+        // Send the message to the peer with the reclaimed ETH.
         // Address `100` is the ArbSys precompile address.
         // slither-disable-next-line calls-loop,unused-return
         ArbSys(address(100)).sendTxToL1{value: nativeValue}(peer(), data);
@@ -208,6 +209,9 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
 
         // If the token is an ERC-20, bridge it to the peer.
         if (token != JBConstants.NATIVE_TOKEN) {
+            // Split the transport payment in half for the two uses of transportPayment below.
+            transportPayment = transportPayment / 2;
+
             // Approve the tokens to be bridged.
             // slither-disable-next-line calls-loop
             SafeERC20.forceApprove({token: IERC20(token), spender: GATEWAYROUTER.getGateway(token), value: amount});
@@ -220,29 +224,18 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
                 refundTo: _msgSender(),
                 to: peer(),
                 amount: amount,
-                maxGas: MESSENGER_BASE_GAS_LIMIT, // minimum appears to be 275000 per their sdk -
-                    // MESSENGER_BASE_GAS_LIMIT = 300k here
-                gasPriceBid: 0.2 gwei, // sane enough for now - covers moderate congestion, maybe decide client side in
-                    // the future
-                data: bytes(abi.encode(maxSubmissionCost, data)) // @note: maybe this is zero if we pay with msg.value?
-                    // we'll see in testing
+                maxGas: MESSENGER_BASE_GAS_LIMIT,
+                gasPriceBid: 0.2 gwei,
+                data: bytes(abi.encode(maxSubmissionCost, bytes("")))
             });
         } else {
             // Otherwise, the token is the native token, and the amount will be sent as `msg.value`.
             nativeValue = amount;
         }
 
-        // Ensure we bridge enough for gas costs on L2 side
-        // transportPayment is ref of msg.value
-        if (nativeValue + feeTotal > transportPayment) {
-            revert JBArbitrumSucker_NotEnoughGas(
-                transportPayment < nativeValue ? 0 : transportPayment - nativeValue, feeTotal
-            );
-        }
-
         // Create the retryable ticket containing the merkleRoot.
         // slither-disable-next-line calls-loop,unused-return
-        ARBINBOX.createRetryableTicket{value: transportPayment}({
+        ARBINBOX.createRetryableTicket{value: transportPayment + nativeValue}({
             to: peer(),
             l2CallValue: nativeValue,
             maxSubmissionCost: maxSubmissionCost,
