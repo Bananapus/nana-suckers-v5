@@ -4,13 +4,16 @@ pragma solidity 0.8.23;
 import "../src/deployers/JBOptimismSuckerDeployer.sol";
 import "../src/deployers/JBBaseSuckerDeployer.sol";
 import "../src/deployers/JBArbitrumSuckerDeployer.sol";
+import "../src/deployers/JBCCIPSuckerDeployer.sol";
 import "@bananapus/core/script/helpers/CoreDeploymentLib.sol";
 
 import {Sphinx} from "@sphinx-labs/contracts/SphinxPlugin.sol";
 import {Script} from "forge-std/Script.sol";
 import {JBSuckerRegistry} from "./../src/JBSuckerRegistry.sol";
+import {ICCIPRouter} from "./../src/interfaces/ICCIPRouter.sol";
 import {ARBAddresses} from "../src/libraries/ARBAddresses.sol";
 import {ARBChains} from "../src/libraries/ARBChains.sol";
+import {CCIPHelper} from "../src/libraries/CCIPHelper.sol";
 
 contract DeployScript is Script, Sphinx {
     /// @notice tracks the deployment of the core contracts for the chain we are deploying to.
@@ -52,6 +55,7 @@ contract DeployScript is Script, Sphinx {
         _optimismSucker();
         _baseSucker();
         _arbitrumSucker();
+        _ccipSucker();
 
         // If the registry is already deployed we don't have to deploy it
         // (and we can't add more pre_approved deployers etc.)
@@ -333,6 +337,106 @@ contract DeployScript is Script, Sphinx {
 
             PRE_APPROVED_DEPLOYERS.push(address(_arbDeployer));
         }
+    }
+
+    function _ccipSucker() internal {
+        // Deploy all the L1 suckers.
+        if (block.chainid == 1 || block.chainid == 11_155_111) {
+            // Optimsim
+            PRE_APPROVED_DEPLOYERS.push(
+                address(_deployCCIPSuckerFor(OP_SALT, block.chainid == 1 ? CCIPHelper.OP_ID : CCIPHelper.OP_SEP_ID))
+            );
+
+            // Base
+            PRE_APPROVED_DEPLOYERS.push(
+                address(
+                    _deployCCIPSuckerFor(BASE_SALT, block.chainid == 1 ? CCIPHelper.BASE_ID : CCIPHelper.BASE_SEP_ID)
+                )
+            );
+
+            // Arbitrum
+            PRE_APPROVED_DEPLOYERS.push(
+                address(_deployCCIPSuckerFor(ARB_SALT, block.chainid == 1 ? CCIPHelper.ARB_ID : CCIPHelper.ARB_SEP_ID))
+            );
+        }
+
+        // Check if we should do the L2 portion.
+        // ARB & ARB Sepolia.
+        if (block.chainid == 42_161 || block.chainid == 421_614) {
+            PRE_APPROVED_DEPLOYERS.push(
+                address(
+                    _deployCCIPSuckerFor(ARB_SALT, block.chainid == 42_161 ? CCIPHelper.ETH_ID : CCIPHelper.ETH_SEP_ID)
+                )
+            );
+
+            // OP & OP Sepolia.
+        } else if (block.chainid == 10 || block.chainid == 11_155_420) {
+            PRE_APPROVED_DEPLOYERS.push(
+                address(_deployCCIPSuckerFor(OP_SALT, block.chainid == 10 ? CCIPHelper.ETH_ID : CCIPHelper.ETH_SEP_ID))
+            );
+
+            // BASE & BASE Sepolia.
+        } else if (block.chainid == 8453 || block.chainid == 84_532) {
+            PRE_APPROVED_DEPLOYERS.push(
+                address(
+                    _deployCCIPSuckerFor(BASE_SALT, block.chainid == 8453 ? CCIPHelper.ETH_ID : CCIPHelper.ETH_SEP_ID)
+                )
+            );
+        }
+    }
+
+    function _deployCCIPSuckerFor(
+        bytes32 salt,
+        uint256 remoteChainId
+    )
+        internal
+        returns (JBCCIPSuckerDeployer deployer)
+    {
+        return _deployCCIPSuckerWith(
+            salt,
+            core.directory,
+            core.permissions,
+            core.tokens,
+            safeAddress(),
+            TRUSTED_FORWARDER,
+            remoteChainId,
+            // Get the selector of the other side.
+            CCIPHelper.selectorOfChain(remoteChainId),
+            // Get the router for this side.
+            ICCIPRouter(CCIPHelper.routerOfChain(block.chainid))
+        );
+    }
+
+    function _deployCCIPSuckerWith(
+        bytes32 salt,
+        IJBDirectory directory,
+        IJBPermissions permissions,
+        IJBTokens tokens,
+        address configurator,
+        address trusted_forwarder,
+        uint256 remoteChainId,
+        uint64 remoteChainSelector,
+        ICCIPRouter router
+    )
+        internal
+        returns (JBCCIPSuckerDeployer deployer)
+    {
+        deployer = new JBCCIPSuckerDeployer{salt: salt}(directory, permissions, tokens, configurator, trusted_forwarder);
+
+        deployer.setChainSpecificConstants(remoteChainId, remoteChainSelector, router);
+
+        // Deploy the singleton instance.
+        JBCCIPSucker singleton = new JBCCIPSucker{salt: salt}({
+            deployer: deployer,
+            directory: directory,
+            tokens: tokens,
+            permissions: permissions,
+            addToBalanceMode: JBAddToBalanceMode.MANUAL,
+            trusted_forwarder: trusted_forwarder
+        });
+
+        // Configure the singleton.
+        deployer.configureSingleton(singleton);
     }
 
     function _isDeployed(
