@@ -980,7 +980,10 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
         internal
     {
         // Make sure that the emergencyHatch is enabled for the token.
-        if (!_remoteTokenFor[terminalToken].emergencyHatch && state() != JBSuckerState.DEPRECATED) {
+        if (
+            !_remoteTokenFor[terminalToken].emergencyHatch && state() != JBSuckerState.DEPRECATED
+                && state() != JBSuckerState.SENDING_DISABLED
+        ) {
             revert JBSucker_TokenHasInvalidEmergencyHatchState(terminalToken);
         }
 

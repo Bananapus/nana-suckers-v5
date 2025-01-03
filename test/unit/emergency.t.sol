@@ -76,6 +76,59 @@ contract SuckerEmergencyTest is Test {
         sucker.exitThroughEmergencyHatch(claim);
     }
 
+    /// @notice Ensures that if a sucker is send disabled and a claim is valid that a user can withdraw their deposit.
+    function testEmergencyExitWhenSendingDisabled(
+        bool sendDisabled,
+        bool isValidClaim,
+        JBClaim memory claim
+    )
+        external
+    {
+        uint256 projectId = 1;
+        TestSucker sucker = _createTestSucker(projectId, "");
+
+        // Mock the Directory.
+        vm.mockCall(DIRECTORY, abi.encodeCall(IJBDirectory.PROJECTS, ()), abi.encode(PROJECT));
+        // Mock the owner of the project.
+        vm.mockCall(PROJECT, abi.encodeCall(IERC721.ownerOf, (projectId)), abi.encode(address(this)));
+
+        // Set the outbox balance to be atleast the same as the attempted exit amount.
+        sucker.test_setOutboxBalance(claim.token, claim.leaf.terminalTokenAmount);
+
+        // Set the state of the sucker to be deprecated.
+        if (sendDisabled) {
+            uint256 deprecationTimestamp = block.timestamp + 14 days;
+            sucker.setDeprecation(uint40(deprecationTimestamp));
+
+            // Foward until sending is disabled, which is the next block.
+            vm.warp(block.timestamp + 1);
+        }
+
+        // Mock the calls the sucker does to mint the tokens to the user.
+        vm.mockCall(DIRECTORY, abi.encodeCall(IJBDirectory.controllerOf, (projectId)), abi.encode(CONTROLLER));
+        vm.mockCall(
+            CONTROLLER,
+            abi.encodeCall(
+                IJBController.mintTokensOf, (projectId, claim.leaf.projectTokenCount, claim.leaf.beneficiary, "", false)
+            ),
+            abi.encode(claim.leaf.projectTokenCount)
+        );
+
+        // This ensures that if either the claim is considered invalid or that if the sucker was not deprecated that the
+        // emergency exit would not work.
+        sucker.test_setNextMerkleCheckToBe(isValidClaim);
+        if (!isValidClaim || !sendDisabled) {
+            vm.expectRevert();
+        }
+
+        // Attempt to emergency exit.
+        sucker.exitThroughEmergencyHatch(claim);
+
+        // Attempt to double exit.
+        vm.expectRevert();
+        sucker.exitThroughEmergencyHatch(claim);
+    }
+
     /// @notice Ensures that users can exit on the local chain if the emergency hatch is opened for the token.
     function testEmergencyExitWhenEmergencyHatchOpenForToken(
         bool tokenAllowEmergencyHatch,
