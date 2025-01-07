@@ -183,13 +183,17 @@ contract SuckerEmergencyTest is Test {
 
     /// @notice tests that the deprecation can be set, changed and cancelled.
     function testCancelDeprecation(uint40 currentTime, uint40 deprecateAt, uint40 changeDeprecationTo) external {
+        uint40 messagingDelay = 14 days;
+        // The time that we have to change the deprecation.
+        uint40 bufferTime;
         // Ensure that none of the math overflows which would cause unexpected test results.
-        vm.assume(type(uint40).max - 14 days > currentTime);
-        vm.assume(type(uint40).max - 14 days > deprecateAt);
-        vm.assume(type(uint40).max - 14 days > changeDeprecationTo);
+        vm.assume(type(uint40).max - messagingDelay > currentTime);
+        vm.assume(type(uint40).max - messagingDelay > deprecateAt);
+        vm.assume(type(uint40).max - messagingDelay > changeDeprecationTo);
         // Ensure that the inputs are within the expected bounds.
-        vm.assume(currentTime + 14 days < deprecateAt);
-        vm.assume(deprecateAt + 7 days < changeDeprecationTo || changeDeprecationTo == 0);
+        vm.assume(currentTime + messagingDelay < deprecateAt);
+        vm.assume(deprecateAt + messagingDelay < changeDeprecationTo || changeDeprecationTo == 0);
+        bufferTime = deprecateAt - messagingDelay - currentTime;
 
         uint256 projectId = 1;
         TestSucker sucker = _createTestSucker(projectId, "");
@@ -205,7 +209,9 @@ contract SuckerEmergencyTest is Test {
         sucker.setDeprecation(uint40(deprecateAt));
 
         // Foward to a time before its fully deprecated..
-        vm.warp(currentTime + 7 days);
+        vm.warp(currentTime + bufferTime - 1);
+        // The state should be `DEPRECATION_PENDING`.
+        assertEq(uint8(sucker.state()), 1);
         // Change the time at which it deprecates
         sucker.setDeprecation(changeDeprecationTo);
     }
