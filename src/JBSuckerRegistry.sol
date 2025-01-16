@@ -66,27 +66,6 @@ contract JBSuckerRegistry is ERC2771Context, Ownable, JBPermissioned, IJBSuckerR
     mapping(uint256 => EnumerableMap.AddressToUintMap) internal _suckersOf;
 
     //*********************************************************************//
-    // ------------------------ internal views --------------------------- //
-    //*********************************************************************//
-
-    /// @notice The calldata. Preferred to use over `msg.data`.
-    /// @return calldata The `msg.data` of this call.
-    function _msgData() internal view override(ERC2771Context, Context) returns (bytes calldata) {
-        return ERC2771Context._msgData();
-    }
-
-    /// @notice The message's sender. Preferred to use over `msg.sender`.
-    /// @return sender The address which sent this call.
-    function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
-        return ERC2771Context._msgSender();
-    }
-
-    /// @dev ERC-2771 specifies the context as being a single address (20 bytes).
-    function _contextSuffixLength() internal view virtual override(ERC2771Context, Context) returns (uint256) {
-        return ERC2771Context._contextSuffixLength();
-    }
-
-    //*********************************************************************//
     // -------------------------- constructor ---------------------------- //
     //*********************************************************************//
 
@@ -124,7 +103,7 @@ contract JBSuckerRegistry is ERC2771Context, Ownable, JBPermissioned, IJBSuckerR
     /// @notice Helper function for retrieving the projects suckers and their metadata.
     /// @param projectId The ID of the project to get the suckers of.
     /// @return pairs The pairs of suckers and their metadata.
-    function getSuckerPairs(uint256 projectId) external view returns (JBSuckersPair[] memory pairs) {
+    function getSuckerPairsOf(uint256 projectId) external view override returns (JBSuckersPair[] memory pairs) {
         // Get the suckers of the project.
         address[] memory suckers = _suckersOf[projectId].keys();
 
@@ -150,6 +129,27 @@ contract JBSuckerRegistry is ERC2771Context, Ownable, JBPermissioned, IJBSuckerR
     }
 
     //*********************************************************************//
+    // ------------------------ internal views --------------------------- //
+    //*********************************************************************//
+
+    /// @notice The calldata. Preferred to use over `msg.data`.
+    /// @return calldata The `msg.data` of this call.
+    function _msgData() internal view override(ERC2771Context, Context) returns (bytes calldata) {
+        return ERC2771Context._msgData();
+    }
+
+    /// @notice The message's sender. Preferred to use over `msg.sender`.
+    /// @return sender The address which sent this call.
+    function _msgSender() internal view override(ERC2771Context, Context) returns (address sender) {
+        return ERC2771Context._msgSender();
+    }
+
+    /// @dev ERC-2771 specifies the context as being a single address (20 bytes).
+    function _contextSuffixLength() internal view virtual override(ERC2771Context, Context) returns (uint256) {
+        return ERC2771Context._contextSuffixLength();
+    }
+
+    //*********************************************************************//
     // ---------------------- external transactions ---------------------- //
     //*********************************************************************//
 
@@ -164,7 +164,7 @@ contract JBSuckerRegistry is ERC2771Context, Ownable, JBPermissioned, IJBSuckerR
     /// @notice Adds multiple suckers deployer to the allowlist.
     /// @dev Can only be called by this contract's owner (initially project ID 1, or JuiceboxDAO).
     /// @param deployers The address of the deployer to add.
-    function allowSuckerDeployers(address[] calldata deployers) public onlyOwner {
+    function allowSuckerDeployers(address[] calldata deployers) public override onlyOwner {
         // Iterate through the deployers and allow them.
         for (uint256 i; i < deployers.length; i++) {
             // Get the deployer being iterated over.
