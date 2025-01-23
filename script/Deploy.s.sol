@@ -27,6 +27,11 @@ contract DeployScript is Script, Sphinx {
     bytes32 OP_SALT = "_SUCKER_ETH_OP_";
     bytes32 BASE_SALT = "_SUCKER_ETH_BASE_";
     bytes32 ARB_SALT = "_SUCKER_ETH_ARB_";
+
+    bytes32 ARB_BASE_SALT = "_SUCKER_ARB_BASE_";
+    bytes32 ARB_OP_SALT = "_SUCKER_ARB_OP_";
+    bytes32 OP_BASE_SALT = "_SUCKER_OP_BASE_";
+
     bytes32 REGISTRY_SALT = "REGISTRY";
 
     function configureSphinx() public override {
@@ -363,23 +368,74 @@ contract DeployScript is Script, Sphinx {
         // Check if we should do the L2 portion.
         // ARB & ARB Sepolia.
         if (block.chainid == 42_161 || block.chainid == 421_614) {
+            // L1.
             PRE_APPROVED_DEPLOYERS.push(
                 address(
                     _deployCCIPSuckerFor(ARB_SALT, block.chainid == 42_161 ? CCIPHelper.ETH_ID : CCIPHelper.ETH_SEP_ID)
                 )
             );
 
+            // ARB -> OP.
+            PRE_APPROVED_DEPLOYERS.push(
+                address(
+                    _deployCCIPSuckerFor(ARB_OP_SALT, block.chainid == 42_161 ? CCIPHelper.OP_ID : CCIPHelper.OP_SEP_ID)
+                )
+            );
+
+            // ARB -> BASE.
+            PRE_APPROVED_DEPLOYERS.push(
+                address(
+                    _deployCCIPSuckerFor(
+                        ARB_BASE_SALT, block.chainid == 42_161 ? CCIPHelper.BASE_ID : CCIPHelper.BASE_SEP_ID
+                    )
+                )
+            );
+
             // OP & OP Sepolia.
         } else if (block.chainid == 10 || block.chainid == 11_155_420) {
+            // L1.
             PRE_APPROVED_DEPLOYERS.push(
                 address(_deployCCIPSuckerFor(OP_SALT, block.chainid == 10 ? CCIPHelper.ETH_ID : CCIPHelper.ETH_SEP_ID))
             );
 
+            // OP -> ARB.
+            PRE_APPROVED_DEPLOYERS.push(
+                address(
+                    _deployCCIPSuckerFor(ARB_OP_SALT, block.chainid == 10 ? CCIPHelper.ARB_ID : CCIPHelper.ARB_SEP_ID)
+                )
+            );
+
+            // OP -> BASE.
+            PRE_APPROVED_DEPLOYERS.push(
+                address(
+                    _deployCCIPSuckerFor(
+                        OP_BASE_SALT, block.chainid == 10 ? CCIPHelper.BASE_ID : CCIPHelper.BASE_SEP_ID
+                    )
+                )
+            );
+
             // BASE & BASE Sepolia.
         } else if (block.chainid == 8453 || block.chainid == 84_532) {
+            // L1.
             PRE_APPROVED_DEPLOYERS.push(
                 address(
                     _deployCCIPSuckerFor(BASE_SALT, block.chainid == 8453 ? CCIPHelper.ETH_ID : CCIPHelper.ETH_SEP_ID)
+                )
+            );
+
+            // BASE -> OP.
+            PRE_APPROVED_DEPLOYERS.push(
+                address(
+                    _deployCCIPSuckerFor(OP_BASE_SALT, block.chainid == 8453 ? CCIPHelper.OP_ID : CCIPHelper.OP_SEP_ID)
+                )
+            );
+
+            // BASE -> ARB.
+            PRE_APPROVED_DEPLOYERS.push(
+                address(
+                    _deployCCIPSuckerFor(
+                        ARB_BASE_SALT, block.chainid == 8453 ? CCIPHelper.ARB_ID : CCIPHelper.ARB_SEP_ID
+                    )
                 )
             );
         }
