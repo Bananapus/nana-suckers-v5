@@ -1,10 +1,10 @@
 {
 	"_format": "sphinx-sol-ct-artifact-1",
 	"merkleRoot": "0x22ddb8f140bae79c9c9fca15cd8e9878d16e11286543bd940f818f7a9507e443",
-	"address": "0x293162473aa1b0df479cb206503aecea40a2fae9",
+	"address": "0xb023a23539b6f011932cda2cb3b6b0e36227daa0",
 	"sourceName": "src/deployers/JBCCIPSuckerDeployer.sol",
 	"contractName": "JBCCIPSuckerDeployer",
-	"chainId": "0xaa37dc",
+	"chainId": "0x66eee",
 	"abi": [
 		{
 			"inputs": [

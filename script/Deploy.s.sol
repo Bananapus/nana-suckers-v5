@@ -84,8 +84,16 @@ contract DeployScript is Script, Sphinx {
                 _registry.allowSuckerDeployers(PRE_APPROVED_DEPLOYERS);
             }
 
-            // Transfer ownership to JBDAO.
-            _registry.transferOwnership(core.projects.ownerOf(1));
+            // Check what safe this is, if this is the same one as the fee-project owner, then we do not need to
+            // transfer. If its not then we transfer to the fee-project safe.
+            // NOTE: If this is ran after the configuration of the fee-project, this would transfer it to the
+            // REVNET_DEPLOYER. which is *NOT* what we want to happen. In our regular deployment procedure this should
+            // never happen though.
+            address feeProjectOwner = core.projects.ownerOf(1);
+            if (feeProjectOwner != address(0) && feeProjectOwner != safeAddress()) {
+                // Transfer ownership to JBDAO.
+                _registry.transferOwnership(feeProjectOwner);
+            }
         }
     }
 
