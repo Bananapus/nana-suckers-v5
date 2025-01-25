@@ -17,6 +17,7 @@ import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol"
 import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
 import {ICCIPRouter} from "src/interfaces/ICCIPRouter.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {JBTokenMapping} from "../src/structs/JBTokenMapping.sol";
 import {JBRemoteToken} from "../src/structs/JBRemoteToken.sol";
@@ -158,11 +159,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             _terminalConfigurations[0] =
                 JBTerminalConfig({terminal: jbMultiTerminal(), accountingContextsToAccept: _tokensToAccept});
 
-            mockExpect(
-                address(ccipBnM),
-                abi.encodeCall(IERC165.supportsInterface, (type(IERC20Metadata).interfaceId)),
-                abi.encode(true)
-            );
+            vm.expectCall(address(ccipBnM), abi.encodeWithSelector(IERC20Metadata.decimals.selector));
 
             // Create a first project to collect fees.
             jbController().launchProjectFor({
@@ -235,11 +232,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
             _terminalConfigurations[0] =
                 JBTerminalConfig({terminal: jbMultiTerminal(), accountingContextsToAccept: _tokensToAccept});
 
-            mockExpect(
-                address(ccipBnMArbSepolia),
-                abi.encodeCall(IERC165.supportsInterface, (type(IERC20Metadata).interfaceId)),
-                abi.encode(true)
-            );
+            vm.expectCall(address(ccipBnMArbSepolia), abi.encodeWithSelector(IERC20Metadata.decimals.selector));
 
             // Create a first project to collect fees.
             jbController().launchProjectFor({
