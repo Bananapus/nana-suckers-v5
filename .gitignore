@@ -15,3 +15,5 @@ docs/
 .secret
 
 node_modules/
+
+publish.sh
