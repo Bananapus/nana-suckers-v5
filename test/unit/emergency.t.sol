@@ -265,7 +265,7 @@ contract TestSucker is JBSucker {
         override
     {}
 
-    function _isRemotePeer(address sender) internal override returns (bool valid) {
+    function _isRemotePeer(address sender) internal view override returns (bool valid) {
         return sender == peer();
     }
 

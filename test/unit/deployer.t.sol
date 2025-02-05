@@ -383,7 +383,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
     // -------------------------- Asserts -------------------------------- //
     //*********************************************************************//
 
-    function _assertValidSucker(IJBSucker sucker, uint256 _projectId) internal returns (IJBSucker) {
+    function _assertValidSucker(IJBSucker sucker, uint256 _projectId) internal view returns (IJBSucker) {
         assertEq(sucker.projectId(), _projectId);
         assertEq(address(sucker.DIRECTORY()), address(jbDirectory()));
         assertEq(address(sucker.TOKENS()), address(jbTokens()));
@@ -393,14 +393,14 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         return sucker;
     }
 
-    function _assertRegistered(IJBSucker sucker) internal returns (IJBSucker) {
+    function _assertRegistered(IJBSucker sucker) internal view returns (IJBSucker) {
         uint256 _projectId = sucker.projectId();
         assert(registry.isSuckerOf(_projectId, address(sucker)));
         assertEq(address(registry.suckersOf(_projectId)[0]), address(sucker));
         return sucker;
     }
 
-    function _assertOptimismSucker(IJBSuckerDeployer deployer, IJBSucker sucker) internal returns (IJBSucker) {
+    function _assertOptimismSucker(IJBSuckerDeployer deployer, IJBSucker sucker) internal view returns (IJBSucker) {
         assertEq(
             address(JBOptimismSuckerDeployer(address(deployer)).opMessenger()),
             address(JBOptimismSucker(payable(address(sucker))).OPMESSENGER())
@@ -413,7 +413,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         return sucker;
     }
 
-    function _assertCCIPSucker(IJBSuckerDeployer deployer, IJBSucker sucker) internal returns (IJBSucker) {
+    function _assertCCIPSucker(IJBSuckerDeployer deployer, IJBSucker sucker) internal view returns (IJBSucker) {
         assertEq(
             address(JBCCIPSuckerDeployer(address(deployer)).ccipRouter()),
             address(JBCCIPSucker(payable(address(sucker))).CCIP_ROUTER())
@@ -431,7 +431,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         return sucker;
     }
 
-    function _assertArbSucker(IJBSuckerDeployer deployer, IJBSucker sucker) internal returns (IJBSucker) {
+    function _assertArbSucker(IJBSuckerDeployer deployer, IJBSucker sucker) internal view returns (IJBSucker) {
         assertEq(
             uint256(JBArbitrumSuckerDeployer(address(deployer)).arbLayer()),
             uint256(JBArbitrumSucker(payable(address(sucker))).LAYER())
