@@ -15,14 +15,14 @@ contract ArbitrumTest is Test {
         return (1400 + 6 * dataLength) * (baseFee == 0 ? block.basefee : baseFee);
     }
 
-    function testMaxSubmissionCostZeroDataLength() public {
+    function testMaxSubmissionCostZeroDataLength() public view {
         uint256 maxSubmissionCostERC20 = calculateRetryableSubmissionFee({dataLength: 0, baseFee: maxFeePerGas});
 
         assertGt(maxSubmissionCostERC20, 0);
         assertEq(maxSubmissionCostERC20, maxFeePerGas * 1400);
     }
 
-    function testERC20CallDataLength() public {
+    function testERC20CallDataLength() public pure {
         assertEq(abi.encode(uint256(0), bytes("")).length, 96);
     }
 }
