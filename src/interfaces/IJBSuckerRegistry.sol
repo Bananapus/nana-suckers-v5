@@ -15,7 +15,7 @@ interface IJBSuckerRegistry {
     function DIRECTORY() external view returns (IJBDirectory);
     function PROJECTS() external view returns (IJBProjects);
 
-    function getSuckerPairsOf(uint256 projectId) external view returns (JBSuckersPair[] memory pairs);
+    function suckerPairsOf(uint256 projectId) external view returns (JBSuckersPair[] memory pairs);
     function isSuckerOf(uint256 projectId, address addr) external view returns (bool);
     function suckerDeployerIsAllowed(address deployer) external view returns (bool);
     function suckersOf(uint256 projectId) external view returns (address[] memory);
