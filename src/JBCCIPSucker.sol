@@ -42,13 +42,13 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
     // --------------- public immutable stored properties ---------------- //
     //*********************************************************************//
 
-    // TODO natspec
+    /// @notice The CCIP router used to bridge tokens between the local and remote chain.
     ICCIPRouter public immutable CCIP_ROUTER;
 
-    // TODO natspec
+    /// @notice The chain id of the remote chain.
     uint256 public immutable REMOTE_CHAIN_ID;
 
-    // TODO natspec
+    /// @notice The CCIP chain selector of the remote chain.
     uint64 public immutable REMOTE_CHAIN_SELECTOR;
 
     //*********************************************************************//
@@ -186,8 +186,6 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         internal
         override
     {
-        // function _sendRoot(uint256 transportPayment, address token, JBRemoteToken memory remoteToken) internal
-        // override {
         // Make sure we are attempting to pay the bridge
         if (transportPayment == 0) revert JBSucker_ExpectedMsgValue();
 
@@ -232,9 +230,6 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         // approve the Router to spend tokens on contract's behalf. It will spend the amount of the given token
         SafeERC20.forceApprove(IERC20(token), address(CCIP_ROUTER), amount);
 
-        // TODO: Handle this messageId- for later version with message retries
-        // Send the message through the router and store the returned message ID
-        /* messageId =  */
         // slither-disable-next-line calls-loop,unused-return
         CCIP_ROUTER.ccipSend{value: fees}({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: message});
 
