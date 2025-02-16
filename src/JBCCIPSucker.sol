@@ -36,7 +36,6 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
 
     error JBCCIPSucker_FailedToRefundFee();
     error JBCCIPSucker_InvalidRouter(address router);
-    error JBCCIPSucker_UnexpectedAmountOfTokens(uint256 nOfTokens);
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
