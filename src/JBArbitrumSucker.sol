@@ -163,7 +163,8 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         }
 
         // If the token is an ERC-20, bridge it to the peer.
-        if (token != JBConstants.NATIVE_TOKEN) {
+        // If the amount is `0` then we do not need to bridge any ERC20.
+        if (token != JBConstants.NATIVE_TOKEN && amount != 0) {
             // slither-disable-next-line calls-loop
             SafeERC20.forceApprove({token: IERC20(token), spender: GATEWAYROUTER.getGateway(token), value: amount});
 
@@ -209,7 +210,8 @@ contract JBArbitrumSucker is JBSucker, IJBArbitrumSucker {
         uint256 callTransportCost = maxSubmissionCost + (MESSENGER_BASE_GAS_LIMIT * maxFeePerGas);
 
         // If the token is an ERC-20, bridge it to the peer.
-        if (token != JBConstants.NATIVE_TOKEN) {
+        // If the amount is `0` then we do not need to bridge any ERC20.
+        if (token != JBConstants.NATIVE_TOKEN && amount != 0) {
             // Calculate the cost of the ERC-20 transfer. (96 is the length of the abi encoded `data`)
             uint256 maxSubmissionCostERC20 =
                 ARBINBOX.calculateRetryableSubmissionFee({dataLength: 96, baseFee: maxFeePerGas});
