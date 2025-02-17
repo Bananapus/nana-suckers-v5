@@ -76,7 +76,7 @@ contract FixArbDeployer is Script, Sphinx {
             trusted_forwarder: TRUSTED_FORWARDER
         });
 
-        require(address(_arbDeployer) != ARB_SUCKER_DEPLOYER, "ARB sucker did not compile correctly.");
+        require(address(_arbDeployer) == ARB_SUCKER_DEPLOYER, "ARB sucker did not compile correctly.");
 
         _arbDeployer.setChainSpecificConstants({
             layer: JBLayer.L2,
