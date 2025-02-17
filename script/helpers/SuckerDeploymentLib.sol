@@ -59,19 +59,19 @@ library SuckerDeploymentLib {
 
         if (_isMainnet || _isOP) {
             deployment.optimismDeployer = IJBSuckerDeployer(
-                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "JBOptimismSuckerDeployer")
+                _getDeploymentAddress(path, "nana-suckers", network_name, "JBOptimismSuckerDeployer")
             );
         }
 
         if (_isMainnet || _isBase) {
             deployment.baseDeployer = IJBSuckerDeployer(
-                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "JBBaseSuckerDeployer")
+                _getDeploymentAddress(path, "nana-suckers", network_name, "JBBaseSuckerDeployer")
             );
         }
 
         if (_isMainnet || _isArb) {
             deployment.arbitrumDeployer = IJBSuckerDeployer(
-                _getDeploymentAddress(path, "nana-suckers-testnet", network_name, "JBArbitrumSuckerDeployer")
+                _getDeploymentAddress(path, "nana-suckers", network_name, "JBArbitrumSuckerDeployer")
             );
         }
     }
