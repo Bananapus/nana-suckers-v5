@@ -67,7 +67,7 @@ library SuckerDeploymentLib {
                 IJBSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "JBBaseSuckerDeployer"));
         }
 
-        if (false) {
+        if (_isMainnet || _isArb) {
             deployment.arbitrumDeployer =
                 IJBSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "JBArbitrumSuckerDeployer"));
         }
