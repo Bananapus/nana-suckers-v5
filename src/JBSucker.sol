@@ -433,7 +433,8 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
 
         // Loop over the number of mappings and increase numberToDisable to correctly set transportPaymentValue.
         for (uint256 h; h < maps.length; h++) {
-            if (maps[h].remoteToken == address(0) && _outboxOf[maps[h].localToken].balance != 0) {
+            JBOutboxTree storage _outbox = _outboxOf[maps[h].localToken];
+            if (maps[h].remoteToken == address(0) && _outbox.numberOfClaimsSent != _outbox.tree.count) {
                 numberToDisable++;
             }
         }
@@ -692,7 +693,7 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
         internal
     {
         // If this contract's add to balance mode is `ON_CLAIM`, add the cashed out funds to the project's balance.
-        if (ADD_TO_BALANCE_MODE == JBAddToBalanceMode.ON_CLAIM) {
+        if (ADD_TO_BALANCE_MODE == JBAddToBalanceMode.ON_CLAIM && terminalTokenAmount != 0) {
             _addToBalance({token: terminalToken, amount: terminalTokenAmount});
         }
 
@@ -795,7 +796,7 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
 
         // If the remote token is being set to the 0 address (which disables bridging), send any remaining outbox funds
         // to the remote chain.
-        if (map.remoteToken == address(0) && _outboxOf[token].balance != 0) {
+        if (map.remoteToken == address(0) && _outboxOf[token].numberOfClaimsSent != _outboxOf[token].tree.count) {
             _sendRoot({transportPayment: transportPaymentValue, token: token, remoteToken: currentMapping});
         }
 

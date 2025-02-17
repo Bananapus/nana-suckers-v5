@@ -110,7 +110,8 @@ contract JBOptimismSucker is JBSucker, IJBOptimismSucker {
         }
 
         // If the token is an ERC20, bridge it to the peer.
-        if (token != JBConstants.NATIVE_TOKEN) {
+        // If the amount is `0` then we do not need to bridge any ERC20.
+        if (token != JBConstants.NATIVE_TOKEN && amount != 0) {
             // Approve the tokens bing bridged.
             // slither-disable-next-line reentrancy-events
             SafeERC20.forceApprove({token: IERC20(token), spender: address(OPBRIDGE), value: amount});

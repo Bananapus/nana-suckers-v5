@@ -36,7 +36,6 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
 
     error JBCCIPSucker_FailedToRefundFee();
     error JBCCIPSucker_InvalidRouter(address router);
-    error JBCCIPSucker_UnexpectedAmountOfTokens(uint256 nOfTokens);
 
     //*********************************************************************//
     // --------------- public immutable stored properties ---------------- //
@@ -133,28 +132,28 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
             revert JBSucker_NotPeer(origin);
         }
 
-        if (any2EvmMessage.destTokenAmounts.length != 1) {
-            // This should never happen, we *always* send a tokenAmount.
-            revert JBCCIPSucker_UnexpectedAmountOfTokens(any2EvmMessage.destTokenAmounts.length);
-        }
+        // We either send no tokens or a single token.
+        if (any2EvmMessage.destTokenAmounts.length == 1) {
+            // As far as the sucker contract is aware wrapped natives are not a thing, it only handles ERC20s or native.
+            Client.EVMTokenAmount memory tokenAmount = any2EvmMessage.destTokenAmounts[0];
+            if (root.token == JBConstants.NATIVE_TOKEN) {
+                // We can (safely) assume that the token that is set in the `destTokenAmounts` is a valid wrapped
+                // native.
+                // If this ends up not being the case then our sanity check to see if we unwrapped the native asset will
+                // fail.
+                IWrappedNativeToken wrapped_native = IWrappedNativeToken(tokenAmount.token);
+                uint256 balanceBefore = _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)});
 
-        // As far as the sucker contract is aware wrapped natives are not a thing, it only handles ERC20s or native.
-        Client.EVMTokenAmount memory tokenAmount = any2EvmMessage.destTokenAmounts[0];
-        if (root.token == JBConstants.NATIVE_TOKEN) {
-            // We can (safely) assume that the token that is set in the `destTokenAmounts` is a valid wrapped native.
-            // If this ends up not being the case then our sanity check to see if we unwrapped the native asset will
-            // fail.
-            IWrappedNativeToken wrapped_native = IWrappedNativeToken(tokenAmount.token);
-            uint256 balanceBefore = _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)});
+                // Withdraw the wrapped native asset.
+                wrapped_native.withdraw(tokenAmount.amount);
 
-            // Withdraw the wrapped native asset.
-            wrapped_native.withdraw(tokenAmount.amount);
-
-            // Sanity check the unwrapping of the native asset.
-            // slither-disable-next-line incorrect-equality
-            assert(
-                balanceBefore + tokenAmount.amount == _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)})
-            );
+                // Sanity check the unwrapping of the native asset.
+                // slither-disable-next-line incorrect-equality
+                assert(
+                    balanceBefore + tokenAmount.amount
+                        == _balanceOf({token: JBConstants.NATIVE_TOKEN, addr: address(this)})
+                );
+            }
         }
 
         // Call ourselves to process the root.
@@ -189,21 +188,31 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         // Make sure we are attempting to pay the bridge
         if (transportPayment == 0) revert JBSucker_ExpectedMsgValue();
 
-        // Wrap the token if it's native
-        if (token == JBConstants.NATIVE_TOKEN) {
-            // Get the wrapped native token.
-            // slither-disable-next-line calls-loop
-            IWrappedNativeToken wrapped_native = CCIP_ROUTER.getWrappedNative();
-            // Deposit the wrapped native asset.
-            // slither-disable-next-line calls-loop,arbitrary-send-eth
-            wrapped_native.deposit{value: amount}();
-            // Update the token to be the wrapped native asset.
-            token = address(wrapped_native);
-        }
+        uint256 gasLimit = MESSENGER_BASE_GAS_LIMIT;
+        Client.EVMTokenAmount[] memory tokenAmounts;
+        if (amount != 0) {
+            // If we also do an asset transfer then we increase the min required gas amount.
+            gasLimit += remoteToken.minGas;
 
-        // Set the token amounts
-        Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
-        tokenAmounts[0] = Client.EVMTokenAmount({token: token, amount: amount});
+            // Wrap the token if it's native
+            if (token == JBConstants.NATIVE_TOKEN) {
+                // Get the wrapped native token.
+                // slither-disable-next-line calls-loop
+                IWrappedNativeToken wrapped_native = CCIP_ROUTER.getWrappedNative();
+                // Deposit the wrapped native asset.
+                // slither-disable-next-line calls-loop,arbitrary-send-eth
+                wrapped_native.deposit{value: amount}();
+                // Update the token to be the wrapped native asset.
+                token = address(wrapped_native);
+            }
+
+            // Set the token amounts
+            tokenAmounts = new Client.EVMTokenAmount[](1);
+            tokenAmounts[0] = Client.EVMTokenAmount({token: token, amount: amount});
+
+            // approve the Router to spend tokens on contract's behalf. It will spend the amount of the given token
+            SafeERC20.forceApprove(IERC20(token), address(CCIP_ROUTER), amount);
+        }
 
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
@@ -212,7 +221,7 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
             tokenAmounts: tokenAmounts,
             extraArgs: Client._argsToBytes(
                 // Additional arguments, setting gas limit
-                Client.EVMExtraArgsV1({gasLimit: MESSENGER_BASE_GAS_LIMIT + remoteToken.minGas})
+                Client.EVMExtraArgsV1({gasLimit: gasLimit})
             ),
             // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees,
             // We pay in the native asset.
@@ -226,9 +235,6 @@ contract JBCCIPSucker is JBSucker, IAny2EVMMessageReceiver {
         if (fees > transportPayment) {
             revert JBSucker_InsufficientMsgValue(transportPayment, fees);
         }
-
-        // approve the Router to spend tokens on contract's behalf. It will spend the amount of the given token
-        SafeERC20.forceApprove(IERC20(token), address(CCIP_ROUTER), amount);
 
         // slither-disable-next-line calls-loop,unused-return
         CCIP_ROUTER.ccipSend{value: fees}({destinationChainSelector: REMOTE_CHAIN_SELECTOR, message: message});
