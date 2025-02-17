@@ -318,7 +318,7 @@ contract DeployScript is Script, Sphinx {
 
         // Check if we should do the L2 portion.
         // ARB & ARB Sepolia.
-        if (block.chainid == 10 || block.chainid == 421_614) {
+        if (block.chainid == 42_161 || block.chainid == 421_614) {
             JBArbitrumSuckerDeployer _arbDeployer = new JBArbitrumSuckerDeployer{salt: ARB_SALT}({
                 directory: core.directory,
                 permissions: core.permissions,
@@ -331,7 +331,7 @@ contract DeployScript is Script, Sphinx {
                 layer: JBLayer.L2,
                 inbox: IInbox(address(0)),
                 gatewayRouter: IArbGatewayRouter(
-                    block.chainid == 10 ? ARBAddresses.L2_GATEWAY_ROUTER : ARBAddresses.L2_SEP_GATEWAY_ROUTER
+                    block.chainid == 42_161 ? ARBAddresses.L2_GATEWAY_ROUTER : ARBAddresses.L2_SEP_GATEWAY_ROUTER
                 )
             });
 
