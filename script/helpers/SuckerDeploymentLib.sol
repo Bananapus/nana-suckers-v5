@@ -49,7 +49,7 @@ library SuckerDeploymentLib {
     {
         // Is deployed on all (supported) chains.
         deployment.registry =
-            IJBSuckerRegistry(_getDeploymentAddress(path, "nana-suckers-testnet", network_name, "JBSuckerRegistry"));
+            IJBSuckerRegistry(_getDeploymentAddress(path, "nana-suckers", network_name, "JBSuckerRegistry"));
 
         bytes32 _network = keccak256(abi.encodePacked(network_name));
         bool _isMainnet = _network == keccak256("ethereum") || _network == keccak256("sepolia");

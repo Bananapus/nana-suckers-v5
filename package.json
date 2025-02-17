@@ -1,6 +1,6 @@
 {
   "name": "@bananapus/suckers",
-  "version": "0.0.32",
+  "version": "1.0.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -14,18 +14,18 @@
     "coverage": "forge coverage --match-path \"./src/*.sol\" --report lcov --report summary",
     "deploy:mainnets": "source ./.env && npx sphinx propose ./script/Deploy.s.sol --networks mainnets",
     "deploy:testnets": "source ./.env && npx sphinx propose ./script/Deploy.s.sol --networks testnets",
-    "artifacts": "source ./.env && npx sphinx artifacts --org-id 'ea165b21-7cdc-4d7b-be59-ecdd4c26bee4' --project-name 'nana-suckers-testnet'",
+    "artifacts": "source ./.env && npx sphinx artifacts --org-id 'ea165b21-7cdc-4d7b-be59-ecdd4c26bee4' --project-name 'nana-suckers'",
     "analyze": "slither . --config-file slither-ci.config.json"
   },
   "dependencies": {
     "@arbitrum/nitro-contracts": "github:OffchainLabs/nitro-contracts",
-    "@bananapus/core": "^0.0.45",
+    "@bananapus/core": "^1.0.0",
     "@bananapus/permission-ids": "^0.0.17",
     "@chainlink/contracts-ccip": "^1.5.0",
     "@chainlink/local": "github:smartcontractkit/chainlink-local",
     "@openzeppelin/contracts": "^5.2.0",
     "@prb/math": "^4.1.0",
-    "solady": "^0.1.6"
+    "solady": "^0.1.8"
   },
   "devDependencies": {
     "@sphinx-labs/plugins": "^0.33.1"
