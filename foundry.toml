@@ -5,7 +5,7 @@ src = "src"
 out = "out"
 libs = ["lib", "node_modules"]
 extra_output = ['storageLayout']
-optimizer_runs = 4000
+optimizer_runs = 3000
 fs_permissions = [{ access = "read-write", path = "../"}]
 
 [rpc_endpoints]
@@ -13,7 +13,7 @@ ethereum ="${RPC_ETHEREUM_MAINNET}"
 optimism = "${RPC_OPTIMISM_MAINNET}"
 polygon = "${RPC_POLYGON_MUMBAI}"
 arbitrum = "${RPC_ARBITRUM_MAINNET}"
-base = "${RPC_BASE_MAINET}"
+base = "${RPC_BASE_MAINNET}"
 arbitrum_sepolia = "${RPC_ARBITRUM_SEPOLIA}"
 ethereum_sepolia ="${RPC_ETHEREUM_SEPOLIA}"
 optimism_sepolia = "${RPC_OPTIMISM_SEPOLIA}"
