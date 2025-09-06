@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
-import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
-import {IJBProjects} from "@bananapus/core/src/interfaces/IJBProjects.sol";
+import {IJBDirectory} from "@bananapus/core-v5/src/interfaces/IJBDirectory.sol";
+import {IJBProjects} from "@bananapus/core-v5/src/interfaces/IJBProjects.sol";
 import {JBSuckerDeployerConfig} from "../structs/JBSuckerDeployerConfig.sol";
 import {JBSuckersPair} from "../structs/JBSuckersPair.sol";
 

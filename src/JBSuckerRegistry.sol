@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.23;
 
-import {JBPermissioned} from "@bananapus/core/src/abstract/JBPermissioned.sol";
-import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
-import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
-import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
-import {IJBProjects} from "@bananapus/core/src/interfaces/IJBProjects.sol";
-import {JBRuleset} from "@bananapus/core/src/structs/JBRuleset.sol";
-import {JBRulesetMetadata} from "@bananapus/core/src/structs/JBRulesetMetadata.sol";
-import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
+import {JBPermissioned} from "@bananapus/core-v5/src/abstract/JBPermissioned.sol";
+import {IJBDirectory} from "@bananapus/core-v5/src/interfaces/IJBDirectory.sol";
+import {IJBController} from "@bananapus/core-v5/src/interfaces/IJBController.sol";
+import {IJBPermissions} from "@bananapus/core-v5/src/interfaces/IJBPermissions.sol";
+import {IJBProjects} from "@bananapus/core-v5/src/interfaces/IJBProjects.sol";
+import {JBRuleset} from "@bananapus/core-v5/src/structs/JBRuleset.sol";
+import {JBRulesetMetadata} from "@bananapus/core-v5/src/structs/JBRulesetMetadata.sol";
+import {JBPermissionIds} from "@bananapus/permission-ids-v5/src/JBPermissionIds.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {EnumerableMap} from "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";

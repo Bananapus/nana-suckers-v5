@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {JBPermissioned} from "@bananapus/core/src/abstract/JBPermissioned.sol";
-import {IJBCashOutTerminal} from "@bananapus/core/src/interfaces/IJBCashOutTerminal.sol";
-import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
-import {IJBDirectory} from "@bananapus/core/src/interfaces/IJBDirectory.sol";
-import {IJBPermissions} from "@bananapus/core/src/interfaces/IJBPermissions.sol";
-import {IJBPermissioned} from "@bananapus/core/src/interfaces/IJBPermissioned.sol";
-import {IJBTerminal} from "@bananapus/core/src/interfaces/IJBTerminal.sol";
-import {IJBTokens} from "@bananapus/core/src/interfaces/IJBTokens.sol";
-import {JBConstants} from "@bananapus/core/src/libraries/JBConstants.sol";
-import {JBPermissionIds} from "@bananapus/permission-ids/src/JBPermissionIds.sol";
+import {JBPermissioned} from "@bananapus/core-v5/src/abstract/JBPermissioned.sol";
+import {IJBCashOutTerminal} from "@bananapus/core-v5/src/interfaces/IJBCashOutTerminal.sol";
+import {IJBController} from "@bananapus/core-v5/src/interfaces/IJBController.sol";
+import {IJBDirectory} from "@bananapus/core-v5/src/interfaces/IJBDirectory.sol";
+import {IJBPermissions} from "@bananapus/core-v5/src/interfaces/IJBPermissions.sol";
+import {IJBPermissioned} from "@bananapus/core-v5/src/interfaces/IJBPermissioned.sol";
+import {IJBTerminal} from "@bananapus/core-v5/src/interfaces/IJBTerminal.sol";
+import {IJBTokens} from "@bananapus/core-v5/src/interfaces/IJBTokens.sol";
+import {JBConstants} from "@bananapus/core-v5/src/libraries/JBConstants.sol";
+import {JBPermissionIds} from "@bananapus/permission-ids-v5/src/JBPermissionIds.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
