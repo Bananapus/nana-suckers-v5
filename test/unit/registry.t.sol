@@ -18,8 +18,8 @@ import {JBSuckerRegistry} from "./../../src/JBSuckerRegistry.sol";
 
 contract RegistryUnitTest is Test {
     function testDeployNoProjectCheck() public {
-        JBProjects _projects = new JBProjects(msg.sender, address(0));
-        JBPermissions _permissions = new JBPermissions();
+        JBProjects _projects = new JBProjects(msg.sender, address(0), address(0));
+        JBPermissions _permissions = new JBPermissions(address(0));
         JBDirectory _directory = new JBDirectory(_permissions, _projects, address(100));
         new JBSuckerRegistry(_directory, _permissions, address(100), address(0));
     }
