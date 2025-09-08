@@ -63,7 +63,8 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
 
     // RPCs
     string ETHEREUM_SEPOLIA_RPC_URL = vm.envOr("RPC_ETHEREUM_SEPOLIA", string("https://1rpc.io/sepolia"));
-    string ARBITRUM_SEPOLIA_RPC_URL = vm.envOr("RPC_ARBITRUM_SEPOLIA", string("https://rpc.ankr.com/arbitrum_sepolia"));
+    string ARBITRUM_SEPOLIA_RPC_URL =
+        vm.envOr("RPC_ARBITRUM_SEPOLIA", string("https://arbitrum-sepolia.gateway.tenderly.co"));
 
     //*********************************************************************//
     // ---------------------------- Setup parts -------------------------- //
@@ -368,7 +369,7 @@ contract CCIPSuckerForkedTests is TestBaseWorkflow, JBTest {
         // Declare test actors and parameters
         address rootSender = makeAddr("rootSender");
         address user = makeAddr("him");
-        uint256 amountToSend = 1 ether;
+        uint256 amountToSend = 0.05 ether;
         uint256 maxCashedOut = amountToSend / 2;
 
         // Select our L1 fork to begin this test.
