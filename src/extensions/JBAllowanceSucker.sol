@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.21;
 
-import {IJBCashOutTerminal} from "@bananapus/core/src/interfaces/IJBCashOutTerminal.sol";
-import {IJBController} from "@bananapus/core/src/interfaces/IJBController.sol";
-import {IJBPayoutTerminal} from "@bananapus/core/src/interfaces/IJBPayoutTerminal.sol";
-import {JBAccountingContext} from "@bananapus/core/src/structs/JBAccountingContext.sol";
+import {IJBCashOutTerminal} from "@bananapus/core-v5/src/interfaces/IJBCashOutTerminal.sol";
+import {IJBController} from "@bananapus/core-v5/src/interfaces/IJBController.sol";
+import {IJBPayoutTerminal} from "@bananapus/core-v5/src/interfaces/IJBPayoutTerminal.sol";
+import {JBAccountingContext} from "@bananapus/core-v5/src/structs/JBAccountingContext.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {mulDiv} from "@prb/math/src/Common.sol";
 
