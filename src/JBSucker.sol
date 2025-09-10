@@ -332,6 +332,7 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
     function initialize(uint256 __projectId) public initializer {
         // slither-disable-next-line missing-zero-check
         _localProjectId = __projectId;
+        _deployer = msg.sender;
     }
 
     //*********************************************************************//
