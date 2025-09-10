@@ -94,9 +94,6 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
     /// called or manually by calling `addOutstandingAmountToBalance`.
     JBAddToBalanceMode public immutable override ADD_TO_BALANCE_MODE;
 
-    /// @notice The address of this contract's deployer.
-    address public immutable override DEPLOYER;
-
     /// @notice The directory of terminals and controllers for projects.
     IJBDirectory public immutable override DIRECTORY;
 
@@ -116,6 +113,9 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
     //*********************************************************************//
     // -------------------- internal stored properties ------------------- //
     //*********************************************************************//
+
+    /// @notice The address of this contract's deployer.
+    address internal _deployer;
 
     /// @notice Tracks whether individual leaves in a given token's merkle tree have been executed (to prevent
     /// double-spending).
@@ -155,7 +155,6 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
     {
         DIRECTORY = directory;
         TOKENS = tokens;
-        DEPLOYER = msg.sender;
         ADD_TO_BALANCE_MODE = addToBalanceMode;
 
         // Make it so the singleton can't be initialized.
@@ -209,6 +208,11 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
     //*********************************************************************//
     // ------------------------- public views ---------------------------- //
     //*********************************************************************//
+
+    /// @notice The address of this contract's deployer.
+    function DEPLOYER() public view virtual returns (address) {
+        return _deployer;
+    }
 
     /// @notice The peer sucker on the remote chain.
     function peer() public view virtual returns (address) {
