@@ -101,21 +101,25 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
     IJBTokens public immutable override TOKENS;
 
     //*********************************************************************//
+    // --------------------- public stored properties -------------------- //
+    //*********************************************************************//
+
+    /// @notice The address of this contract's deployer.
+    address public override deployer;
+
+    //*********************************************************************//
     // --------------------- private stored properties ------------------- //
     //*********************************************************************//
 
     /// @notice The timestamp after which the sucker is entirely deprecated.
-    uint256 internal _deprecatedAfter;
+    uint256 internal deprecatedAfter;
 
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
-    uint256 private _localProjectId;
+    uint256 private localProjectId;
 
     //*********************************************************************//
     // -------------------- internal stored properties ------------------- //
     //*********************************************************************//
-
-    /// @notice The address of this contract's deployer.
-    address internal _deployer;
 
     /// @notice Tracks whether individual leaves in a given token's merkle tree have been executed (to prevent
     /// double-spending).
@@ -209,11 +213,6 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
     // ------------------------- public views ---------------------------- //
     //*********************************************************************//
 
-    /// @notice The address of this contract's deployer.
-    function DEPLOYER() public view virtual returns (address) {
-        return _deployer;
-    }
-
     /// @notice The peer sucker on the remote chain.
     function peer() public view virtual returns (address) {
         /// This can be overridden by the inheriting contract to return a different address. This is fully supported by
@@ -227,27 +226,27 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
 
     /// @notice The ID of the project (on the local chain) that this sucker is associated with.
     function projectId() public view returns (uint256) {
-        return _localProjectId;
+        return localProjectId;
     }
 
     /// @notice Reports the deprecation state of the sucker.
     /// @return state The current deprecation state
     function state() public view override returns (JBSuckerState) {
-        uint256 __deprecatedAfter = _deprecatedAfter;
+        uint256 _deprecatedAfter = deprecatedAfter;
 
         // The sucker is fully functional, no deprecation has been set yet.
-        if (__deprecatedAfter == 0) {
+        if (_deprecatedAfter == 0) {
             return JBSuckerState.ENABLED;
         }
 
         // The sucker will soon be considered deprecated, this functions only as a warning to users.
-        if (block.timestamp < __deprecatedAfter - _maxMessagingDelay()) {
+        if (block.timestamp < _deprecatedAfter - _maxMessagingDelay()) {
             return JBSuckerState.DEPRECATION_PENDING;
         }
 
         // The sucker will no longer send new roots to the pair, but it will accept new incoming roots.
         // Additionally it will let users exit here now that we can no longer send roots/tokens.
-        if (block.timestamp < __deprecatedAfter) {
+        if (block.timestamp < _deprecatedAfter) {
             return JBSuckerState.SENDING_DISABLED;
         }
 
@@ -328,11 +327,11 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
     }
 
     /// @notice Initializes the sucker with the project ID and peer address.
-    /// @param __projectId The ID of the project (on the local chain) that this sucker is associated with.
-    function initialize(uint256 __projectId) public initializer {
+    /// @param _projectId The ID of the project (on the local chain) that this sucker is associated with.
+    function initialize(uint256 _projectId) public initializer {
         // slither-disable-next-line missing-zero-check
-        _localProjectId = __projectId;
-        _deployer = msg.sender;
+        localProjectId = _projectId;
+        deployer = msg.sender;
     }
 
     //*********************************************************************//
@@ -615,7 +614,7 @@ abstract contract JBSucker is ERC2771Context, JBPermissioned, Initializable, ERC
             revert JBSucker_DeprecationTimestampTooSoon(timestamp, nextEarliestDeprecationTime);
         }
 
-        _deprecatedAfter = timestamp;
+        deprecatedAfter = timestamp;
         emit DeprecationTimeUpdated(timestamp, _msgSender());
     }
 

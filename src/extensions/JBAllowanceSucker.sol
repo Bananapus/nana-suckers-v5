@@ -73,7 +73,7 @@ abstract contract JBAllowanceSucker is JBSucker {
 
         // Get the balance before we cash out.
         uint256 balanceBefore = _balanceOf(token, address(this));
-        receivedAmount = IJBSuckerDeployerFeeless(DEPLOYER()).useAllowanceFeeless({
+        receivedAmount = IJBSuckerDeployerFeeless(deployer).useAllowanceFeeless({
             projectId: _projectId,
             terminal: IJBPayoutTerminal(address(terminal)),
             token: token,
