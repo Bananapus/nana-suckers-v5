@@ -49,7 +49,7 @@ library SuckerDeploymentLib {
     {
         // Is deployed on all (supported) chains.
         deployment.registry =
-            IJBSuckerRegistry(_getDeploymentAddress(path, "nana-suckers", network_name, "JBSuckerRegistry"));
+            IJBSuckerRegistry(_getDeploymentAddress(path, "nana-suckers-v5", network_name, "JBSuckerRegistry"));
 
         bytes32 _network = keccak256(abi.encodePacked(network_name));
         bool _isMainnet = _network == keccak256("ethereum") || _network == keccak256("sepolia");
@@ -59,17 +59,17 @@ library SuckerDeploymentLib {
 
         if (_isMainnet || _isOP) {
             deployment.optimismDeployer =
-                IJBSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "JBOptimismSuckerDeployer"));
+                IJBSuckerDeployer(_getDeploymentAddress(path, "nana-suckers-v5", network_name, "JBOptimismSuckerDeployer"));
         }
 
         if (_isMainnet || _isBase) {
             deployment.baseDeployer =
-                IJBSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "JBBaseSuckerDeployer"));
+                IJBSuckerDeployer(_getDeploymentAddress(path, "nana-suckers-v5", network_name, "JBBaseSuckerDeployer"));
         }
 
         if (_isMainnet || _isArb) {
             deployment.arbitrumDeployer =
-                IJBSuckerDeployer(_getDeploymentAddress(path, "nana-suckers", network_name, "JBArbitrumSuckerDeployer"));
+                IJBSuckerDeployer(_getDeploymentAddress(path, "nana-suckers-v5", network_name, "JBArbitrumSuckerDeployer"));
         }
     }
 
