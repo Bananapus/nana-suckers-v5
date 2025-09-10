@@ -43,10 +43,10 @@ interface IJBSucker is IERC165 {
     function MESSENGER_ERC20_MIN_GAS_LIMIT() external view returns (uint32);
 
     function ADD_TO_BALANCE_MODE() external view returns (JBAddToBalanceMode);
-    function DEPLOYER() external view returns (address);
     function DIRECTORY() external view returns (IJBDirectory);
     function TOKENS() external view returns (IJBTokens);
 
+    function deployer() external view returns (address);
     function peer() external view returns (address);
     function projectId() external view returns (uint256);
 
