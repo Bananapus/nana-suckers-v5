@@ -58,8 +58,9 @@ library SuckerDeploymentLib {
         bool _isArb = _network == keccak256("arbitrum") || _network == keccak256("arbitrum_sepolia");
 
         if (_isMainnet || _isOP) {
-            deployment.optimismDeployer =
-                IJBSuckerDeployer(_getDeploymentAddress(path, "nana-suckers-v5", network_name, "JBOptimismSuckerDeployer"));
+            deployment.optimismDeployer = IJBSuckerDeployer(
+                _getDeploymentAddress(path, "nana-suckers-v5", network_name, "JBOptimismSuckerDeployer")
+            );
         }
 
         if (_isMainnet || _isBase) {
@@ -68,8 +69,9 @@ library SuckerDeploymentLib {
         }
 
         if (_isMainnet || _isArb) {
-            deployment.arbitrumDeployer =
-                IJBSuckerDeployer(_getDeploymentAddress(path, "nana-suckers-v5", network_name, "JBArbitrumSuckerDeployer"));
+            deployment.arbitrumDeployer = IJBSuckerDeployer(
+                _getDeploymentAddress(path, "nana-suckers-v5", network_name, "JBArbitrumSuckerDeployer")
+            );
         }
     }
 
