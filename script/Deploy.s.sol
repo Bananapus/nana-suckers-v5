@@ -36,7 +36,7 @@ contract DeployScript is Script, Sphinx {
 
     function configureSphinx() public override {
         // TODO: Update to contain JB Emergency Developers
-        sphinxConfig.projectName = "nana-suckers";
+        sphinxConfig.projectName = "nana-suckers-v5";
         sphinxConfig.mainnets = ["ethereum", "optimism", "base", "arbitrum"];
         sphinxConfig.testnets = ["ethereum_sepolia", "optimism_sepolia", "base_sepolia", "arbitrum_sepolia"];
     }
@@ -49,7 +49,7 @@ contract DeployScript is Script, Sphinx {
         );
 
         // We use the same trusted forwarder as the core deployment.
-        TRUSTED_FORWARDER = core.controller.trustedForwarder();
+        TRUSTED_FORWARDER = core.permissions.trustedForwarder();
 
         // Perform the deployment transactions.
         deploy();
