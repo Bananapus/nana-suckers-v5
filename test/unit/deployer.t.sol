@@ -137,7 +137,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             permissions: jbPermissions(),
             tokens: jbTokens(),
             configurator: address(this),
-            trusted_forwarder: address(0)
+            trustedForwarder: address(0)
         });
 
         deployer = OPDeployer;
@@ -150,7 +150,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             permissions: jbPermissions(),
             tokens: jbTokens(),
             addToBalanceMode: JBAddToBalanceMode.MANUAL,
-            trusted_forwarder: address(0)
+            trustedForwarder: address(0)
         });
 
         // Set the singleton.
@@ -173,7 +173,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             permissions: jbPermissions(),
             tokens: jbTokens(),
             configurator: address(this),
-            trusted_forwarder: address(0)
+            trustedForwarder: address(0)
         });
 
         deployer = CCIPDeployer;
@@ -190,7 +190,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             permissions: jbPermissions(),
             tokens: jbTokens(),
             addToBalanceMode: JBAddToBalanceMode.MANUAL,
-            trusted_forwarder: address(0)
+            trustedForwarder: address(0)
         });
 
         // Set the singleton.
@@ -214,7 +214,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             permissions: jbPermissions(),
             tokens: jbTokens(),
             configurator: address(this),
-            trusted_forwarder: address(0)
+            trustedForwarder: address(0)
         });
 
         deployer = ARBDeployer;
@@ -227,7 +227,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
             permissions: jbPermissions(),
             tokens: jbTokens(),
             addToBalanceMode: JBAddToBalanceMode.MANUAL,
-            trusted_forwarder: address(0)
+            trustedForwarder: address(0)
         });
 
         // Set the singleton.
@@ -265,6 +265,9 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         // Ensure that its not a precompile.
         vm.assume(uint160(address(_ccipRouter)) > 100);
 
+        // Exclude deployed contracts to prevent vm.etch from overwriting them.
+        _assumeNotDeployed(address(_ccipRouter));
+
         // We have a sanity check that requires code to be at the router address.
         vm.etch(address(_ccipRouter), "0x1");
 
@@ -288,6 +291,9 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         // Ensure that its not a precompile.
         vm.assume(uint160(address(_ccipRouter)) > 100);
 
+        // Exclude deployed contracts to prevent vm.etch from overwriting them.
+        _assumeNotDeployed(address(_ccipRouter));
+
         // We have a sanity check that requires code to be at the router address.
         vm.etch(address(_ccipRouter), "0x1");
 
@@ -300,8 +306,8 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
     }
 
     function testArbDeployer(bool _layer, IInbox _inbox, IArbGatewayRouter _gatewayRouter) public {
-        // One of these has to be set in order for it to be a 'valid' configuration.
-        vm.assume(_inbox != IInbox(address(0)) || _gatewayRouter != IArbGatewayRouter(address(0)));
+        // All of these must be set for a valid configuration.
+        vm.assume(_inbox != IInbox(address(0)) && _gatewayRouter != IArbGatewayRouter(address(0)));
 
         IJBSuckerDeployer deployer = _setupArbitrumDeployer(_layer ? JBLayer.L1 : JBLayer.L2, _inbox, _gatewayRouter);
         IJBSucker sucker = _deployDirectly(deployer, projectId, bytes32(0));
@@ -310,8 +316,8 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
     }
 
     function testArbDeployerThroughRegistry(bool _layer, IInbox _inbox, IArbGatewayRouter _gatewayRouter) public {
-        // One of these has to be set in order for it to be a 'valid' configuration.
-        vm.assume(_inbox != IInbox(address(0)) || _gatewayRouter != IArbGatewayRouter(address(0)));
+        // All of these must be set for a valid configuration.
+        vm.assume(_inbox != IInbox(address(0)) && _gatewayRouter != IArbGatewayRouter(address(0)));
 
         _allowMapping(projectId, address(registry));
         IJBSuckerDeployer deployer =
@@ -375,7 +381,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         mappings[0] = JBTokenMapping({
             localToken: address(JBConstants.NATIVE_TOKEN),
             minGas: 300_000,
-            remoteToken: address(JBConstants.NATIVE_TOKEN),
+            remoteToken: bytes32(uint256(uint160(JBConstants.NATIVE_TOKEN))),
             minBridgeAmount: 0.1 ether
         });
 
@@ -383,6 +389,20 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         configurations[0] = JBSuckerDeployerConfig({deployer: deployer, mappings: mappings});
 
         return IJBSucker(registry.deploySuckersFor(_projectId, salt, configurations)[0]);
+    }
+
+    /// @notice Exclude addresses of contracts deployed during setUp to prevent vm.etch from overwriting them.
+    function _assumeNotDeployed(address addr) internal view {
+        vm.assume(addr != address(jbPermissions()));
+        vm.assume(addr != address(jbDirectory()));
+        vm.assume(addr != address(jbProjects()));
+        vm.assume(addr != address(jbController()));
+        vm.assume(addr != address(jbMultiTerminal()));
+        vm.assume(addr != address(jbTokens()));
+        vm.assume(addr != address(jbSplits()));
+        vm.assume(addr != address(jbRulesets()));
+        vm.assume(addr != address(jbTerminalStore()));
+        vm.assume(addr != address(registry));
     }
 
     //*********************************************************************//
@@ -393,7 +413,7 @@ contract DeployerTests is Test, TestBaseWorkflow, IERC721Receiver {
         assertEq(sucker.projectId(), _projectId);
         assertEq(address(sucker.DIRECTORY()), address(jbDirectory()));
         assertEq(address(sucker.TOKENS()), address(jbTokens()));
-        assertEq(sucker.peer(), address(sucker));
+        assertEq(sucker.peer(), bytes32(uint256(uint160(address(sucker)))));
         assertEq(uint8(sucker.state()), uint8(JBSuckerState.ENABLED));
 
         return sucker;
